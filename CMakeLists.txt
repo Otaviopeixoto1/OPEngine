@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(my_openGL_proj VERSION 0.1.0)
 
+#configs for building the right version of openGL
 find_package(OpenGL REQUIRED)
 cmake_policy(SET CMP0072 NEW)
 
