@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(glad)
 
+#the full library (src + include/headers) can be handeled in this file and it can be included as subdir in the main
+#CMakeLists and linked as a library to the main target
 add_library(glad include/glad/glad.h src/glad.c)
 target_include_directories(glad PUBLIC include/)
