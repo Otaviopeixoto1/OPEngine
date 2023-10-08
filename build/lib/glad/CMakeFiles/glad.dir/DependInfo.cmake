@@ -8,12 +8,11 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/home/otavio/openGL/OPEngine/src/main.cpp" "CMakeFiles/my_openGL_proj.dir/src/main.cpp.o" "gcc" "CMakeFiles/my_openGL_proj.dir/src/main.cpp.o.d"
+  "/home/otavio/openGL/OPEngine/lib/glad/src/glad.c" "lib/glad/CMakeFiles/glad.dir/src/glad.c.o" "gcc" "lib/glad/CMakeFiles/glad.dir/src/glad.c.o.d"
   )
 
 # Targets to which this target links.
 set(CMAKE_TARGET_LINKED_INFO_FILES
-  "/home/otavio/openGL/OPEngine/build/lib/glad/CMakeFiles/glad.dir/DependInfo.cmake"
   )
 
 # Fortran module output directory.

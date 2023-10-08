@@ -1,12 +1,12 @@
 [
 {
   "directory": "/home/otavio/openGL/OPEngine/build",
-  "command": "/usr/bin/g++  -I/home/otavio/openGL/OPEngine/include -g -o CMakeFiles/my_openGL_proj.dir/src/main.cpp.o -c /home/otavio/openGL/OPEngine/src/main.cpp",
+  "command": "/usr/bin/g++  -I/home/otavio/openGL/OPEngine/lib/glad/include -g -o CMakeFiles/OP_renderer.dir/src/main.cpp.o -c /home/otavio/openGL/OPEngine/src/main.cpp",
   "file": "/home/otavio/openGL/OPEngine/src/main.cpp"
 },
 {
-  "directory": "/home/otavio/openGL/OPEngine/build",
-  "command": "/usr/bin/gcc  -I/home/otavio/openGL/OPEngine/include -g -o CMakeFiles/my_openGL_proj.dir/src/glad.c.o -c /home/otavio/openGL/OPEngine/src/glad.c",
-  "file": "/home/otavio/openGL/OPEngine/src/glad.c"
+  "directory": "/home/otavio/openGL/OPEngine/build/lib/glad",
+  "command": "/usr/bin/gcc  -I/home/otavio/openGL/OPEngine/lib/glad/include -g -o CMakeFiles/glad.dir/src/glad.c.o -c /home/otavio/openGL/OPEngine/lib/glad/src/glad.c",
+  "file": "/home/otavio/openGL/OPEngine/lib/glad/src/glad.c"
 }
 ]

@@ -1,3 +1,6 @@
-/home/otavio/openGL/OPEngine/build/CMakeFiles/my_openGL_proj.dir
+/home/otavio/openGL/OPEngine/build/CMakeFiles/OP_renderer.dir
 /home/otavio/openGL/OPEngine/build/CMakeFiles/edit_cache.dir
 /home/otavio/openGL/OPEngine/build/CMakeFiles/rebuild_cache.dir
+/home/otavio/openGL/OPEngine/build/lib/glad/CMakeFiles/glad.dir
+/home/otavio/openGL/OPEngine/build/lib/glad/CMakeFiles/edit_cache.dir
+/home/otavio/openGL/OPEngine/build/lib/glad/CMakeFiles/rebuild_cache.dir

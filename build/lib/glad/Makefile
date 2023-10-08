@@ -87,14 +87,14 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles /home/otavio/openGL/OPEngine/build//CMakeFiles/progress.marks
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
+	cd /home/otavio/openGL/OPEngine/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles /home/otavio/openGL/OPEngine/build/lib/glad//CMakeFiles/progress.marks
+	cd /home/otavio/openGL/OPEngine/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 lib/glad/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 clean
+	cd /home/otavio/openGL/OPEngine/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 lib/glad/clean
 .PHONY : clean
 
 # The main clean target
@@ -103,68 +103,56 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 preinstall
+	cd /home/otavio/openGL/OPEngine/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 lib/glad/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 preinstall
+	cd /home/otavio/openGL/OPEngine/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 lib/glad/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/otavio/openGL/OPEngine/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
-#=============================================================================
-# Target rules for targets named OP_renderer
+# Convenience name for target.
+lib/glad/CMakeFiles/glad.dir/rule:
+	cd /home/otavio/openGL/OPEngine/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 lib/glad/CMakeFiles/glad.dir/rule
+.PHONY : lib/glad/CMakeFiles/glad.dir/rule
 
-# Build rule for target.
-OP_renderer: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 OP_renderer
-.PHONY : OP_renderer
-
-# fast build rule for target.
-OP_renderer/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_renderer.dir/build.make CMakeFiles/OP_renderer.dir/build
-.PHONY : OP_renderer/fast
-
-#=============================================================================
-# Target rules for targets named glad
-
-# Build rule for target.
-glad: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 glad
+# Convenience name for target.
+glad: lib/glad/CMakeFiles/glad.dir/rule
 .PHONY : glad
 
 # fast build rule for target.
 glad/fast:
-	$(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/build
+	cd /home/otavio/openGL/OPEngine/build && $(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/build
 .PHONY : glad/fast
 
-src/main.o: src/main.cpp.o
-.PHONY : src/main.o
+src/glad.o: src/glad.c.o
+.PHONY : src/glad.o
 
 # target to build an object file
-src/main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_renderer.dir/build.make CMakeFiles/OP_renderer.dir/src/main.cpp.o
-.PHONY : src/main.cpp.o
+src/glad.c.o:
+	cd /home/otavio/openGL/OPEngine/build && $(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/src/glad.c.o
+.PHONY : src/glad.c.o
 
-src/main.i: src/main.cpp.i
-.PHONY : src/main.i
+src/glad.i: src/glad.c.i
+.PHONY : src/glad.i
 
 # target to preprocess a source file
-src/main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_renderer.dir/build.make CMakeFiles/OP_renderer.dir/src/main.cpp.i
-.PHONY : src/main.cpp.i
+src/glad.c.i:
+	cd /home/otavio/openGL/OPEngine/build && $(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/src/glad.c.i
+.PHONY : src/glad.c.i
 
-src/main.s: src/main.cpp.s
-.PHONY : src/main.s
+src/glad.s: src/glad.c.s
+.PHONY : src/glad.s
 
 # target to generate assembly for a file
-src/main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_renderer.dir/build.make CMakeFiles/OP_renderer.dir/src/main.cpp.s
-.PHONY : src/main.cpp.s
+src/glad.c.s:
+	cd /home/otavio/openGL/OPEngine/build && $(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/src/glad.c.s
+.PHONY : src/glad.c.s
 
 # Help Target
 help:
@@ -174,11 +162,10 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... OP_renderer"
 	@echo "... glad"
-	@echo "... src/main.o"
-	@echo "... src/main.i"
-	@echo "... src/main.s"
+	@echo "... src/glad.o"
+	@echo "... src/glad.i"
+	@echo "... src/glad.s"
 .PHONY : help
 
 
@@ -190,6 +177,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/otavio/openGL/OPEngine/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

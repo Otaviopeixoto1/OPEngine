@@ -63,42 +63,85 @@ CMAKE_BINARY_DIR = /home/otavio/openGL/OPEngine/build
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/my_openGL_proj.dir/all
+all: CMakeFiles/OP_renderer.dir/all
+all: lib/glad/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
-preinstall:
+preinstall: lib/glad/preinstall
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: CMakeFiles/my_openGL_proj.dir/clean
+clean: CMakeFiles/OP_renderer.dir/clean
+clean: lib/glad/clean
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/my_openGL_proj.dir
+# Directory level rules for directory lib/glad
+
+# Recursive "all" directory target.
+lib/glad/all: lib/glad/CMakeFiles/glad.dir/all
+.PHONY : lib/glad/all
+
+# Recursive "preinstall" directory target.
+lib/glad/preinstall:
+.PHONY : lib/glad/preinstall
+
+# Recursive "clean" directory target.
+lib/glad/clean: lib/glad/CMakeFiles/glad.dir/clean
+.PHONY : lib/glad/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/OP_renderer.dir
 
 # All Build rule for target.
-CMakeFiles/my_openGL_proj.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/my_openGL_proj.dir/build.make CMakeFiles/my_openGL_proj.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/my_openGL_proj.dir/build.make CMakeFiles/my_openGL_proj.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=1,2,3 "Built target my_openGL_proj"
-.PHONY : CMakeFiles/my_openGL_proj.dir/all
+CMakeFiles/OP_renderer.dir/all: lib/glad/CMakeFiles/glad.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_renderer.dir/build.make CMakeFiles/OP_renderer.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_renderer.dir/build.make CMakeFiles/OP_renderer.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=1,2 "Built target OP_renderer"
+.PHONY : CMakeFiles/OP_renderer.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/my_openGL_proj.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 3
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/my_openGL_proj.dir/all
+CMakeFiles/OP_renderer.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 4
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/OP_renderer.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 0
-.PHONY : CMakeFiles/my_openGL_proj.dir/rule
+.PHONY : CMakeFiles/OP_renderer.dir/rule
 
 # Convenience name for target.
-my_openGL_proj: CMakeFiles/my_openGL_proj.dir/rule
-.PHONY : my_openGL_proj
+OP_renderer: CMakeFiles/OP_renderer.dir/rule
+.PHONY : OP_renderer
 
 # clean rule for target.
-CMakeFiles/my_openGL_proj.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/my_openGL_proj.dir/build.make CMakeFiles/my_openGL_proj.dir/clean
-.PHONY : CMakeFiles/my_openGL_proj.dir/clean
+CMakeFiles/OP_renderer.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_renderer.dir/build.make CMakeFiles/OP_renderer.dir/clean
+.PHONY : CMakeFiles/OP_renderer.dir/clean
+
+#=============================================================================
+# Target rules for target lib/glad/CMakeFiles/glad.dir
+
+# All Build rule for target.
+lib/glad/CMakeFiles/glad.dir/all:
+	$(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/depend
+	$(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=3,4 "Built target glad"
+.PHONY : lib/glad/CMakeFiles/glad.dir/all
+
+# Build rule for subdir invocation for target.
+lib/glad/CMakeFiles/glad.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 lib/glad/CMakeFiles/glad.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 0
+.PHONY : lib/glad/CMakeFiles/glad.dir/rule
+
+# Convenience name for target.
+glad: lib/glad/CMakeFiles/glad.dir/rule
+.PHONY : glad
+
+# clean rule for target.
+lib/glad/CMakeFiles/glad.dir/clean:
+	$(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/clean
+.PHONY : lib/glad/CMakeFiles/glad.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

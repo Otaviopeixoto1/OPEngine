@@ -144,7 +144,7 @@ CMAKE_PROJECT_DESCRIPTION:STATIC=
 CMAKE_PROJECT_HOMEPAGE_URL:STATIC=
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=my_openGL_proj
+CMAKE_PROJECT_NAME:STATIC=OP_renderer
 
 //Value Computed by CMake
 CMAKE_PROJECT_VERSION:STATIC=0.1.0
@@ -249,6 +249,24 @@ OPENGL_opengl_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libOpenGL.so
 
 //Path to a file.
 OPENGL_xmesa_INCLUDE_DIR:PATH=OPENGL_xmesa_INCLUDE_DIR-NOTFOUND
+
+//Value Computed by CMake
+OP_renderer_BINARY_DIR:STATIC=/home/otavio/openGL/OPEngine/build
+
+//Value Computed by CMake
+OP_renderer_IS_TOP_LEVEL:STATIC=ON
+
+//Value Computed by CMake
+OP_renderer_SOURCE_DIR:STATIC=/home/otavio/openGL/OPEngine
+
+//Value Computed by CMake
+glad_BINARY_DIR:STATIC=/home/otavio/openGL/OPEngine/build/lib/glad
+
+//Value Computed by CMake
+glad_IS_TOP_LEVEL:STATIC=OFF
+
+//Value Computed by CMake
+glad_SOURCE_DIR:STATIC=/home/otavio/openGL/OPEngine/lib/glad
 
 //Value Computed by CMake
 my_openGL_proj_BINARY_DIR:STATIC=/home/otavio/openGL/OPEngine/build
@@ -362,7 +380,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=1
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=2
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP
