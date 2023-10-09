@@ -1,22 +1,10 @@
 #include <iostream>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <cmath>
 
-// Temporary hardcoded shader programs 
-// -------------------------
-const char *vertexShaderSource = "#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
-    "void main()\n"
-    "{\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-    "}\0";
-const char *fragmentShaderSource = "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "void main()\n"
-    "{\n"
-    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-    "}\n\0";
-///////////////////////////////////////////////////////////////
+#include "common/shader.h"
+
 
 
 
@@ -88,78 +76,10 @@ int main()
 
 
 
-
-
-
-
-
-
-
-
-    // Build and compile the shader programs
-    // -------------------------------------
-
-    // 1) Vertex shader
-    // ----------------
-    unsigned int vertexShader;
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    // add the source code (hardcoded string or read from file)
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-
-    // checking for compile-time errors:
-    int  success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if(!success)
-    {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-
-    // 2) Fragment shader
-    // ------------------
-    unsigned int fragmentShader;
-    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-
-    // checking for compile-time errors:
-    //int  success;
-    //char infoLog[512];
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if(!success)
-    {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-
-
-    // Linking the final program
-    // -------------------------
-    unsigned int shaderProgram;
-    shaderProgram = glCreateProgram();
-
-    // attach all previous shaders to the same program
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-
-    glLinkProgram(shaderProgram);
-
-    // checking for linking errors:
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if(!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-    }
-
-    // all shaders have to be deleted once linked to their main program:
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-
-
-
+    // Reading and compiling the shader program to be used:
+    // ----------------------------------------------------
+    Shader compdShader("/home/otavio/openGL/OPEngine/data/shaders/tutorial/singleUniformColor.vert", "/home/otavio/openGL/OPEngine/data/shaders/tutorial/singleUniformColor.frag");
+    
 
     // Setup vertex data and buffers
     // -----------------------------
@@ -170,7 +90,7 @@ int main()
         0.5f, -0.5f, 0.0f,
         0.0f,  0.5f, 0.0f
     };  
-    
+
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // a vertex array object can be created for easily managing the vertex attribute configuration (which stores the
@@ -180,7 +100,6 @@ int main()
     // after binding, the vertex attributes configured from now on will be associated with this specific VAO
     glBindVertexArray(VAO); 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
     
     
     // a buffer object to store the triangle data:
@@ -197,7 +116,8 @@ int main()
 
 
 
-    // after the buffer was set, we must inform how to interpret the vertex data stored in it:
+    // after the buffer was set, we must inform how to interpret the vertex data stored in it through
+    // vertex attribute pointers:
 
     // here, the vertex attribute 0 contained in the buffer is a vec3 (3D vector):
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);  
@@ -217,9 +137,62 @@ int main()
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+    // Indexed drawing
+    // ---------------
+    
+    // when drawing more complicated shapes, indexed drawing is used to avoid overlapping vertices:
+
+    // the data for a simple rectangle:
+    float iVertices[] = {
+        0.5f,  0.5f, 0.0f,  // top right
+        0.5f, -0.5f, 0.0f,  // bottom right
+        -0.5f, -0.5f, 0.0f,  // bottom left
+        -0.5f,  0.5f, 0.0f   // top left 
+    };  
+
+    unsigned int indices[] = {  // note that we start from 0!
+        0, 1, 3,   // first triangle
+        1, 2, 3    // second triangle
+    };  
+
+    // we use a new vertex array object for the new object:
+    unsigned int iVAO;
+    glGenVertexArrays(1, &iVAO); 
+    glBindVertexArray(iVAO); 
+
+    unsigned int iVBO, EBO; // now an element buffer object has to be generated to store indices
+    glGenBuffers(1, &iVBO);  
+    glGenBuffers(1, &EBO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, iVBO);  
+    glBufferData(GL_ARRAY_BUFFER, sizeof(iVertices), iVertices, GL_STATIC_DRAW);
+
+    // when binding the EBO, 
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);  
+    glEnableVertexAttribArray(0);  
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //The last element buffer object (EBO) that gets bound while a VAO is bound, is stored as the VAO's EBO, therefore
+    //we can unbind everything and only store the VAO:
+    glBindVertexArray(0);
+
+    // *HOWEVER, To unbind the element buffer object (EBO), we first must unbind the vertext array object (VAO), 
+    //since the VAO stores the bind calls, which would lead to the VAO not storing the correct EBO and cause errors
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 
+
+
+
+
+
+    // uncomment this call to draw in wireframe polygons.
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // Render Loop
     // -----------
@@ -234,12 +207,33 @@ int main()
         // ---------
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // use the shader program to render:
-        glUseProgram(shaderProgram);
+
+
+        // setting the shader uniform values in the CPU befor passing to GPU:
+        double timeValue = glfwGetTime();
+        float greenValue = static_cast<float>(sin(4.0 * timeValue) / 2.0f + 0.5f);
+        compdShader.use();
+        compdShader.setVec4("uColor",  0.0f, greenValue, 0.0f, 1.0f);
+        //glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
+
+
+        // Drawing a single triangle:
+        // --------------------------
+
         // set the vertex data and its configuration that will be used for drawing
-        glBindVertexArray(VAO);
+        //glBindVertexArray(VAO);
         // draw the data using the currently active shader
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        //glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        // Drawing a rectangle (two triangles):
+        // ------------------------------------
+                
+        // set the vertex data and its configuration that will be used for drawing
+        glBindVertexArray(iVAO);
+        // for indexed drawing, we must set the number of vetices that we want to draw (generally = n of indices)
+        // as well as the format of the index buffer (EBO)
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
 
 
         // GLFW: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
