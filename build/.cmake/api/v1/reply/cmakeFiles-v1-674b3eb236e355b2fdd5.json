@@ -137,7 +137,18 @@
 			"path" : "/usr/share/cmake-3.22/Modules/FindPackageMessage.cmake"
 		},
 		{
+			"path" : "env.h.in"
+		},
+		{
 			"path" : "lib/glad/CMakeLists.txt"
+		},
+		{
+			"path" : "lib/utils/CMakeLists.txt"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/usr/share/cmake-3.22/Modules/GNUInstallDirs.cmake"
 		}
 	],
 	"kind" : "cmakeFiles",

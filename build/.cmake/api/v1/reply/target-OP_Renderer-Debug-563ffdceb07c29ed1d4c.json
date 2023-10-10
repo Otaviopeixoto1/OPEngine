@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "OP_renderer"
+			"path" : "OP_Renderer"
 		}
 	],
 	"backtrace" : 1,
@@ -11,7 +11,8 @@
 		"commands" : 
 		[
 			"add_executable",
-			"target_link_libraries"
+			"target_link_libraries",
+			"target_include_directories"
 		],
 		"files" : 
 		[
@@ -31,6 +32,12 @@
 			{
 				"command" : 1,
 				"file" : 0,
+				"line" : 28,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
 				"line" : 18,
 				"parent" : 0
 			}
@@ -48,8 +55,16 @@
 			"includes" : 
 			[
 				{
+					"backtrace" : 3,
+					"path" : "/home/otavio/openGL/OPEngine/build"
+				},
+				{
 					"backtrace" : 2,
 					"path" : "/home/otavio/openGL/OPEngine/lib/glad/include"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/home/otavio/openGL/OPEngine/lib/utils/include"
 				}
 			],
 			"language" : "CXX",
@@ -66,7 +81,7 @@
 			"id" : "glad::@bf3af473941166e98053"
 		}
 	],
-	"id" : "OP_renderer::@6890427a1f51a3e7e1df",
+	"id" : "OP_Renderer::@6890427a1f51a3e7e1df",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -97,8 +112,8 @@
 		],
 		"language" : "CXX"
 	},
-	"name" : "OP_renderer",
-	"nameOnDisk" : "OP_renderer",
+	"name" : "OP_Renderer",
+	"nameOnDisk" : "OP_Renderer",
 	"paths" : 
 	{
 		"build" : ".",

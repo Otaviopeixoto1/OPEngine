@@ -5,7 +5,12 @@
 
 #include "common/shader.h"
 
+//By defining STB_IMAGE_IMPLEMENTATION the preprocessor modifies the header file such that it only contains the 
+//relevant definition source code, effectively turning the header file into a .cpp file
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
+#include "env.h"
 
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -35,7 +40,7 @@ int main()
 
     // GLFW: rendering window creation
     // -------------------------------
-    window = glfwCreateWindow(640,360,"testWindow",NULL,NULL);
+    window = glfwCreateWindow(640,360, PROJECT_NAME " " VERSION, NULL, NULL);
     glfwMakeContextCurrent(window);
 
 
@@ -78,7 +83,7 @@ int main()
 
     // Reading and compiling the shader program to be used:
     // ----------------------------------------------------
-    Shader compdShader("/home/otavio/openGL/OPEngine/data/shaders/tutorial/singleUniformColor.vert", "/home/otavio/openGL/OPEngine/data/shaders/tutorial/singleUniformColor.frag");
+    Shader compdShader(BASE_DIR"/data/shaders/tutorial/singleUniformColor.vert", BASE_DIR"/data/shaders/tutorial/singleUniformColor.frag");
     
 
     // Setup vertex data and buffers
@@ -137,20 +142,21 @@ int main()
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-    // Indexed drawing
-    // ---------------
+    // Indexed drawing setup
+    // ---------------------
     
     // when drawing more complicated shapes, indexed drawing is used to avoid overlapping vertices:
 
     // the data for a simple rectangle:
     float iVertices[] = {
-        0.5f,  0.5f, 0.0f,  // top right
-        0.5f, -0.5f, 0.0f,  // bottom right
-        -0.5f, -0.5f, 0.0f,  // bottom left
-        -0.5f,  0.5f, 0.0f   // top left 
+         //position           //normal            //texture coords
+         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,  // top right
+         0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   1.0f, 0.0f,  // bottom right
+        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 0.0f,   0.0f, 0.0f, // bottom left
+        -0.5f,  0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   0.0f, 1.0f // top left 
     };  
 
-    unsigned int indices[] = {  // note that we start from 0!
+    unsigned int indices[] = {  
         0, 1, 3,   // first triangle
         1, 2, 3    // second triangle
     };  
@@ -167,12 +173,21 @@ int main()
     glBindBuffer(GL_ARRAY_BUFFER, iVBO);  
     glBufferData(GL_ARRAY_BUFFER, sizeof(iVertices), iVertices, GL_STATIC_DRAW);
 
-    // when binding the EBO, 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);  
+    // configuring the vertex positions:
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);  
     glEnableVertexAttribArray(0);  
+
+    // configuring the vertex normals:
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3* sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    // configuring the vertex uvs/texcoords:
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);    
+
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //The last element buffer object (EBO) that gets bound while a VAO is bound, is stored as the VAO's EBO, therefore
@@ -186,11 +201,50 @@ int main()
 
 
 
+    // Loading Textures
+    // ----------------
+    int width, height, nrChannels; //these properties will be filled when loading the image
+
+    // loading image data:
+    unsigned char *data = stbi_load(BASE_DIR"/data/textures/container.jpg", &width, &height, &nrChannels, 0);
+
+    // creating the texture object:
+    unsigned int texture;
+    glGenTextures(1, &texture); 
+
+    // activate the texture unit first before binding its corresponding texture:
+    glActiveTexture(GL_TEXTURE0); //there are a total of 16 texture units (slots)
+    glBindTexture(GL_TEXTURE_2D, texture);  
+
+    // setting the texture wrapping/filtering options:
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // check for errors in the image loading
+    if (data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else
+    {
+        std::cout << "Failed to load texture" << std::endl;
+    }
+
+    // the texture unit also has to be associated with a uniform sampler in the shader program:
+
+    // always activate the shader before setting uniforms
+    compdShader.use(); 
+    compdShader.setInt("main_texture", 0);
 
 
 
+    stbi_image_free(data);
+    
 
-
+    
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -208,13 +262,11 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
 
 
-
-        // setting the shader uniform values in the CPU befor passing to GPU:
+        // setting the shader uniform values in the CPU before passing to GPU:
         double timeValue = glfwGetTime();
         float greenValue = static_cast<float>(sin(4.0 * timeValue) / 2.0f + 0.5f);
         compdShader.use();
         compdShader.setVec4("uColor",  0.0f, greenValue, 0.0f, 1.0f);
-        //glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
 
 
         // Drawing a single triangle:
@@ -227,7 +279,9 @@ int main()
 
         // Drawing a rectangle (two triangles):
         // ------------------------------------
-                
+        
+        // bind textures that will be used before drawing anything
+        glBindTexture(GL_TEXTURE_2D, texture);
         // set the vertex data and its configuration that will be used for drawing
         glBindVertexArray(iVAO);
         // for indexed drawing, we must set the number of vetices that we want to draw (generally = n of indices)

@@ -63,17 +63,20 @@ CMAKE_BINARY_DIR = /home/otavio/openGL/OPEngine/build
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/OP_renderer.dir/all
+all: CMakeFiles/OP_Renderer.dir/all
 all: lib/glad/all
+all: lib/utils/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
 preinstall: lib/glad/preinstall
+preinstall: lib/utils/preinstall
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: CMakeFiles/OP_renderer.dir/clean
+clean: CMakeFiles/OP_Renderer.dir/clean
 clean: lib/glad/clean
+clean: lib/utils/clean
 .PHONY : clean
 
 #=============================================================================
@@ -92,30 +95,45 @@ lib/glad/clean: lib/glad/CMakeFiles/glad.dir/clean
 .PHONY : lib/glad/clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/OP_renderer.dir
+# Directory level rules for directory lib/utils
+
+# Recursive "all" directory target.
+lib/utils/all:
+.PHONY : lib/utils/all
+
+# Recursive "preinstall" directory target.
+lib/utils/preinstall:
+.PHONY : lib/utils/preinstall
+
+# Recursive "clean" directory target.
+lib/utils/clean:
+.PHONY : lib/utils/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/OP_Renderer.dir
 
 # All Build rule for target.
-CMakeFiles/OP_renderer.dir/all: lib/glad/CMakeFiles/glad.dir/all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_renderer.dir/build.make CMakeFiles/OP_renderer.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_renderer.dir/build.make CMakeFiles/OP_renderer.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=1,2 "Built target OP_renderer"
-.PHONY : CMakeFiles/OP_renderer.dir/all
+CMakeFiles/OP_Renderer.dir/all: lib/glad/CMakeFiles/glad.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=1,2 "Built target OP_Renderer"
+.PHONY : CMakeFiles/OP_Renderer.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/OP_renderer.dir/rule: cmake_check_build_system
+CMakeFiles/OP_Renderer.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 4
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/OP_renderer.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/OP_Renderer.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 0
-.PHONY : CMakeFiles/OP_renderer.dir/rule
+.PHONY : CMakeFiles/OP_Renderer.dir/rule
 
 # Convenience name for target.
-OP_renderer: CMakeFiles/OP_renderer.dir/rule
-.PHONY : OP_renderer
+OP_Renderer: CMakeFiles/OP_Renderer.dir/rule
+.PHONY : OP_Renderer
 
 # clean rule for target.
-CMakeFiles/OP_renderer.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_renderer.dir/build.make CMakeFiles/OP_renderer.dir/clean
-.PHONY : CMakeFiles/OP_renderer.dir/clean
+CMakeFiles/OP_Renderer.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/clean
+.PHONY : CMakeFiles/OP_Renderer.dir/clean
 
 #=============================================================================
 # Target rules for target lib/glad/CMakeFiles/glad.dir

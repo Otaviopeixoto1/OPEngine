@@ -7,7 +7,13 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
-  
+
+//Todo:
+/*
+- add support for spir-v compilation and separate shader objects
+*/
+
+
 
 class Shader
 {
