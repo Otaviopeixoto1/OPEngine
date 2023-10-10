@@ -62,6 +62,9 @@
         "codecvt": "cpp",
         "fstream": "cpp",
         "iomanip": "cpp",
-        "sstream": "cpp"
+        "sstream": "cpp",
+        "map": "cpp",
+        "shared_mutex": "cpp",
+        "cfenv": "cpp"
     }
 }

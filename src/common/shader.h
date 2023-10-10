@@ -135,6 +135,10 @@ public:
     { 
         glUniform4f(glGetUniformLocation(ID, name.c_str()), v1, v2, v3, v4); 
     } 
+    void setMat4(const std::string &name, float *v1, GLboolean transpose = GL_FALSE)
+    {
+        glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, transpose, v1); 
+    }
 };
   
 #endif

@@ -66,17 +66,20 @@ CMAKE_BINARY_DIR = /home/otavio/openGL/OPEngine/build
 all: CMakeFiles/OP_Renderer.dir/all
 all: lib/glad/all
 all: lib/utils/all
+all: lib/glm/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
 preinstall: lib/glad/preinstall
 preinstall: lib/utils/preinstall
+preinstall: lib/glm/preinstall
 .PHONY : preinstall
 
 # The main recursive "clean" target.
 clean: CMakeFiles/OP_Renderer.dir/clean
 clean: lib/glad/clean
 clean: lib/utils/clean
+clean: lib/glm/clean
 .PHONY : clean
 
 #=============================================================================
@@ -93,6 +96,21 @@ lib/glad/preinstall:
 # Recursive "clean" directory target.
 lib/glad/clean: lib/glad/CMakeFiles/glad.dir/clean
 .PHONY : lib/glad/clean
+
+#=============================================================================
+# Directory level rules for directory lib/glm
+
+# Recursive "all" directory target.
+lib/glm/all:
+.PHONY : lib/glm/all
+
+# Recursive "preinstall" directory target.
+lib/glm/preinstall:
+.PHONY : lib/glm/preinstall
+
+# Recursive "clean" directory target.
+lib/glm/clean:
+.PHONY : lib/glm/clean
 
 #=============================================================================
 # Directory level rules for directory lib/utils

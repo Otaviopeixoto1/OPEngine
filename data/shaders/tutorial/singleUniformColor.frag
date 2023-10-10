@@ -20,6 +20,4 @@ void main()
     
     //using/sampling a texture provided by the openGL api:
     FragColor = texture(main_texture, TexCoord) * uColor;
-
-
 }

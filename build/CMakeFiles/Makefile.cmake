@@ -13,6 +13,7 @@ set(CMAKE_MAKEFILE_DEPENDS
   "CMakeFiles/3.22.1/CMakeSystem.cmake"
   "../env.h.in"
   "../lib/glad/CMakeLists.txt"
+  "../lib/glm/CMakeLists.txt"
   "../lib/utils/CMakeLists.txt"
   "/usr/share/cmake-3.22/Modules/CMakeCInformation.cmake"
   "/usr/share/cmake-3.22/Modules/CMakeCXXInformation.cmake"
@@ -49,6 +50,7 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "CMakeFiles/CMakeDirectoryInformation.cmake"
   "lib/glad/CMakeFiles/CMakeDirectoryInformation.cmake"
   "lib/utils/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "lib/glm/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 
 # Dependency information for all targets:

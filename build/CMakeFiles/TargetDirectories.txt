@@ -6,3 +6,5 @@
 /home/otavio/openGL/OPEngine/build/lib/glad/CMakeFiles/rebuild_cache.dir
 /home/otavio/openGL/OPEngine/build/lib/utils/CMakeFiles/edit_cache.dir
 /home/otavio/openGL/OPEngine/build/lib/utils/CMakeFiles/rebuild_cache.dir
+/home/otavio/openGL/OPEngine/build/lib/glm/CMakeFiles/edit_cache.dir
+/home/otavio/openGL/OPEngine/build/lib/glm/CMakeFiles/rebuild_cache.dir

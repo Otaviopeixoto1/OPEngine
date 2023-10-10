@@ -1,7 +1,11 @@
 #include <iostream>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
 #include <cmath>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "common/shader.h"
 
@@ -11,6 +15,8 @@
 #include <stb_image.h>
 
 #include "env.h"
+
+
 
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -89,7 +95,7 @@ int main()
     // Setup vertex data and buffers
     // -----------------------------
 
-    // the data for a simple triangle:
+    // the data for a simple triangle (NON-INDEXED):
     float vertices[] = {
         -0.5f, -0.5f, 0.0f,
         0.5f, -0.5f, 0.0f,
@@ -140,6 +146,92 @@ int main()
     // *unbinding is not necessary since the process of modifying a new VAO already calls glBindVertexArray()
     // and that would unbind the existing VAO
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+    // the data for a cube (NON-INDEXED):
+    float cVertices[] = {
+        //position            //uv
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+        0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+    };
+
+    // world space positions of the cubes
+    glm::vec3 cubePositions[] = {
+        glm::vec3( 0.0f,  0.0f,  0.0f),
+        glm::vec3( 2.0f,  5.0f, -15.0f),
+        glm::vec3(-1.5f, -2.2f, -2.5f),
+        glm::vec3(-3.8f, -2.0f, -12.3f),
+        glm::vec3( 2.4f, -0.4f, -3.5f),
+        glm::vec3(-1.7f,  3.0f, -7.5f),
+        glm::vec3( 1.3f, -2.0f, -2.5f),
+        glm::vec3( 1.5f,  2.0f, -2.5f),
+        glm::vec3( 1.5f,  0.2f, -1.5f),
+        glm::vec3(-1.3f,  1.0f, -1.5f)
+    };
+
+    unsigned int cVAO;
+    glGenVertexArrays(1, &cVAO); 
+    glBindVertexArray(cVAO); 
+    
+    unsigned int cVBO;
+    glGenBuffers(1, &cVBO);  
+    
+    glBindBuffer(GL_ARRAY_BUFFER, cVBO);  
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cVertices), cVertices, GL_STATIC_DRAW);
+
+    //positions:
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);  
+    glEnableVertexAttribArray(0);  
+
+    //uvs:
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3* sizeof(float)));  
+    glEnableVertexAttribArray(2);  
+
+
+
 
 
     // Indexed drawing setup
@@ -201,6 +293,22 @@ int main()
 
 
 
+    // Matrix Projection: Model matrix (local space -> world space)
+    // ---updated in the render loop---
+    //glm::mat4 modelMatrix = glm::mat4(1.0f);
+    //modelMatrix = glm::rotate(modelMatrix, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+
+    // Matrix Projection: View matrix (world space -> view (camera) space)
+    glm::mat4 viewMatrix = glm::mat4(1.0f);
+    // translating the scene in the reverse direction of where we want the camera to move
+    viewMatrix = glm::translate(viewMatrix, glm::vec3(0.0f, 0.0f, -3.0f)); 
+
+    // Matrix Projection: projection matrix (view space -> clip space)
+    glm::mat4 projectionMatrix;
+    projectionMatrix = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+
+
+
     // Loading Textures
     // ----------------
     int width, height, nrChannels; //these properties will be filled when loading the image
@@ -240,13 +348,17 @@ int main()
     compdShader.setInt("main_texture", 0);
 
 
-
+    
     stbi_image_free(data);
     
 
     
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    // Enable z (depth) testing
+    glEnable(GL_DEPTH_TEST);  
+
 
     // Render Loop
     // -----------
@@ -259,34 +371,102 @@ int main()
 
         // Rendering
         // ---------
+
+        // clear the data on the depth buffer:
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // clear the data on the color buffer:
         glClear(GL_COLOR_BUFFER_BIT);
 
 
         // setting the shader uniform values in the CPU before passing to GPU:
+
+        // shader has to be used before updating the uniforms
+        compdShader.use();
+
+        // Scene-based properties
+        // -------------------------
+
+        // adding transformation matrices:
+        compdShader.setMat4("viewMatrix", glm::value_ptr(viewMatrix));
+        compdShader.setMat4("projectionMatrix", glm::value_ptr(projectionMatrix));
+        
+
+        // Material-based properties
+        // -------------------------
+
+        // bind textures that will be used before drawing
+        glBindTexture(GL_TEXTURE_2D, texture);
+
+        // adding a color
         double timeValue = glfwGetTime();
         float greenValue = static_cast<float>(sin(4.0 * timeValue) / 2.0f + 0.5f);
-        compdShader.use();
         compdShader.setVec4("uColor",  0.0f, greenValue, 0.0f, 1.0f);
 
 
-        // Drawing a single triangle:
-        // --------------------------
+
+        // Non-indexed drawing
+        // -------------------
+
+        // drawing a single triangle:
 
         // set the vertex data and its configuration that will be used for drawing
         //glBindVertexArray(VAO);
+        
+
+        // the model matrix depends on the object:
+        //glm::mat4 modelMatrix = glm::mat4(1.0f);
+        //modelMatrix = glm::rotate(modelMatrix, glm::radians(60.0f * (float)timeValue), glm::vec3(1.0, 0.0, 0.0));
+        //modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5, 0.5, 0.5));
+        //compdShader.setMat4("modelMatrix", glm::value_ptr(modelMatrix));
+
         // draw the data using the currently active shader
         //glDrawArrays(GL_TRIANGLES, 0, 3);
 
-        // Drawing a rectangle (two triangles):
-        // ------------------------------------
+
+
+        // drawing spinning cubes:
+        glBindVertexArray(cVAO);
+
+        // drawing one object:
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // drawing multiple objects:
+        for(unsigned int i = 0; i < 10; i++)
+        {
+            glm::mat4 modelMatrix = glm::mat4(1.0f);
+            modelMatrix = glm::translate(modelMatrix, cubePositions[i]);
+            float angle = 20.0f * i + 60.0f * timeValue; 
+            modelMatrix = glm::rotate(modelMatrix, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            compdShader.setMat4("modelMatrix", glm::value_ptr(modelMatrix));
+
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+
+
+        // Indexed drawing
+        // ---------------
         
-        // bind textures that will be used before drawing anything
-        glBindTexture(GL_TEXTURE_2D, texture);
+        // Drawing a rectangle (two triangles):
+
         // set the vertex data and its configuration that will be used for drawing
-        glBindVertexArray(iVAO);
+        //glBindVertexArray(iVAO);
+        
+        // the model matrix depends on the object:
+        //glm::mat4 modelMatrix = glm::mat4(1.0f);
+        //modelMatrix = glm::rotate(modelMatrix, glm::radians(60.0f * (float)timeValue), glm::vec3(1.0, 0.0, 0.0));
+        //modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5, 0.5, 0.5));
+        //compdShader.setMat4("modelMatrix", glm::value_ptr(modelMatrix));
+
+        
         // for indexed drawing, we must set the number of vetices that we want to draw (generally = n of indices)
         // as well as the format of the index buffer (EBO)
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+
+
+
+
+
 
 
 

@@ -20,7 +20,7 @@ target_include_directories(OP_Renderer PUBLIC "${PROJECT_BINARY_DIR}")
 
 #directory containing a library
 #add_subdirectory(lib/glad/)
-foreach (sub "lib/glad/" "lib/utils/")
+foreach (sub "lib/glad/" "lib/utils/" "lib/glm/")
     add_subdirectory("${sub}")
 endforeach ()
 
@@ -30,5 +30,6 @@ target_link_libraries(OP_Renderer PRIVATE
     OpenGL::GL
     glad
     utils
+    glm
 )
 
