@@ -6,14 +6,6 @@ find_package(OpenGL REQUIRED)
 cmake_policy(SET CMP0072 NEW)
 
 
-
-
-#add_executable(OP_Renderer 
-#    src/main.cpp 
-#    src/common/shader.h
-#    src/test/GLtest.h
-#)
-
 add_executable(OP_Renderer)
 
 #getting all files in the sources directory
@@ -32,13 +24,12 @@ target_include_directories(OP_Renderer PUBLIC "${PROJECT_BINARY_DIR}")
 
 
 
-#directory containing a library
-#add_subdirectory(lib/glad/)
+#add the external libraries 
 foreach (sub "lib/glad/" "lib/utils/" "lib/glm/")
     add_subdirectory("${sub}")
 endforeach ()
 
-#for linking the actual source code of the libraries
+#linking the actual source code of the libraries
 target_link_libraries(OP_Renderer PRIVATE
     glfw
     OpenGL::GL

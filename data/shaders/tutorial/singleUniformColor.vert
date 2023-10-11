@@ -15,7 +15,10 @@ out vec2 TexCoord;
 
 void main()
 {
+    //project position to screen
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(vPos, 1.0f);
-    Normal = vNormal; //pass the normal to the fragment shader
+
+    //pass the variables to the fragment shader
+    Normal = vNormal; 
     TexCoord = vTexCoord;
 }    
