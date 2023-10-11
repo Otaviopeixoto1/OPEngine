@@ -166,6 +166,30 @@ src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
+src/test/GLtest.o: src/test/GLtest.cpp.o
+.PHONY : src/test/GLtest.o
+
+# target to build an object file
+src/test/GLtest.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/src/test/GLtest.cpp.o
+.PHONY : src/test/GLtest.cpp.o
+
+src/test/GLtest.i: src/test/GLtest.cpp.i
+.PHONY : src/test/GLtest.i
+
+# target to preprocess a source file
+src/test/GLtest.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/src/test/GLtest.cpp.i
+.PHONY : src/test/GLtest.cpp.i
+
+src/test/GLtest.s: src/test/GLtest.cpp.s
+.PHONY : src/test/GLtest.s
+
+# target to generate assembly for a file
+src/test/GLtest.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/src/test/GLtest.cpp.s
+.PHONY : src/test/GLtest.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -179,6 +203,9 @@ help:
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/test/GLtest.o"
+	@echo "... src/test/GLtest.i"
+	@echo "... src/test/GLtest.s"
 .PHONY : help
 
 

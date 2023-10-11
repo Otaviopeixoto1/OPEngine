@@ -7,14 +7,16 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "env.h"
 #include "common/shader.h"
+
+//a custom library with simple objects for testing:
+#include "test/GLtest.h"
 
 //By defining STB_IMAGE_IMPLEMENTATION the preprocessor modifies the header file such that it only contains the 
 //relevant definition source code, effectively turning the header file into a .cpp file
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-
-#include "env.h"
 
 
 
@@ -92,114 +94,9 @@ int main()
     Shader compdShader(BASE_DIR"/data/shaders/tutorial/singleUniformColor.vert", BASE_DIR"/data/shaders/tutorial/singleUniformColor.frag");
     
 
-    // Setup vertex data and buffers
-    // -----------------------------
 
-    // the data for a simple triangle (NON-INDEXED):
-    float vertices[] = {
-        -0.5f, -0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f,
-        0.0f,  0.5f, 0.0f
-    };  
-
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // a vertex array object can be created for easily managing the vertex attribute configuration (which stores the
-    // information required to intepret the vertex buffers) and which buffer is associated with that config
-    unsigned int VAO;
-    glGenVertexArrays(1, &VAO); 
-    // after binding, the vertex attributes configured from now on will be associated with this specific VAO
-    glBindVertexArray(VAO); 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
-    
-    // a buffer object to store the triangle data:
-    unsigned int VBO;
-    glGenBuffers(1, &VBO);  //args = (number of buffers generated, buffer id/name references)
-    // bind the buffer to an array buffer (the type used for the vertex shader data):
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);  
-
-    // copy the previously defined "vertices" data into our array buffer in static draw mode. the draw modes are:
-    // GL_STREAM_DRAW: the data is set only once and used by the GPU at most a few times.
-    // GL_STATIC_DRAW: the data is set only once and used many times.
-    // GL_DYNAMIC_DRAW: the data is changed a lot and used many times.
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-
-
-    // after the buffer was set, we must inform how to interpret the vertex data stored in it through
-    // vertex attribute pointers:
-
-    // here, the vertex attribute 0 contained in the buffer is a vec3 (3D vector):
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);  
-    // the vertex shader program can now take the vertex attribute 0 as an input after it is enabled:
-    glEnableVertexAttribArray(0);  
-
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // since the VAO already contains the reference to VBO after the call to glVertexAttribPointer(), the
-    // VBO can be safely unbound:
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
-    // the same can be done for the VAO, as long as it is bound again when we try to draw the object
-    glBindVertexArray(0);
-
-    // *unbinding is not necessary since the process of modifying a new VAO already calls glBindVertexArray()
-    // and that would unbind the existing VAO
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-    // the data for a cube (NON-INDEXED):
-    float cVertices[] = {
-        //position            //uv
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
-    };
-
-    // world space positions of the cubes
-    glm::vec3 cubePositions[] = {
+    // world space positions for testing 
+    glm::vec3 TEST_POSITIONS[] = {
         glm::vec3( 0.0f,  0.0f,  0.0f),
         glm::vec3( 2.0f,  5.0f, -15.0f),
         glm::vec3(-1.5f, -2.2f, -2.5f),
@@ -212,91 +109,10 @@ int main()
         glm::vec3(-1.3f,  1.0f, -1.5f)
     };
 
-    unsigned int cVAO;
-    glGenVertexArrays(1, &cVAO); 
-    glBindVertexArray(cVAO); 
-    
-    unsigned int cVBO;
-    glGenBuffers(1, &cVBO);  
-    
-    glBindBuffer(GL_ARRAY_BUFFER, cVBO);  
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cVertices), cVertices, GL_STATIC_DRAW);
-
-    //positions:
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);  
-    glEnableVertexAttribArray(0);  
-
-    //uvs:
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3* sizeof(float)));  
-    glEnableVertexAttribArray(2);  
-
-
-
-
-
-    // Indexed drawing setup
-    // ---------------------
-    
-    // when drawing more complicated shapes, indexed drawing is used to avoid overlapping vertices:
-
-    // the data for a simple rectangle:
-    float iVertices[] = {
-         //position           //normal            //texture coords
-         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,  // top right
-         0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   1.0f, 0.0f,  // bottom right
-        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 0.0f,   0.0f, 0.0f, // bottom left
-        -0.5f,  0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   0.0f, 1.0f // top left 
-    };  
-
-    unsigned int indices[] = {  
-        0, 1, 3,   // first triangle
-        1, 2, 3    // second triangle
-    };  
-
-    // we use a new vertex array object for the new object:
-    unsigned int iVAO;
-    glGenVertexArrays(1, &iVAO); 
-    glBindVertexArray(iVAO); 
-
-    unsigned int iVBO, EBO; // now an element buffer object has to be generated to store indices
-    glGenBuffers(1, &iVBO);  
-    glGenBuffers(1, &EBO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, iVBO);  
-    glBufferData(GL_ARRAY_BUFFER, sizeof(iVertices), iVertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // configuring the vertex positions:
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);  
-    glEnableVertexAttribArray(0);  
-
-    // configuring the vertex normals:
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3* sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    // configuring the vertex uvs/texcoords:
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);    
-
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //The last element buffer object (EBO) that gets bound while a VAO is bound, is stored as the VAO's EBO, therefore
-    //we can unbind everything and only store the VAO:
-    glBindVertexArray(0);
-
-    // *HOWEVER, To unbind the element buffer object (EBO), we first must unbind the vertext array object (VAO), 
-    //since the VAO stores the bind calls, which would lead to the VAO not storing the correct EBO and cause errors
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 
     // Matrix Projection: Model matrix (local space -> world space)
     // ---updated in the render loop---
-    //glm::mat4 modelMatrix = glm::mat4(1.0f);
-    //modelMatrix = glm::rotate(modelMatrix, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
     // Matrix Projection: View matrix (world space -> view (camera) space)
     glm::mat4 viewMatrix = glm::mat4(1.0f);
@@ -425,16 +241,17 @@ int main()
 
 
         // drawing spinning cubes:
-        glBindVertexArray(cVAO);
 
-        // drawing one object:
+        glBindVertexArray(GetTestVAO(NI_CUBE));
+
+        // one cube:
         // glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        // drawing multiple objects:
+        // multiple cubes:
         for(unsigned int i = 0; i < 10; i++)
         {
             glm::mat4 modelMatrix = glm::mat4(1.0f);
-            modelMatrix = glm::translate(modelMatrix, cubePositions[i]);
+            modelMatrix = glm::translate(modelMatrix, TEST_POSITIONS[i]);
             float angle = 20.0f * i + 60.0f * timeValue; 
             modelMatrix = glm::rotate(modelMatrix, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
             compdShader.setMat4("modelMatrix", glm::value_ptr(modelMatrix));
@@ -449,7 +266,7 @@ int main()
         // Drawing a rectangle (two triangles):
 
         // set the vertex data and its configuration that will be used for drawing
-        //glBindVertexArray(iVAO);
+        //glBindVertexArray(GetTestVAO(I_RECT));
         
         // the model matrix depends on the object:
         //glm::mat4 modelMatrix = glm::mat4(1.0f);

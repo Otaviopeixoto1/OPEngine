@@ -134,12 +134,12 @@ lib/utils/clean:
 CMakeFiles/OP_Renderer.dir/all: lib/glad/CMakeFiles/glad.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=1,2 "Built target OP_Renderer"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=1,2,3 "Built target OP_Renderer"
 .PHONY : CMakeFiles/OP_Renderer.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/OP_Renderer.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 4
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 5
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/OP_Renderer.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 0
 .PHONY : CMakeFiles/OP_Renderer.dir/rule
@@ -160,7 +160,7 @@ CMakeFiles/OP_Renderer.dir/clean:
 lib/glad/CMakeFiles/glad.dir/all:
 	$(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/depend
 	$(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=3,4 "Built target glad"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=4,5 "Built target glad"
 .PHONY : lib/glad/CMakeFiles/glad.dir/all
 
 # Build rule for subdir invocation for target.

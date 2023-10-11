@@ -1,1 +1,1 @@
-/usr/bin/g++ -g -rdynamic CMakeFiles/OP_Renderer.dir/src/main.cpp.o -o OP_Renderer  -lglfw /usr/lib/x86_64-linux-gnu/libGL.so lib/glad/libglad.a 
+/usr/bin/g++ -g -rdynamic CMakeFiles/OP_Renderer.dir/src/main.cpp.o CMakeFiles/OP_Renderer.dir/src/test/GLtest.cpp.o -o OP_Renderer  -lglfw /usr/lib/x86_64-linux-gnu/libGL.so lib/glad/libglad.a 
