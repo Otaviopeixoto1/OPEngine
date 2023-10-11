@@ -146,7 +146,8 @@
 			"sourceIndexes" : 
 			[
 				2,
-				3
+				3,
+				4
 			]
 		}
 	],
@@ -167,6 +168,11 @@
 		{
 			"backtrace" : 4,
 			"path" : "src/common/shader.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 4,
+			"path" : "src/scene/camera.h",
 			"sourceGroupIndex" : 1
 		},
 		{

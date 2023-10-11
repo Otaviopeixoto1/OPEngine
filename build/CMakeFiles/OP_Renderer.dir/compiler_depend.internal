@@ -429,6 +429,12 @@ CMakeFiles/OP_Renderer.dir/src/main.cpp.o
  /usr/include/c++/11/bits/fstream.tcc
  /usr/include/c++/11/sstream
  /usr/include/c++/11/bits/sstream.tcc
+ /home/otavio/openGL/OPEngine/src/scene/camera.h
+ /usr/include/c++/11/vector
+ /usr/include/c++/11/bits/stl_uninitialized.h
+ /usr/include/c++/11/bits/stl_vector.h
+ /usr/include/c++/11/bits/stl_bvector.h
+ /usr/include/c++/11/bits/vector.tcc
  /home/otavio/openGL/OPEngine/src/test/GLtest.h
  /home/otavio/openGL/OPEngine/lib/utils/include/stb_image.h
  /usr/include/c++/11/stdlib.h

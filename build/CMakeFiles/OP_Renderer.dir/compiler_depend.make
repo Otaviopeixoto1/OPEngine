@@ -428,6 +428,12 @@ CMakeFiles/OP_Renderer.dir/src/main.cpp.o: ../src/main.cpp \
   /usr/include/c++/11/bits/fstream.tcc \
   /usr/include/c++/11/sstream \
   /usr/include/c++/11/bits/sstream.tcc \
+  ../src/scene/camera.h \
+  /usr/include/c++/11/vector \
+  /usr/include/c++/11/bits/stl_uninitialized.h \
+  /usr/include/c++/11/bits/stl_vector.h \
+  /usr/include/c++/11/bits/stl_bvector.h \
+  /usr/include/c++/11/bits/vector.tcc \
   ../src/test/GLtest.h \
   ../lib/utils/include/stb_image.h \
   /usr/include/c++/11/stdlib.h \
@@ -550,6 +556,10 @@ CMakeFiles/OP_Renderer.dir/src/test/GLtest.cpp.o: ../src/test/GLtest.cpp \
 
 ../lib/utils/include/stb_image.h:
 
+/usr/include/c++/11/bits/stl_uninitialized.h:
+
+/usr/include/c++/11/vector:
+
 /usr/include/c++/11/sstream:
 
 /usr/include/c++/11/bits/fstream.tcc:
@@ -565,6 +575,8 @@ env.h:
 /usr/include/strings.h:
 
 ../lib/glm/ext/vector_uint1_sized.hpp:
+
+/usr/include/c++/11/bits/vector.tcc:
 
 ../lib/glm/ext/vector_int1.hpp:
 
@@ -657,6 +669,8 @@ env.h:
 ../lib/glm/ext/matrix_double4x4.hpp:
 
 ../lib/glm/mat4x4.hpp:
+
+../src/scene/camera.h:
 
 ../lib/glm/ext/matrix_double4x3_precision.hpp:
 
@@ -793,6 +807,8 @@ env.h:
 /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/timer_t.h:
+
+/usr/include/c++/11/bits/stl_bvector.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h:
 
@@ -1053,6 +1069,8 @@ env.h:
 /usr/include/x86_64-linux-gnu/bits/floatn.h:
 
 /usr/include/c++/11/bits/range_access.h:
+
+/usr/include/c++/11/bits/stl_vector.h:
 
 ../lib/glm/ext/vector_int1_sized.hpp:
 

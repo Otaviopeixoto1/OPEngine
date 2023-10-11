@@ -9,6 +9,7 @@
 
 #include "env.h"
 #include "common/shader.h"
+#include "scene/camera.h"
 
 //a custom library with simple objects for testing:
 #include "test/GLtest.h"
@@ -19,9 +20,25 @@
 #include <stb_image.h>
 
 
+// Frame time:
+float deltaTime = 0.0f;	
+float lastFrame = 0.0f; 
 
+//starting window size
+const unsigned int BASE_WINDOW_WIDTH = 800;
+const unsigned int BASE_WINDOW_HEIGHT = 600;
+
+//mouse position
+float lastMouseX, lastMouseY;
+const float mouseSensitivity = 0.1f;
+bool firstMouseMovement = true;
+
+//initializing the camera
+Camera mainCamera(glm::vec3(0.0f, 0.0f, 3.0f));
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 
 int main()
@@ -48,7 +65,7 @@ int main()
 
     // GLFW: rendering window creation
     // -------------------------------
-    window = glfwCreateWindow(640,360, PROJECT_NAME " " VERSION, NULL, NULL);
+    window = glfwCreateWindow(BASE_WINDOW_WIDTH, BASE_WINDOW_HEIGHT, PROJECT_NAME " " VERSION, NULL, NULL);
     glfwMakeContextCurrent(window);
 
 
@@ -70,16 +87,29 @@ int main()
     // the viewport is the rendering window i.e. its the region where openGL will draw and it can be different from
     // GLFW's window size processed coordinates in OpenGL are between -1 and 1 so we effectively map from the range 
     // (-1 to 1) to (0, 640) and (0, 360). 
-    glViewport(0, 0, 640, 360);
+    glViewport(0, 0, BASE_WINDOW_WIDTH, BASE_WINDOW_HEIGHT);
 
+    // setting the initial mouse position to the center of the screen
+    lastMouseX = BASE_WINDOW_WIDTH/2;
+    lastMouseY = BASE_WINDOW_HEIGHT/2;
 
     // callback functions can be customized for certain events:
 
     // this callback is used after a resize happens to the GLFW window and we can pass a custom function that follows
     // a defined template:
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);  
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback); 
+
+    //this callback is used every time the mouse moves:
+    glfwSetCursorPosCallback(window, mouse_callback); 
+
+    //this callback is used every time the mouse wheel is used:
+    glfwSetScrollCallback(window, scroll_callback); 
+
+
 
     // We register the callback functions after we've created the window and before the render loop is initiated. 
+
+
 
 
     //we call glClear and clear the color buffer, the entire color buffer will be filled with the color as configured 
@@ -110,14 +140,6 @@ int main()
     };
 
 
-
-    // Matrix Projection: Model matrix (local space -> world space)
-    // ---updated in the render loop---
-
-    // Matrix Projection: View matrix (world space -> view (camera) space)
-    glm::mat4 viewMatrix = glm::mat4(1.0f);
-    // translating the scene in the reverse direction of where we want the camera to move
-    viewMatrix = glm::translate(viewMatrix, glm::vec3(0.0f, 0.0f, -3.0f)); 
 
     // Matrix Projection: projection matrix (view space -> clip space)
     glm::mat4 projectionMatrix;
@@ -172,18 +194,29 @@ int main()
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    // Enable z (depth) testing
+    // Enable z (depth) testing:
     glEnable(GL_DEPTH_TEST);  
 
+    // hide the cursor and only show again when the window is out of focus or minimized:
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    
 
     // Render Loop
     // -----------
     while(!glfwWindowShouldClose(window))
     {
+        // calculating the frame time
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame; 
+
+
         // Input Handling
         // --------------
         processInput(window);
         
+
+
 
         // Rendering
         // ---------
@@ -203,8 +236,11 @@ int main()
         // -------------------------
 
         // adding transformation matrices:
-        compdShader.setMat4("viewMatrix", glm::value_ptr(viewMatrix));
-        compdShader.setMat4("projectionMatrix", glm::value_ptr(projectionMatrix));
+
+        // Matrix Projection: View matrix (world space -> view (camera) space)
+        compdShader.setMat4("viewMatrix", mainCamera.GetViewMatrix());
+        // Matrix Projection: projection matrix (view space -> clip space)
+        compdShader.setMat4("projectionMatrix", projectionMatrix);
         
 
         // Material-based properties
@@ -250,14 +286,18 @@ int main()
         // multiple cubes:
         for(unsigned int i = 0; i < 10; i++)
         {
+            // Matrix Projection: Model matrix (local space -> world space)
             glm::mat4 modelMatrix = glm::mat4(1.0f);
             modelMatrix = glm::translate(modelMatrix, TEST_POSITIONS[i]);
             float angle = 20.0f * i + 60.0f * timeValue; 
             modelMatrix = glm::rotate(modelMatrix, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            compdShader.setMat4("modelMatrix", glm::value_ptr(modelMatrix));
+            compdShader.setMat4("modelMatrix", modelMatrix);
 
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
+
+
+
 
 
         // Indexed drawing
@@ -320,6 +360,35 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
 }  
 
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    if (firstMouseMovement) // initially set to true
+    {
+        lastMouseX = xpos;
+        lastMouseY = ypos;
+        firstMouseMovement = false;
+    }
+
+    float xoffset = xpos - lastMouseX;
+    float yoffset = lastMouseY - ypos; // reversed since y-coordinates range from bottom to top
+    lastMouseX = xpos;
+    lastMouseY = ypos;
+
+    const float sensitivity = 0.1f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+
+    mainCamera.ProcessMouseMovement(xoffset, yoffset);
+
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+
+}
+
 // Process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow *window)
@@ -327,4 +396,20 @@ void processInput(GLFWwindow *window)
     //if the user pressed escape (Esc), then the window closes
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
+    // Camera Movement
+    // ---------------
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        mainCamera.ProcessKeyboard(FORWARD_MOVEMENT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        mainCamera.ProcessKeyboard(BACKWARD_MOVEMENT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        mainCamera.ProcessKeyboard(LEFT_MOVEMENT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        mainCamera.ProcessKeyboard(RIGHT_MOVEMENT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+        mainCamera.ProcessKeyboard(GLOBAL_UP_MOVEMENT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        mainCamera.ProcessKeyboard(GLOBAL_DOWN_MOVEMENT, deltaTime);
+    
 }
