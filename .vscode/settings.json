@@ -65,6 +65,10 @@
         "sstream": "cpp",
         "map": "cpp",
         "shared_mutex": "cpp",
-        "cfenv": "cpp"
+        "cfenv": "cpp",
+        "set": "cpp",
+        "list": "cpp",
+        "__split_buffer": "cpp",
+        "filesystem": "cpp"
     }
 }

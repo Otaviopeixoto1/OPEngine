@@ -1,17 +1,27 @@
 [
 {
   "directory": "/home/otavio/openGL/OPEngine/build",
-  "command": "/usr/bin/g++  -I/home/otavio/openGL/OPEngine/build -I/home/otavio/openGL/OPEngine/lib/glad/include -I/home/otavio/openGL/OPEngine/lib/utils/include -I/home/otavio/openGL/OPEngine/lib/glm/.. -g -o CMakeFiles/OP_Renderer.dir/src/main.cpp.o -c /home/otavio/openGL/OPEngine/src/main.cpp",
+  "command": "/usr/bin/g++  -I/home/otavio/openGL/OPEngine/build -I/home/otavio/openGL/OPEngine/lib/glad/include -I/home/otavio/openGL/OPEngine/lib/utils/include -I/home/otavio/openGL/OPEngine/lib/glm/.. -I/home/otavio/openGL/OPEngine/lib/jsoncpp/include -isystem /home/otavio/openGL/OPEngine/lib/assimp/include -isystem /home/otavio/openGL/OPEngine/lib/zlib/include -g -o CMakeFiles/OP_Renderer.dir/src/main.cpp.o -c /home/otavio/openGL/OPEngine/src/main.cpp",
   "file": "/home/otavio/openGL/OPEngine/src/main.cpp"
 },
 {
   "directory": "/home/otavio/openGL/OPEngine/build",
-  "command": "/usr/bin/g++  -I/home/otavio/openGL/OPEngine/build -I/home/otavio/openGL/OPEngine/lib/glad/include -I/home/otavio/openGL/OPEngine/lib/utils/include -I/home/otavio/openGL/OPEngine/lib/glm/.. -g -o CMakeFiles/OP_Renderer.dir/src/test/GLtest.cpp.o -c /home/otavio/openGL/OPEngine/src/test/GLtest.cpp",
+  "command": "/usr/bin/g++  -I/home/otavio/openGL/OPEngine/build -I/home/otavio/openGL/OPEngine/lib/glad/include -I/home/otavio/openGL/OPEngine/lib/utils/include -I/home/otavio/openGL/OPEngine/lib/glm/.. -I/home/otavio/openGL/OPEngine/lib/jsoncpp/include -isystem /home/otavio/openGL/OPEngine/lib/assimp/include -isystem /home/otavio/openGL/OPEngine/lib/zlib/include -g -o CMakeFiles/OP_Renderer.dir/src/render/ForwardRenderer.cpp.o -c /home/otavio/openGL/OPEngine/src/render/ForwardRenderer.cpp",
+  "file": "/home/otavio/openGL/OPEngine/src/render/ForwardRenderer.cpp"
+},
+{
+  "directory": "/home/otavio/openGL/OPEngine/build",
+  "command": "/usr/bin/g++  -I/home/otavio/openGL/OPEngine/build -I/home/otavio/openGL/OPEngine/lib/glad/include -I/home/otavio/openGL/OPEngine/lib/utils/include -I/home/otavio/openGL/OPEngine/lib/glm/.. -I/home/otavio/openGL/OPEngine/lib/jsoncpp/include -isystem /home/otavio/openGL/OPEngine/lib/assimp/include -isystem /home/otavio/openGL/OPEngine/lib/zlib/include -g -o CMakeFiles/OP_Renderer.dir/src/test/GLtest.cpp.o -c /home/otavio/openGL/OPEngine/src/test/GLtest.cpp",
   "file": "/home/otavio/openGL/OPEngine/src/test/GLtest.cpp"
 },
 {
   "directory": "/home/otavio/openGL/OPEngine/build/lib/glad",
   "command": "/usr/bin/gcc  -I/home/otavio/openGL/OPEngine/lib/glad/include -g -o CMakeFiles/glad.dir/src/glad.c.o -c /home/otavio/openGL/OPEngine/lib/glad/src/glad.c",
   "file": "/home/otavio/openGL/OPEngine/lib/glad/src/glad.c"
+},
+{
+  "directory": "/home/otavio/openGL/OPEngine/build/lib/jsoncpp",
+  "command": "/usr/bin/g++  -I/home/otavio/openGL/OPEngine/lib/jsoncpp/include -g -o CMakeFiles/jsoncpp.dir/src/jsoncpp.cpp.o -c /home/otavio/openGL/OPEngine/lib/jsoncpp/src/jsoncpp.cpp",
+  "file": "/home/otavio/openGL/OPEngine/lib/jsoncpp/src/jsoncpp.cpp"
 }
 ]

@@ -67,12 +67,18 @@ all: CMakeFiles/OP_Renderer.dir/all
 all: lib/glad/all
 all: lib/utils/all
 all: lib/glm/all
+all: lib/jsoncpp/all
+all: lib/assimp/all
+all: lib/zlib/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
 preinstall: lib/glad/preinstall
 preinstall: lib/utils/preinstall
 preinstall: lib/glm/preinstall
+preinstall: lib/jsoncpp/preinstall
+preinstall: lib/assimp/preinstall
+preinstall: lib/zlib/preinstall
 .PHONY : preinstall
 
 # The main recursive "clean" target.
@@ -80,7 +86,25 @@ clean: CMakeFiles/OP_Renderer.dir/clean
 clean: lib/glad/clean
 clean: lib/utils/clean
 clean: lib/glm/clean
+clean: lib/jsoncpp/clean
+clean: lib/assimp/clean
+clean: lib/zlib/clean
 .PHONY : clean
+
+#=============================================================================
+# Directory level rules for directory lib/assimp
+
+# Recursive "all" directory target.
+lib/assimp/all:
+.PHONY : lib/assimp/all
+
+# Recursive "preinstall" directory target.
+lib/assimp/preinstall:
+.PHONY : lib/assimp/preinstall
+
+# Recursive "clean" directory target.
+lib/assimp/clean:
+.PHONY : lib/assimp/clean
 
 #=============================================================================
 # Directory level rules for directory lib/glad
@@ -113,6 +137,21 @@ lib/glm/clean:
 .PHONY : lib/glm/clean
 
 #=============================================================================
+# Directory level rules for directory lib/jsoncpp
+
+# Recursive "all" directory target.
+lib/jsoncpp/all: lib/jsoncpp/CMakeFiles/jsoncpp.dir/all
+.PHONY : lib/jsoncpp/all
+
+# Recursive "preinstall" directory target.
+lib/jsoncpp/preinstall:
+.PHONY : lib/jsoncpp/preinstall
+
+# Recursive "clean" directory target.
+lib/jsoncpp/clean: lib/jsoncpp/CMakeFiles/jsoncpp.dir/clean
+.PHONY : lib/jsoncpp/clean
+
+#=============================================================================
 # Directory level rules for directory lib/utils
 
 # Recursive "all" directory target.
@@ -128,18 +167,34 @@ lib/utils/clean:
 .PHONY : lib/utils/clean
 
 #=============================================================================
+# Directory level rules for directory lib/zlib
+
+# Recursive "all" directory target.
+lib/zlib/all:
+.PHONY : lib/zlib/all
+
+# Recursive "preinstall" directory target.
+lib/zlib/preinstall:
+.PHONY : lib/zlib/preinstall
+
+# Recursive "clean" directory target.
+lib/zlib/clean:
+.PHONY : lib/zlib/clean
+
+#=============================================================================
 # Target rules for target CMakeFiles/OP_Renderer.dir
 
 # All Build rule for target.
 CMakeFiles/OP_Renderer.dir/all: lib/glad/CMakeFiles/glad.dir/all
+CMakeFiles/OP_Renderer.dir/all: lib/jsoncpp/CMakeFiles/jsoncpp.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=1,2,3 "Built target OP_Renderer"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=1,2,3,4 "Built target OP_Renderer"
 .PHONY : CMakeFiles/OP_Renderer.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/OP_Renderer.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 5
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 8
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/OP_Renderer.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 0
 .PHONY : CMakeFiles/OP_Renderer.dir/rule
@@ -160,7 +215,7 @@ CMakeFiles/OP_Renderer.dir/clean:
 lib/glad/CMakeFiles/glad.dir/all:
 	$(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/depend
 	$(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=4,5 "Built target glad"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=5,6 "Built target glad"
 .PHONY : lib/glad/CMakeFiles/glad.dir/all
 
 # Build rule for subdir invocation for target.
@@ -178,6 +233,32 @@ glad: lib/glad/CMakeFiles/glad.dir/rule
 lib/glad/CMakeFiles/glad.dir/clean:
 	$(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/clean
 .PHONY : lib/glad/CMakeFiles/glad.dir/clean
+
+#=============================================================================
+# Target rules for target lib/jsoncpp/CMakeFiles/jsoncpp.dir
+
+# All Build rule for target.
+lib/jsoncpp/CMakeFiles/jsoncpp.dir/all:
+	$(MAKE) $(MAKESILENT) -f lib/jsoncpp/CMakeFiles/jsoncpp.dir/build.make lib/jsoncpp/CMakeFiles/jsoncpp.dir/depend
+	$(MAKE) $(MAKESILENT) -f lib/jsoncpp/CMakeFiles/jsoncpp.dir/build.make lib/jsoncpp/CMakeFiles/jsoncpp.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=7,8 "Built target jsoncpp"
+.PHONY : lib/jsoncpp/CMakeFiles/jsoncpp.dir/all
+
+# Build rule for subdir invocation for target.
+lib/jsoncpp/CMakeFiles/jsoncpp.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 lib/jsoncpp/CMakeFiles/jsoncpp.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 0
+.PHONY : lib/jsoncpp/CMakeFiles/jsoncpp.dir/rule
+
+# Convenience name for target.
+jsoncpp: lib/jsoncpp/CMakeFiles/jsoncpp.dir/rule
+.PHONY : jsoncpp
+
+# clean rule for target.
+lib/jsoncpp/CMakeFiles/jsoncpp.dir/clean:
+	$(MAKE) $(MAKESILENT) -f lib/jsoncpp/CMakeFiles/jsoncpp.dir/build.make lib/jsoncpp/CMakeFiles/jsoncpp.dir/clean
+.PHONY : lib/jsoncpp/CMakeFiles/jsoncpp.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

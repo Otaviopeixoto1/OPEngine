@@ -317,6 +317,15 @@ OP_renderer_IS_TOP_LEVEL:STATIC=ON
 OP_renderer_SOURCE_DIR:STATIC=/home/otavio/openGL/OPEngine
 
 //Value Computed by CMake
+assimp_BINARY_DIR:STATIC=/home/otavio/openGL/OPEngine/build/lib/assimp
+
+//Value Computed by CMake
+assimp_IS_TOP_LEVEL:STATIC=OFF
+
+//Value Computed by CMake
+assimp_SOURCE_DIR:STATIC=/home/otavio/openGL/OPEngine/lib/assimp
+
+//Value Computed by CMake
 common_BINARY_DIR:STATIC=/home/otavio/openGL/OPEngine/build/lib/common
 
 //Value Computed by CMake
@@ -333,6 +342,18 @@ glad_IS_TOP_LEVEL:STATIC=OFF
 
 //Value Computed by CMake
 glad_SOURCE_DIR:STATIC=/home/otavio/openGL/OPEngine/lib/glad
+
+//The directory containing a CMake configuration file for glfw3.
+glfw3_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/glfw3
+
+//Value Computed by CMake
+jsoncpp_BINARY_DIR:STATIC=/home/otavio/openGL/OPEngine/build/lib/jsoncpp
+
+//Value Computed by CMake
+jsoncpp_IS_TOP_LEVEL:STATIC=OFF
+
+//Value Computed by CMake
+jsoncpp_SOURCE_DIR:STATIC=/home/otavio/openGL/OPEngine/lib/jsoncpp
 
 //Value Computed by CMake
 my_openGL_proj_BINARY_DIR:STATIC=/home/otavio/openGL/OPEngine/build
@@ -351,6 +372,15 @@ utils_IS_TOP_LEVEL:STATIC=OFF
 
 //Value Computed by CMake
 utils_SOURCE_DIR:STATIC=/home/otavio/openGL/OPEngine/lib/utils
+
+//Value Computed by CMake
+zlib_BINARY_DIR:STATIC=/home/otavio/openGL/OPEngine/build/lib/zlib
+
+//Value Computed by CMake
+zlib_IS_TOP_LEVEL:STATIC=OFF
+
+//Value Computed by CMake
+zlib_SOURCE_DIR:STATIC=/home/otavio/openGL/OPEngine/lib/zlib
 
 
 ########################
@@ -487,7 +517,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=4
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=7
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

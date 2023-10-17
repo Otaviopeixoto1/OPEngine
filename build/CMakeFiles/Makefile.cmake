@@ -12,9 +12,16 @@ set(CMAKE_MAKEFILE_DEPENDS
   "CMakeFiles/3.22.1/CMakeCXXCompiler.cmake"
   "CMakeFiles/3.22.1/CMakeSystem.cmake"
   "../env.h.in"
+  "../lib/assimp/CMakeLists.txt"
   "../lib/glad/CMakeLists.txt"
   "../lib/glm/CMakeLists.txt"
+  "../lib/jsoncpp/CMakeLists.txt"
   "../lib/utils/CMakeLists.txt"
+  "../lib/zlib/CMakeLists.txt"
+  "/usr/lib/x86_64-linux-gnu/cmake/glfw3/glfw3Config.cmake"
+  "/usr/lib/x86_64-linux-gnu/cmake/glfw3/glfw3ConfigVersion.cmake"
+  "/usr/lib/x86_64-linux-gnu/cmake/glfw3/glfw3Targets-none.cmake"
+  "/usr/lib/x86_64-linux-gnu/cmake/glfw3/glfw3Targets.cmake"
   "/usr/share/cmake-3.22/Modules/CMakeCInformation.cmake"
   "/usr/share/cmake-3.22/Modules/CMakeCXXInformation.cmake"
   "/usr/share/cmake-3.22/Modules/CMakeCommonLanguageInclude.cmake"
@@ -27,6 +34,7 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/usr/share/cmake-3.22/Modules/Compiler/GNU-C.cmake"
   "/usr/share/cmake-3.22/Modules/Compiler/GNU-CXX.cmake"
   "/usr/share/cmake-3.22/Modules/Compiler/GNU.cmake"
+  "/usr/share/cmake-3.22/Modules/ExternalProject.cmake"
   "/usr/share/cmake-3.22/Modules/FindOpenGL.cmake"
   "/usr/share/cmake-3.22/Modules/FindPackageHandleStandardArgs.cmake"
   "/usr/share/cmake-3.22/Modules/FindPackageMessage.cmake"
@@ -51,10 +59,14 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "lib/glad/CMakeFiles/CMakeDirectoryInformation.cmake"
   "lib/utils/CMakeFiles/CMakeDirectoryInformation.cmake"
   "lib/glm/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "lib/jsoncpp/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "lib/assimp/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "lib/zlib/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/OP_Renderer.dir/DependInfo.cmake"
   "lib/glad/CMakeFiles/glad.dir/DependInfo.cmake"
+  "lib/jsoncpp/CMakeFiles/jsoncpp.dir/DependInfo.cmake"
   )

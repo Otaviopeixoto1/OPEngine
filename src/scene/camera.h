@@ -20,14 +20,15 @@ enum Camera_Movement {
 };
 
 // Default camera values
-const float START_YAW         = -90.0f;
-const float START_PITCH       =  0.0f;
-const float SPEED       =  2.5f;
-const float SENSITIVITY =  0.1f;
-const float START_ZOOM        =  45.0f;
+const float START_YAW    = -90.0f;
+const float START_PITCH  =  0.0f;
+const float SPEED        =  2.5f;
+const float SENSITIVITY  =  0.1f;
+const float START_ZOOM   =  45.0f;
 
 
-// An abstract camera class that processes input and calculates the corresponding Euler Angles, Vectors and Matrices for use in OpenGL
+// An abstract camera class that processes input and calculates the corresponding Euler Angles, Vectors and Matrices 
+// for use in OpenGL
 class Camera
 {
 public:
@@ -37,9 +38,11 @@ public:
     glm::vec3 Up;
     glm::vec3 Right;
     glm::vec3 WorldUp;
+
     // euler Angles
     float Yaw;
     float Pitch;
+
     // camera options
     float MovementSpeed;
     float MouseSensitivity;
@@ -114,7 +117,7 @@ public:
                 Pitch = -89.0f;
         }
 
-        // update Front, Right and Up Vectors using the updated Euler angles
+        
         updateCameraVectors();
     }
 
@@ -129,17 +132,18 @@ public:
     }
 
 private:
-    // calculates the front vector from the Camera's (updated) Euler Angles
+    // update Front, Right and Up Vectors using the updated Euler angles
     void updateCameraVectors()
     {
-        // calculate the new Front vector
         glm::vec3 front;
         front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
         front.y = sin(glm::radians(Pitch));
         front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+
         Front = glm::normalize(front);
-        // also re-calculate the Right and Up vector
-        Right = glm::normalize(glm::cross(Front, WorldUp));  // normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
+        Right = glm::normalize(glm::cross(Front, WorldUp));  
+        // normalize the vectors, because their length gets closer to 0 the more you look up or down which results 
+        // in slower movement.
         Up    = glm::normalize(glm::cross(Right, Front));
     }
 };

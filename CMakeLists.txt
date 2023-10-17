@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(OP_Renderer VERSION 0.1.0)
 
+include(ExternalProject)
+
 #configs for building the right version of openGL
+find_package(glfw3 REQUIRED)
 find_package(OpenGL REQUIRED)
 cmake_policy(SET CMP0072 NEW)
 
@@ -11,6 +14,8 @@ add_executable(OP_Renderer)
 #getting all files in the sources directory
 file(GLOB_RECURSE sources ./src/*.cpp)
 file(GLOB_RECURSE headers ./src/*.h)
+
+
 
 #adding sources separetely
 target_sources(OP_Renderer PRIVATE ${sources} ${headers})
@@ -25,7 +30,7 @@ target_include_directories(OP_Renderer PUBLIC "${PROJECT_BINARY_DIR}")
 
 
 #add the external libraries 
-foreach (sub "lib/glad/" "lib/utils/" "lib/glm/")
+foreach (sub "lib/glad/" "lib/utils/" "lib/glm/" "lib/jsoncpp/" "lib/assimp/" "lib/zlib/")
     add_subdirectory("${sub}")
 endforeach ()
 
@@ -36,5 +41,8 @@ target_link_libraries(OP_Renderer PRIVATE
     glad
     utils
     glm
+    jsoncpp
+    assimp
+    zlib
 )
 

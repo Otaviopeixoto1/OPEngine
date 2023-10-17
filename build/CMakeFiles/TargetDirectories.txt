@@ -8,3 +8,10 @@
 /home/otavio/openGL/OPEngine/build/lib/utils/CMakeFiles/rebuild_cache.dir
 /home/otavio/openGL/OPEngine/build/lib/glm/CMakeFiles/edit_cache.dir
 /home/otavio/openGL/OPEngine/build/lib/glm/CMakeFiles/rebuild_cache.dir
+/home/otavio/openGL/OPEngine/build/lib/jsoncpp/CMakeFiles/jsoncpp.dir
+/home/otavio/openGL/OPEngine/build/lib/jsoncpp/CMakeFiles/edit_cache.dir
+/home/otavio/openGL/OPEngine/build/lib/jsoncpp/CMakeFiles/rebuild_cache.dir
+/home/otavio/openGL/OPEngine/build/lib/assimp/CMakeFiles/edit_cache.dir
+/home/otavio/openGL/OPEngine/build/lib/assimp/CMakeFiles/rebuild_cache.dir
+/home/otavio/openGL/OPEngine/build/lib/zlib/CMakeFiles/edit_cache.dir
+/home/otavio/openGL/OPEngine/build/lib/zlib/CMakeFiles/rebuild_cache.dir

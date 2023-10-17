@@ -1,6 +1,8 @@
 file(REMOVE_RECURSE
   "CMakeFiles/OP_Renderer.dir/src/main.cpp.o"
   "CMakeFiles/OP_Renderer.dir/src/main.cpp.o.d"
+  "CMakeFiles/OP_Renderer.dir/src/render/ForwardRenderer.cpp.o"
+  "CMakeFiles/OP_Renderer.dir/src/render/ForwardRenderer.cpp.o.d"
   "CMakeFiles/OP_Renderer.dir/src/test/GLtest.cpp.o"
   "CMakeFiles/OP_Renderer.dir/src/test/GLtest.cpp.o.d"
   "OP_Renderer"

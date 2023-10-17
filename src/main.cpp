@@ -8,8 +8,12 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "env.h"
-#include "common/shader.h"
+#include "common/Shader.h"
+
 #include "scene/camera.h"
+#include "scene/scene.h"
+
+
 
 //a custom library with simple objects for testing:
 #include "test/GLtest.h"
@@ -121,7 +125,7 @@ int main()
 
     // Reading and compiling the shader program to be used:
     // ----------------------------------------------------
-    Shader compdShader(BASE_DIR"/data/shaders/tutorial/singleUniformColor.vert", BASE_DIR"/data/shaders/tutorial/singleUniformColor.frag");
+    Shader compdShader(BASE_DIR"/data/shaders/tutorial/modelLoading.vert", BASE_DIR"/data/shaders/tutorial/modelLoading.frag");
     
 
 
@@ -146,7 +150,7 @@ int main()
     projectionMatrix = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
 
-
+    /*
     // Loading Textures
     // ----------------
     int width, height, nrChannels; //these properties will be filled when loading the image
@@ -179,20 +183,18 @@ int main()
         std::cout << "Failed to load texture" << std::endl;
     }
 
-    // the texture unit also has to be associated with a uniform sampler in the shader program:
+    // the texture unit also has to be bound to a uniform sampler in the shader program:
 
     // always activate the shader before setting uniforms
     compdShader.use(); 
     compdShader.setInt("main_texture", 0);
-
-
     
     stbi_image_free(data);
-    
+    */
 
     
     // uncomment this call to draw in wireframe polygons.
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // Enable z (depth) testing:
     glEnable(GL_DEPTH_TEST);  
@@ -200,6 +202,7 @@ int main()
     // hide the cursor and only show again when the window is out of focus or minimized:
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
+    Scene scene = Scene();
 
     // Render Loop
     // -----------
@@ -232,6 +235,7 @@ int main()
         // shader has to be used before updating the uniforms
         compdShader.use();
 
+
         // Scene-based properties
         // -------------------------
 
@@ -247,13 +251,15 @@ int main()
         // -------------------------
 
         // bind textures that will be used before drawing
-        glBindTexture(GL_TEXTURE_2D, texture);
+        //glBindTexture(GL_TEXTURE_2D, texture);
 
-        // adding a color
+        // adding a color uniform
+        /*
         double timeValue = glfwGetTime();
+
         float greenValue = static_cast<float>(sin(4.0 * timeValue) / 2.0f + 0.5f);
         compdShader.setVec4("uColor",  0.0f, greenValue, 0.0f, 1.0f);
-
+        */
 
 
         // Non-indexed drawing
@@ -278,23 +284,24 @@ int main()
 
         // drawing spinning cubes:
 
-        glBindVertexArray(GetTestVAO(NI_CUBE));
+        //glBindVertexArray(GetTestVAO(NI_CUBE));
 
         // one cube:
         // glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // multiple cubes:
+        /*
         for(unsigned int i = 0; i < 10; i++)
         {
             // Matrix Projection: Model matrix (local space -> world space)
             glm::mat4 modelMatrix = glm::mat4(1.0f);
             modelMatrix = glm::translate(modelMatrix, TEST_POSITIONS[i]);
-            float angle = 20.0f * i + 60.0f * timeValue; 
+            float angle = 20.0f * i + 60.0f * currentFrame;
             modelMatrix = glm::rotate(modelMatrix, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
             compdShader.setMat4("modelMatrix", modelMatrix);
 
             glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
+        }*/
 
 
 
@@ -320,6 +327,102 @@ int main()
         //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 
+        
+        
+
+        glm::mat4 model = glm::mat4(1.0f);
+        //model = glm::translate(model, glm::vec3(0.0f, 0.0f, 1.0f)); 
+        model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
+        
+        //objectToWorld
+        compdShader.setMat4("modelMatrix", model);
+        
+        if (scene.objects.size() >= 0)
+        {
+            scene.objects[0].mesh->BindBuffers();
+            glDrawElements(GL_TRIANGLES, scene.objects[0].mesh->indicesCount, GL_UNSIGNED_INT, 0);
+        }
+        
+        //glDrawArrays(GL_TRIANGLES, 0, scene.objects[0].mesh->verticesCount);
+        //scene.objects[0].mesh->UnbindBuffers();
+
+
+        // Model Loading:
+        // --------------
+        
+        //scene.IterateObjects([&](glm::mat4 objectToWorld, Material *material, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
+        //{
+            /* setup the shader resources and draw */
+            /*
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
+            model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
+            
+            //objectToWorld
+            compdShader.setMat4("modelMatrix", model);*/
+
+
+            // the uniforms: viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix. can be passed as a uniform
+            //               buffer object (UBO)
+
+            // the uniforms: objectToWorld, albedoColor and emissiveColor have to be set per object in the scene
+            //               the uniform bindings (glVertexAttribPointers) for these can be set and stored in 
+            //               each objects VAO but can also be set dynamically of on the same UBO with bindings
+            
+            //Bind all textures
+            /*
+            unsigned int diffuseNr = 1;
+            unsigned int specularNr = 1;
+            unsigned int normalNr = 1;
+            for (unsigned int i = 0; i < material->texturePaths.size(); i++)
+            {
+                Texture texture = scene.GetTexture(material->texturePaths[i]);
+                glActiveTexture(GL_TEXTURE0 + i); // activate proper texture unit before binding
+                // retrieve texture number (the N in diffuse_textureN)
+                std::string number;
+                TextureType type = texture.type;
+                std::string name;
+
+                switch (type)
+                {
+                case OP_TEXTURE_DIFFUSE:
+                    number = std::to_string(diffuseNr++);
+                    name = "texture_diffuse";
+                    break;
+                case OP_TEXTURE_SPECULAR:
+                    number = std::to_string(specularNr++);
+                    name = "texture_specular";
+                    break;
+                case OP_TEXTURE_NORMAL:
+                    number = std::to_string(normalNr++);
+                    name = "texture_normal";
+                    break;
+                
+                default:
+                    number = "";
+                    name = "texture_unidentified";
+                    break;
+                }
+
+                //shader.setInt((name + number).c_str(), i);
+                glBindTexture(GL_TEXTURE_2D, texture.id);
+            }*/
+            // the texture uniforms have to be set per material and can be done iteratively:
+            /*
+            for(unsigned int i = 0; i < textures.size(); i++)
+            {
+                
+            }
+            */
+
+
+            
+            //bind VAO
+            //mesh->BindBuffers();
+            //draw indexed
+            //glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
+            //mesh->UnbindBuffers();
+        //});  
 
 
 
@@ -327,8 +430,15 @@ int main()
 
 
 
-        // GLFW: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
+
+
+
+
+
+
+
+        // GLFW: swap buffers 
+        // ------------------
 
         // Double buffering: When an application draws in a single buffer the resulting image may have flickering.
         // scince the resulting output image is not drawn in an instant, but drawn pixel by pixel. To circumvent these
@@ -337,6 +447,9 @@ int main()
         // as all the rendering commands are finished we swap the back buffer to the front buffer:
         glfwSwapBuffers(window);
 
+
+        // GLFW: poll IO events (keys pressed/released, mouse moved etc.)
+        // --------------------------------------------------------------
 
         // PollEvents: checks if any events are triggered (like keyboard input or mouse movement events), updates the 
         // window state and calls the corresponding functions (which we can register via callback methods):

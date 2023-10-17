@@ -9,7 +9,7 @@
 // --------------------------
 
 // the data for a simple triangle (NON-INDEXED):
-float TEST_NI_TRIG_VERTS[] = {
+const float TEST_NI_TRIG_VERTS[] = {
     -0.5f, -0.5f, 0.0f,
     0.5f, -0.5f, 0.0f,
     0.0f,  0.5f, 0.0f
@@ -17,7 +17,7 @@ float TEST_NI_TRIG_VERTS[] = {
 
 
 // the data for drawing a cube (NON-INDEXED):
-float TEST_NI_CUBE_VERTS[] = {
+const float TEST_NI_CUBE_VERTS[] = {
     //position            //uv
     -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
@@ -71,7 +71,7 @@ float TEST_NI_CUBE_VERTS[] = {
 // when drawing more complicated shapes, indexed drawing is used to avoid overlapping vertices:
 
 // the data for a simple rectangle:
-float TEST_I_RECT_VERTS[] = {
+const float TEST_I_RECT_VERTS[] = {
         //position           //normal            //texture coords
         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,  // top right
         0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   1.0f, 0.0f,  // bottom right
@@ -79,7 +79,7 @@ float TEST_I_RECT_VERTS[] = {
     -0.5f,  0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   0.0f, 1.0f // top left 
 };  
 
-unsigned int TEST_RECT_INDICES[] = {  
+const unsigned int TEST_RECT_INDICES[] = {  
     0, 1, 3,   // first triangle
     1, 2, 3    // second triangle
 };  

@@ -142,6 +142,19 @@ glad/fast:
 	$(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/build
 .PHONY : glad/fast
 
+#=============================================================================
+# Target rules for targets named jsoncpp
+
+# Build rule for target.
+jsoncpp: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 jsoncpp
+.PHONY : jsoncpp
+
+# fast build rule for target.
+jsoncpp/fast:
+	$(MAKE) $(MAKESILENT) -f lib/jsoncpp/CMakeFiles/jsoncpp.dir/build.make lib/jsoncpp/CMakeFiles/jsoncpp.dir/build
+.PHONY : jsoncpp/fast
+
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
@@ -165,6 +178,30 @@ src/main.s: src/main.cpp.s
 src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
+
+src/render/ForwardRenderer.o: src/render/ForwardRenderer.cpp.o
+.PHONY : src/render/ForwardRenderer.o
+
+# target to build an object file
+src/render/ForwardRenderer.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/src/render/ForwardRenderer.cpp.o
+.PHONY : src/render/ForwardRenderer.cpp.o
+
+src/render/ForwardRenderer.i: src/render/ForwardRenderer.cpp.i
+.PHONY : src/render/ForwardRenderer.i
+
+# target to preprocess a source file
+src/render/ForwardRenderer.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/src/render/ForwardRenderer.cpp.i
+.PHONY : src/render/ForwardRenderer.cpp.i
+
+src/render/ForwardRenderer.s: src/render/ForwardRenderer.cpp.s
+.PHONY : src/render/ForwardRenderer.s
+
+# target to generate assembly for a file
+src/render/ForwardRenderer.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/src/render/ForwardRenderer.cpp.s
+.PHONY : src/render/ForwardRenderer.cpp.s
 
 src/test/GLtest.o: src/test/GLtest.cpp.o
 .PHONY : src/test/GLtest.o
@@ -200,9 +237,13 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... OP_Renderer"
 	@echo "... glad"
+	@echo "... jsoncpp"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/render/ForwardRenderer.o"
+	@echo "... src/render/ForwardRenderer.i"
+	@echo "... src/render/ForwardRenderer.s"
 	@echo "... src/test/GLtest.o"
 	@echo "... src/test/GLtest.i"
 	@echo "... src/test/GLtest.s"

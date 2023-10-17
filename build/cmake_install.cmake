@@ -47,6 +47,9 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("/home/otavio/openGL/OPEngine/build/lib/glad/cmake_install.cmake")
   include("/home/otavio/openGL/OPEngine/build/lib/utils/cmake_install.cmake")
   include("/home/otavio/openGL/OPEngine/build/lib/glm/cmake_install.cmake")
+  include("/home/otavio/openGL/OPEngine/build/lib/jsoncpp/cmake_install.cmake")
+  include("/home/otavio/openGL/OPEngine/build/lib/assimp/cmake_install.cmake")
+  include("/home/otavio/openGL/OPEngine/build/lib/zlib/cmake_install.cmake")
 
 endif()
 
