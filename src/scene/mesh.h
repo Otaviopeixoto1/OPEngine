@@ -29,7 +29,7 @@ class MeshData
         std::vector<unsigned int> indices;
 
         //give a different type of input and build the vertices from it
-        MeshData(std::vector<Vertex> vertices, std::vector<unsigned int> indices)
+        MeshData(std::vector<Vertex> &vertices, std::vector<unsigned int> &indices)
         {
             this->vertices = vertices;
             this->indices = indices;
@@ -60,19 +60,22 @@ class Mesh
 
         Mesh(MeshData &meshData)
         {
-            vertices = meshData.vertices;
-            indices = meshData.indices;
+            this->vertices = meshData.vertices;
+            this->indices = meshData.indices;
 
             InitBuffers();
-            
+            vertices.clear();
+            indices.clear();
         }
 
-        Mesh(std::vector<MeshData::Vertex> mVertices, std::vector<unsigned int> mIndices)
+        Mesh(std::vector<MeshData::Vertex> &mVertices, std::vector<unsigned int> &mIndices)
         {
             this->vertices = mVertices;
             this->indices = mIndices;
 
             InitBuffers();
+            vertices.clear();
+            indices.clear();
         }
         
         
@@ -91,8 +94,7 @@ class Mesh
         }
 
     private:
-
-        // render data
+        //Vertex + Index buffers
         unsigned int VAO, VBO, EBO;
 
         void InitBuffers()
@@ -126,10 +128,6 @@ class Mesh
             glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)offsetof(MeshData::Vertex, TexCoords));
             glEnableVertexAttribArray(2);	
 
-            // unbind all buffers after configuration
-            //glBindVertexArray(0);
-            //glBindBuffer(GL_ARRAY_BUFFER, 0); 
-            //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); 
             glBindVertexArray(0);
             verticesCount = vertices.size();
             indicesCount = indices.size();

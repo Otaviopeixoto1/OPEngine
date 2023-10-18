@@ -52,7 +52,7 @@ set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
 set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(assimp)
 target_include_directories(OP_Renderer PRIVATE lib/assimp-src/include)
-target_link_libraries(OP_Renderer PRIVATE assimp)
+#target_link_libraries(OP_Renderer PRIVATE assimp)
 
 
 

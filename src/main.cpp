@@ -109,8 +109,6 @@ int main()
     //this callback is used every time the mouse wheel is used:
     glfwSetScrollCallback(window, scroll_callback); 
 
-
-
     // We register the callback functions after we've created the window and before the render loop is initiated. 
 
 
@@ -119,8 +117,6 @@ int main()
     //we call glClear and clear the color buffer, the entire color buffer will be filled with the color as configured 
     //by glClearColor:
     glClearColor(0.25f, 0.5f,0.75f,1.0f);
-
-
 
 
     // Reading and compiling the shader program to be used:
@@ -150,51 +146,9 @@ int main()
     projectionMatrix = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
 
-    /*
-    // Loading Textures
-    // ----------------
-    int width, height, nrChannels; //these properties will be filled when loading the image
-
-    // loading image data:
-    unsigned char *data = stbi_load(BASE_DIR"/data/textures/container.jpg", &width, &height, &nrChannels, 0);
-
-    // creating the texture object:
-    unsigned int texture;
-    glGenTextures(1, &texture); 
-
-    // activate the texture unit first before binding its corresponding texture:
-    glActiveTexture(GL_TEXTURE0); //there are a total of 16 texture units (slots)
-    glBindTexture(GL_TEXTURE_2D, texture);  
-
-    // setting the texture wrapping/filtering options:
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    // check for errors in the image loading
-    if (data)
-    {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else
-    {
-        std::cout << "Failed to load texture" << std::endl;
-    }
-
-    // the texture unit also has to be bound to a uniform sampler in the shader program:
-
-    // always activate the shader before setting uniforms
-    compdShader.use(); 
-    compdShader.setInt("main_texture", 0);
-    
-    stbi_image_free(data);
-    */
-
     
     // uncomment this call to draw in wireframe polygons.
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // Enable z (depth) testing:
     glEnable(GL_DEPTH_TEST);  
@@ -219,8 +173,6 @@ int main()
         processInput(window);
         
 
-
-
         // Rendering
         // ---------
 
@@ -236,41 +188,20 @@ int main()
         compdShader.use();
 
 
-        // Scene-based properties
+        // Transformation matrices
         // -------------------------
-
-        // adding transformation matrices:
-
         // Matrix Projection: View matrix (world space -> view (camera) space)
         compdShader.setMat4("viewMatrix", mainCamera.GetViewMatrix());
         // Matrix Projection: projection matrix (view space -> clip space)
         compdShader.setMat4("projectionMatrix", projectionMatrix);
-        
-
-        // Material-based properties
-        // -------------------------
-
-        // bind textures that will be used before drawing
-        //glBindTexture(GL_TEXTURE_2D, texture);
-
-        // adding a color uniform
-        /*
-        double timeValue = glfwGetTime();
-
-        float greenValue = static_cast<float>(sin(4.0 * timeValue) / 2.0f + 0.5f);
-        compdShader.setVec4("uColor",  0.0f, greenValue, 0.0f, 1.0f);
-        */
-
+    
 
         // Non-indexed drawing
         // -------------------
-
         // drawing a single triangle:
-
         // set the vertex data and its configuration that will be used for drawing
         //glBindVertexArray(VAO);
         
-
         // the model matrix depends on the object:
         //glm::mat4 modelMatrix = glm::mat4(1.0f);
         //modelMatrix = glm::rotate(modelMatrix, glm::radians(60.0f * (float)timeValue), glm::vec3(1.0, 0.0, 0.0));
@@ -283,9 +214,7 @@ int main()
 
 
         // drawing spinning cubes:
-
         //glBindVertexArray(GetTestVAO(NI_CUBE));
-
         // one cube:
         // glDrawArrays(GL_TRIANGLES, 0, 36);
 
@@ -304,12 +233,8 @@ int main()
         }*/
 
 
-
-
-
         // Indexed drawing
         // ---------------
-        
         // Drawing a rectangle (two triangles):
 
         // set the vertex data and its configuration that will be used for drawing
@@ -328,38 +253,18 @@ int main()
 
 
         
-        
 
-        glm::mat4 model = glm::mat4(1.0f);
-        //model = glm::translate(model, glm::vec3(0.0f, 0.0f, 1.0f)); 
-        model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
-        
-        //objectToWorld
-        compdShader.setMat4("modelMatrix", model);
-        
-        if (scene.objects.size() >= 0)
-        {
-            scene.objects[0].mesh->BindBuffers();
-            glDrawElements(GL_TRIANGLES, scene.objects[0].mesh->indicesCount, GL_UNSIGNED_INT, 0);
-        }
-        
-        //glDrawArrays(GL_TRIANGLES, 0, scene.objects[0].mesh->verticesCount);
-        //scene.objects[0].mesh->UnbindBuffers();
 
 
         // Model Loading:
         // --------------
         
-        //scene.IterateObjects([&](glm::mat4 objectToWorld, Material *material, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
-        //{
+        scene.IterateObjects([&](glm::mat4 objectToWorld, Material *material, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
+        {
             /* setup the shader resources and draw */
-            /*
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
-            model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
-            
-            //objectToWorld
-            compdShader.setMat4("modelMatrix", model);*/
+
+            //Matrix Projection: model matrix (object space -> world space)
+            compdShader.setMat4("modelMatrix", objectToWorld);
 
 
             // the uniforms: viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix. can be passed as a uniform
@@ -369,8 +274,8 @@ int main()
             //               the uniform bindings (glVertexAttribPointers) for these can be set and stored in 
             //               each objects VAO but can also be set dynamically of on the same UBO with bindings
             
+
             //Bind all textures
-            /*
             unsigned int diffuseNr = 1;
             unsigned int specularNr = 1;
             unsigned int normalNr = 1;
@@ -378,7 +283,7 @@ int main()
             {
                 Texture texture = scene.GetTexture(material->texturePaths[i]);
                 glActiveTexture(GL_TEXTURE0 + i); // activate proper texture unit before binding
-                // retrieve texture number (the N in diffuse_textureN)
+
                 std::string number;
                 TextureType type = texture.type;
                 std::string name;
@@ -404,25 +309,18 @@ int main()
                     break;
                 }
 
-                //shader.setInt((name + number).c_str(), i);
+                compdShader.setInt((name + number).c_str(), i);
                 glBindTexture(GL_TEXTURE_2D, texture.id);
-            }*/
-            // the texture uniforms have to be set per material and can be done iteratively:
-            /*
-            for(unsigned int i = 0; i < textures.size(); i++)
-            {
-                
             }
-            */
 
 
             
             //bind VAO
-            //mesh->BindBuffers();
+            mesh->BindBuffers();
             //draw indexed
-            //glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
+            glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
             //mesh->UnbindBuffers();
-        //});  
+        });  
 
 
 

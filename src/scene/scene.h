@@ -47,6 +47,7 @@ struct Material
 {
     // albedoColor will only be used for simple materials and simple shaders where we dont
     // sample textures
+    unsigned int id;
     glm::vec3 albedoColor;
     glm::vec3 emissiveColor;
     std::vector<std::string> texturePaths;
@@ -78,22 +79,48 @@ struct Object
 class Scene
 {
     public:
-        //std::string scenePath
         Scene()
         {
+            std::cout << "Loading Scene: " << "\n";
+            
             //currently, each scene can have many object files, each object file can actualy have more than one 
-            //object, one for each mesh. Currently, each of these objects will have the same overridden properties
+            //object, one for each mesh. Each of these objects will have the same overridden properties
             //that was set on the scene file for the whole object file, but otherwise they will be treated as
             //independent objects (no hierarchy)
 
             //add property overrides in order to set some material special properties like albedo and emissive
             //and also set the root transform for the object
+
+            //flip all loaded textures vertically for compatibility
+            stbi_set_flip_vertically_on_load(true); 
+
+            
             glm::mat4 rootTransform = glm::mat4(1.0f);
-            AssimpLoadFile(BASE_DIR"/data/models/sphere.obj", rootTransform);
-            std::cout << "Loaded scene" << "\n";
+            AssimpLoadFile(BASE_DIR"/data/models/backpack.obj", rootTransform);
+
+
+            std::cout << "Loading Success: " << "\n";
             std::cout << "Materials: " << materials.size() << std::endl;
+            for (unsigned int i = 0; i < materials.size(); i++)
+            {
+                std::cout << "->material: " + std::to_string(i) << ":\n";
+                for (unsigned int j = 0; j < materials[i].texturePaths.size(); j++)
+                {
+                    std::cout << "--texture[" << std::to_string(loadedTextures[materials[i].texturePaths[j]].id) << "]\n";
+                }
+                
+                //std::to_string(diffuseNr++);
+            }
+            
             std::cout << "Meshes: " << meshes.size() << std::endl;
             std::cout << "Objects: " << objects.size() << std::endl;
+            std::cout << "object materials: [";
+
+            for (unsigned int i = 0; i < objects.size(); i++)
+            {
+                std::cout << std::to_string(objects[i].material->id) << " ";
+            }
+            std::cout << "]\n";
         }
 
         //original:
@@ -168,6 +195,7 @@ class Scene
                 
                 Material material = Material();
                 material.texturePaths = mTextures;
+                material.id = i;
                 materials.push_back(material);
             }  
 
@@ -183,6 +211,8 @@ class Scene
         void ProcessAssimpNode(aiNode *node, const aiScene *scene, aiMatrix4x4 &parentTransform, glm::mat4 &rootTransform)
         {
             aiMatrix4x4 globalTransform = parentTransform * (node->mTransformation);
+            glm::mat4 objectTransform = rootTransform * AssimpHelpers::ConvertMatrixToGLMFormat(globalTransform);
+
             for(unsigned int i = 0; i < node->mNumMeshes; i++)
             {
                 aiMesh *mMesh = scene->mMeshes[node->mMeshes[i]]; 
@@ -221,24 +251,22 @@ class Scene
                         mIndices.push_back(face.mIndices[j]);
                 }  
 
-                //auto meshData = MeshData(mVertices, mIndices);
-                auto meshptr = std::make_shared<Mesh>(mVertices, mIndices);
-                meshes.push_back(meshptr);		
+                	
+                Material* material = nullptr;
 
-
-                Material material;
-
-                // link to the saved material
+                // if there is a material, we link it and generate the object
                 if(mMesh->mMaterialIndex >= 0)
                 {
-                    material = materials[mMesh->mMaterialIndex];
+                    material = &materials[mMesh->mMaterialIndex];
+                    //auto meshData = MeshData(mVertices, mIndices);
+                    auto meshptr = std::make_shared<Mesh>(mVertices, mIndices);
+                    meshes.push_back(meshptr);	
+                    Object object = Object(meshptr, material, objectTransform);
+                    objects.push_back(object);
                 }
+                
 
-
-                glm::mat4 objectTransform = rootTransform * AssimpHelpers::ConvertMatrixToGLMFormat(globalTransform);
-
-                Object object = Object(meshptr, &material, objectTransform);
-                objects.push_back(object);
+                
             }
 
             for(unsigned int i = 0; i < node->mNumChildren; i++)
@@ -268,6 +296,7 @@ class Scene
                     texture.id = TextureFromFile(aiPath.C_Str(), directory);
                     texture.type = OPtype;
                     loadedTextures[aiPath.C_Str()] = texture;
+                    std::cout << "Loaded Texture [" << std::to_string(texture.id) + "]: " << aiPath.C_Str() << "\n";
                     texturePaths.push_back(aiPath.C_Str());
                 }
             }
