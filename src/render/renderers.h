@@ -1,8 +1,8 @@
 #ifndef RENDERERS_H
 #define RENDERERS_H
 
-#include "../scene/scene.h"
-#include "../scene/camera.h"
+#include "../scene/Scene.h"
+#include "../scene/Camera.h"
 #include "../scene/lights.h"
 
 //excpecting glfwWindow to be included in the main.cpp

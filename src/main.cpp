@@ -10,8 +10,8 @@
 #include "env.h"
 #include "common/Shader.h"
 
-#include "scene/camera.h"
-#include "scene/scene.h"
+#include "scene/Camera.h"
+#include "scene/Scene.h"
 
 
 
@@ -146,6 +146,9 @@ int main()
     projectionMatrix = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
 
+
+    // flip all stbi loaded images vertically for compatibility with openGL
+    stbi_set_flip_vertically_on_load(true); 
     
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);

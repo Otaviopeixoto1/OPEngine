@@ -2,6 +2,7 @@
 #define LIGHTS_H
 
 #include <glm/glm.hpp>
+#include "Object.h"
 
 struct LightData
 {
@@ -23,13 +24,13 @@ class Light
         virtual void SetObject(){}
 
     protected:
-        unsigned int VAO;
+        Object *object;
         glm::vec3 lightColor;
         glm::vec3 lightPosition;
 
 };
 
-
+class DirectionalLight;
 
 
 #endif

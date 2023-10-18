@@ -15,7 +15,9 @@
 
 #include "../common/Shader.h"
 #include "../common/AssimpHelpers.h"
-#include "mesh.h"
+#include "../common/JsonHelpers.h"
+#include "Mesh.h"
+#include "Object.h"
 #include "lights.h"
 
 #include "env.h"
@@ -23,49 +25,7 @@
 
 
 
-enum TextureType
-{
-    OP_TEXTURE_DIFFUSE,
-    OP_TEXTURE_SPECULAR,
-    OP_TEXTURE_NORMAL
-};
 
-struct Texture {
-    unsigned int id;
-    TextureType type;
-};  
-
-struct Material
-{
-    // albedoColor will only be used for simple materials and simple shaders where we dont
-    // sample textures
-    unsigned int id;
-    glm::vec3 albedoColor;
-    glm::vec3 emissiveColor;
-    std::vector<std::string> texturePaths;
-
-    Material()
-    {
-
-    }
-};
-
-
-struct Object
-{
-    //currently each object can only have one mesh
-    std::shared_ptr<Mesh> mesh;
-    Material *material;
-
-    glm::mat4 objToWorld;
-
-    Object(std::shared_ptr<Mesh> srcMesh, Material *srcMaterial, glm::mat4 srcTransform)
-    {
-        this->mesh = srcMesh;
-        this->material = srcMaterial;
-        this->objToWorld = srcTransform;
-    }
-};
 
 
 class Scene
@@ -84,7 +44,7 @@ class Scene
             //and also set the root transform for the object
 
             //flip all loaded textures vertically for compatibility
-            stbi_set_flip_vertically_on_load(true); 
+            
 
             
             glm::mat4 rootTransform = glm::mat4(1.0f);
@@ -136,22 +96,33 @@ class Scene
             return loadedTextures[path];
         }
 
+        void AddObject(std::string filename)
+        {
+
+        }
+
 
         
     private:
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////
-        // STOP DUPLICATED MESHES FROM FROM DIFFERENT OBJECTS IN THE SAME SCENE:
-        // -currently, if the same object file is referenced in the scene file, the meshes are loaded twice:
-        //  use the file path to identify unique meshes
         // ADD A TRANSFORM HIERARCHY
         ////////////////////////////////////////////////////////////////////////////////////////////////////
 
         //load/instantiation order: textures -> materials -> meshes -> objects
+
+        //maps texture (file) paths to each texture object
         std::unordered_map<std::string,Texture> loadedTextures;
         std::vector<Material> materials;
+        
+        //maps mesh names to indices in the the meshes vector
+        std::unordered_map<std::string, std::vector<unsigned int>> nameToMeshids;
         std::vector<std::shared_ptr<Mesh>> meshes;
+        //if we unload a mesh, first it needs to be removed from nameToMeshid and then from the meshes vector
+
         std::vector<Object> objects;
+
+
         
         void AssimpLoadFile(std::string objectFile, glm::mat4 &rootTransform)
         {
@@ -166,7 +137,7 @@ class Scene
 
             std::string directory = objectFile.substr(0, objectFile.find_last_of('/'));
             
-            
+            // Load meshes in the same way !!
 
             for(unsigned int i = 0; i < scene->mNumMaterials; i++)
             {
@@ -336,6 +307,11 @@ class Scene
         }  
 
 };
+
+
+
+
+
 
 
 #endif
