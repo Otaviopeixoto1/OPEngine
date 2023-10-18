@@ -1,4 +1,4 @@
 lib/assimp-build
 lib/assimp-src
 lib/assimp-subbuild
-build/*
+build
