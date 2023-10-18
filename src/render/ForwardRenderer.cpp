@@ -12,7 +12,7 @@ class ForwardRenderer : public BaseRenderer
         }
 
         //virtual void RenderFrame(const legit::InFlightQueue::FrameInfo &frameInfo, const Camera &camera, const Camera &light, Scene *scene, GLFWwindow *window){}
-        void RenderFrame(const Camera &camera, const Camera &light, Scene *scene, GLFWwindow *window)
+        void RenderFrame(const Camera &camera, const Camera *light, Scene *scene, GLFWwindow *window)
         {
 
             // the PassData can be passed as a uniform buffer that is created for the entire frame.

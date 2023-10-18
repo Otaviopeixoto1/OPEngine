@@ -263,7 +263,7 @@ int main()
         {
             /* setup the shader resources and draw */
 
-            //Matrix Projection: model matrix (object space -> world space)
+            // Matrix Projection: model matrix (object space -> world space)
             compdShader.setMat4("modelMatrix", objectToWorld);
 
 
@@ -290,30 +290,28 @@ int main()
 
                 switch (type)
                 {
-                case OP_TEXTURE_DIFFUSE:
-                    number = std::to_string(diffuseNr++);
-                    name = "texture_diffuse";
-                    break;
-                case OP_TEXTURE_SPECULAR:
-                    number = std::to_string(specularNr++);
-                    name = "texture_specular";
-                    break;
-                case OP_TEXTURE_NORMAL:
-                    number = std::to_string(normalNr++);
-                    name = "texture_normal";
-                    break;
-                
-                default:
-                    number = "";
-                    name = "texture_unidentified";
-                    break;
+                    case OP_TEXTURE_DIFFUSE:
+                        number = std::to_string(diffuseNr++);
+                        name = "texture_diffuse";
+                        break;
+                    case OP_TEXTURE_SPECULAR:
+                        number = std::to_string(specularNr++);
+                        name = "texture_specular";
+                        break;
+                    case OP_TEXTURE_NORMAL:
+                        number = std::to_string(normalNr++);
+                        name = "texture_normal";
+                        break;
+                    
+                    default:
+                        number = "";
+                        name = "texture_unidentified";
+                        break;
                 }
 
                 compdShader.setInt((name + number).c_str(), i);
                 glBindTexture(GL_TEXTURE_2D, texture.id);
             }
-
-
             
             //bind VAO
             mesh->BindBuffers();

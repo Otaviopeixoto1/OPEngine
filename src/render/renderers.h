@@ -3,6 +3,7 @@
 
 #include "../scene/scene.h"
 #include "../scene/camera.h"
+#include "../scene/lights.h"
 
 //excpecting glfwWindow to be included in the main.cpp
 class GLFWwindow;
@@ -16,7 +17,7 @@ class BaseRenderer
         //virtual void RecreateSwapchainResources(vk::Extent2D viewportExtent, size_t inFlightFramesCount){}
 
         //virtual void RenderFrame(const legit::InFlightQueue::FrameInfo &frameInfo, const Camera &camera, const Camera &light, Scene *scene, GLFWwindow *window){}
-        virtual void RenderFrame(const Camera &camera, const Camera &light, Scene *scene, GLFWwindow *window){}
+        virtual void RenderFrame(const Camera &camera, const Light *light, Scene *scene, GLFWwindow *window){}
         virtual void ReloadShaders(){}
         virtual void ChangeView(){}
 };

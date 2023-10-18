@@ -6,30 +6,22 @@
 #include <vector>
 #include <unordered_map>
 #include <memory>
-#include <queue>
 #include <functional>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <stb_image.h>
+#include <json/json.h>
 
 #include "../common/Shader.h"
 #include "../common/AssimpHelpers.h"
 #include "mesh.h"
+#include "lights.h"
+
 #include "env.h"
 
 
-//All textures and samplers must follow the naming convention:
-/*
-    uniform sampler2D texture_diffuse1;
-    uniform sampler2D texture_diffuse2;
-    uniform sampler2D texture_diffuse3;
-    uniform sampler2D texture_specular1;
-    uniform sampler2D texture_specular2;
-    .
-    .
-    .
- */
+
 
 enum TextureType
 {
@@ -82,7 +74,7 @@ class Scene
         Scene()
         {
             std::cout << "Loading Scene: " << "\n";
-            
+
             //currently, each scene can have many object files, each object file can actualy have more than one 
             //object, one for each mesh. Each of these objects will have the same overridden properties
             //that was set on the scene file for the whole object file, but otherwise they will be treated as
@@ -101,6 +93,7 @@ class Scene
 
             std::cout << "Loading Success: " << "\n";
             std::cout << "Materials: " << materials.size() << std::endl;
+
             for (unsigned int i = 0; i < materials.size(); i++)
             {
                 std::cout << "->material: " + std::to_string(i) << ":\n";
@@ -108,8 +101,6 @@ class Scene
                 {
                     std::cout << "--texture[" << std::to_string(loadedTextures[materials[i].texturePaths[j]].id) << "]\n";
                 }
-                
-                //std::to_string(diffuseNr++);
             }
             
             std::cout << "Meshes: " << meshes.size() << std::endl;
@@ -146,7 +137,7 @@ class Scene
         }
 
 
-        std::vector<Object> objects;
+        
     private:
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -160,8 +151,7 @@ class Scene
         std::unordered_map<std::string,Texture> loadedTextures;
         std::vector<Material> materials;
         std::vector<std::shared_ptr<Mesh>> meshes;
-        //std::vector<Object> objects;
-
+        std::vector<Object> objects;
         
         void AssimpLoadFile(std::string objectFile, glm::mat4 &rootTransform)
         {
@@ -225,11 +215,12 @@ class Scene
                 {
                     MeshData::Vertex vertex;
                     vertex.Position = AssimpHelpers::GetGLMVec3(mMesh->mVertices[i]);
-                    //std::cout << "vx: " << vertex.Position.x << " vy: " << vertex.Position.y << " vz: " << vertex.Position.z << "\n";
+
                     if (mMesh->HasNormals())
                     {
                         vertex.Normal = AssimpHelpers::GetGLMVec3(mMesh->mNormals[i]);
                     }
+
                     //there can be up to 8 texcoords
                     if(mMesh->mTextureCoords[0]) // check if the mesh contain texture coordinates
                     {
