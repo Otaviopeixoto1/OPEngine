@@ -477,38 +477,38 @@ CMakeFiles/OP_Renderer.dir/src/main.cpp.o: ../src/main.cpp \
   /usr/include/c++/11/bits/stl_algo.h \
   /usr/include/c++/11/bits/algorithmfwd.h \
   /usr/include/c++/11/bits/uniform_int_dist.h \
-  ../lib/assimp/include/assimp/Importer.hpp \
-  ../lib/assimp/include/assimp/types.h \
-  ../lib/assimp/include/assimp/defs.h \
-  ../lib/assimp/include/assimp/config.h \
-  ../lib/assimp/include/assimp/vector2.h \
-  ../lib/assimp/include/assimp/vector3.h \
-  ../lib/assimp/include/assimp/color4.h \
-  ../lib/assimp/include/assimp/matrix3x3.h \
-  ../lib/assimp/include/assimp/matrix4x4.h \
-  ../lib/assimp/include/assimp/quaternion.h \
-  ../lib/assimp/include/assimp/vector2.inl \
-  ../lib/assimp/include/assimp/vector3.inl \
-  ../lib/assimp/include/assimp/color4.inl \
-  ../lib/assimp/include/assimp/matrix3x3.inl \
+  ../lib/assimp-src/include/assimp/Importer.hpp \
+  ../lib/assimp-src/include/assimp/types.h \
+  ../lib/assimp-src/include/assimp/defs.h \
+  ../lib/assimp-build/include/assimp/config.h \
+  ../lib/assimp-src/include/assimp/vector2.h \
+  ../lib/assimp-src/include/assimp/vector3.h \
+  ../lib/assimp-src/include/assimp/color4.h \
+  ../lib/assimp-src/include/assimp/matrix3x3.h \
+  ../lib/assimp-src/include/assimp/matrix4x4.h \
+  ../lib/assimp-src/include/assimp/quaternion.h \
+  ../lib/assimp-src/include/assimp/vector2.inl \
+  ../lib/assimp-src/include/assimp/vector3.inl \
+  ../lib/assimp-src/include/assimp/color4.inl \
+  ../lib/assimp-src/include/assimp/matrix3x3.inl \
   /usr/include/c++/11/algorithm \
   /usr/include/c++/11/pstl/glue_algorithm_defs.h \
-  ../lib/assimp/include/assimp/matrix4x4.inl \
-  ../lib/assimp/include/assimp/MathFunctions.h \
-  ../lib/assimp/include/assimp/quaternion.inl \
-  ../lib/assimp/include/assimp/scene.h \
-  ../lib/assimp/include/assimp/texture.h \
-  ../lib/assimp/include/assimp/Compiler/pushpack1.h \
-  ../lib/assimp/include/assimp/Compiler/poppack1.h \
-  ../lib/assimp/include/assimp/mesh.h \
-  ../lib/assimp/include/assimp/aabb.h \
-  ../lib/assimp/include/assimp/light.h \
-  ../lib/assimp/include/assimp/camera.h \
-  ../lib/assimp/include/assimp/material.h \
-  ../lib/assimp/include/assimp/material.inl \
-  ../lib/assimp/include/assimp/anim.h \
-  ../lib/assimp/include/assimp/metadata.h \
-  ../lib/assimp/include/assimp/postprocess.h \
+  ../lib/assimp-src/include/assimp/matrix4x4.inl \
+  ../lib/assimp-src/include/assimp/MathFunctions.h \
+  ../lib/assimp-src/include/assimp/quaternion.inl \
+  ../lib/assimp-src/include/assimp/scene.h \
+  ../lib/assimp-src/include/assimp/texture.h \
+  ../lib/assimp-src/include/assimp/Compiler/pushpack1.h \
+  ../lib/assimp-src/include/assimp/Compiler/poppack1.h \
+  ../lib/assimp-src/include/assimp/mesh.h \
+  ../lib/assimp-src/include/assimp/aabb.h \
+  ../lib/assimp-src/include/assimp/light.h \
+  ../lib/assimp-src/include/assimp/camera.h \
+  ../lib/assimp-src/include/assimp/material.h \
+  ../lib/assimp-src/include/assimp/material.inl \
+  ../lib/assimp-src/include/assimp/anim.h \
+  ../lib/assimp-src/include/assimp/metadata.h \
+  ../lib/assimp-src/include/assimp/postprocess.h \
   ../lib/utils/include/stb_image.h \
   /usr/include/c++/11/stdlib.h \
   ../src/common/Shader.h \
@@ -726,8 +726,8 @@ CMakeFiles/OP_Renderer.dir/src/render/ForwardRenderer.cpp.o: ../src/render/Forwa
   /usr/include/c++/11/bits/stl_algo.h \
   /usr/include/c++/11/bits/algorithmfwd.h \
   /usr/include/c++/11/bits/uniform_int_dist.h \
-  ../lib/assimp/include/assimp/Importer.hpp \
-  ../lib/assimp/include/assimp/types.h \
+  ../lib/assimp-src/include/assimp/Importer.hpp \
+  ../lib/assimp-src/include/assimp/types.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/limits.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/syslimits.h \
   /usr/include/limits.h \
@@ -739,9 +739,9 @@ CMakeFiles/OP_Renderer.dir/src/render/ForwardRenderer.cpp.o: ../src/render/Forwa
   /usr/include/x86_64-linux-gnu/bits/uio_lim.h \
   /usr/include/string.h \
   /usr/include/strings.h \
-  ../lib/assimp/include/assimp/defs.h \
-  ../lib/assimp/include/assimp/config.h \
-  ../lib/assimp/include/assimp/vector2.h \
+  ../lib/assimp-src/include/assimp/defs.h \
+  ../lib/assimp-build/include/assimp/config.h \
+  ../lib/assimp-src/include/assimp/vector2.h \
   /usr/include/c++/11/cmath \
   /usr/include/math.h \
   /usr/include/x86_64-linux-gnu/bits/math-vector.h \
@@ -767,34 +767,34 @@ CMakeFiles/OP_Renderer.dir/src/render/ForwardRenderer.cpp.o: ../src/render/Forwa
   /usr/include/c++/11/tr1/poly_hermite.tcc \
   /usr/include/c++/11/tr1/poly_laguerre.tcc \
   /usr/include/c++/11/tr1/riemann_zeta.tcc \
-  ../lib/assimp/include/assimp/vector3.h \
-  ../lib/assimp/include/assimp/color4.h \
-  ../lib/assimp/include/assimp/matrix3x3.h \
-  ../lib/assimp/include/assimp/matrix4x4.h \
-  ../lib/assimp/include/assimp/quaternion.h \
+  ../lib/assimp-src/include/assimp/vector3.h \
+  ../lib/assimp-src/include/assimp/color4.h \
+  ../lib/assimp-src/include/assimp/matrix3x3.h \
+  ../lib/assimp-src/include/assimp/matrix4x4.h \
+  ../lib/assimp-src/include/assimp/quaternion.h \
   /usr/include/c++/11/cstring \
-  ../lib/assimp/include/assimp/vector2.inl \
-  ../lib/assimp/include/assimp/vector3.inl \
-  ../lib/assimp/include/assimp/color4.inl \
-  ../lib/assimp/include/assimp/matrix3x3.inl \
+  ../lib/assimp-src/include/assimp/vector2.inl \
+  ../lib/assimp-src/include/assimp/vector3.inl \
+  ../lib/assimp-src/include/assimp/color4.inl \
+  ../lib/assimp-src/include/assimp/matrix3x3.inl \
   /usr/include/c++/11/algorithm \
   /usr/include/c++/11/pstl/glue_algorithm_defs.h \
-  ../lib/assimp/include/assimp/matrix4x4.inl \
-  ../lib/assimp/include/assimp/MathFunctions.h \
-  ../lib/assimp/include/assimp/quaternion.inl \
-  ../lib/assimp/include/assimp/scene.h \
-  ../lib/assimp/include/assimp/texture.h \
-  ../lib/assimp/include/assimp/Compiler/pushpack1.h \
-  ../lib/assimp/include/assimp/Compiler/poppack1.h \
-  ../lib/assimp/include/assimp/mesh.h \
-  ../lib/assimp/include/assimp/aabb.h \
-  ../lib/assimp/include/assimp/light.h \
-  ../lib/assimp/include/assimp/camera.h \
-  ../lib/assimp/include/assimp/material.h \
-  ../lib/assimp/include/assimp/material.inl \
-  ../lib/assimp/include/assimp/anim.h \
-  ../lib/assimp/include/assimp/metadata.h \
-  ../lib/assimp/include/assimp/postprocess.h \
+  ../lib/assimp-src/include/assimp/matrix4x4.inl \
+  ../lib/assimp-src/include/assimp/MathFunctions.h \
+  ../lib/assimp-src/include/assimp/quaternion.inl \
+  ../lib/assimp-src/include/assimp/scene.h \
+  ../lib/assimp-src/include/assimp/texture.h \
+  ../lib/assimp-src/include/assimp/Compiler/pushpack1.h \
+  ../lib/assimp-src/include/assimp/Compiler/poppack1.h \
+  ../lib/assimp-src/include/assimp/mesh.h \
+  ../lib/assimp-src/include/assimp/aabb.h \
+  ../lib/assimp-src/include/assimp/light.h \
+  ../lib/assimp-src/include/assimp/camera.h \
+  ../lib/assimp-src/include/assimp/material.h \
+  ../lib/assimp-src/include/assimp/material.inl \
+  ../lib/assimp-src/include/assimp/anim.h \
+  ../lib/assimp-src/include/assimp/metadata.h \
+  ../lib/assimp-src/include/assimp/postprocess.h \
   ../lib/utils/include/stb_image.h \
   /usr/include/c++/11/stdlib.h \
   ../src/common/Shader.h \
@@ -1143,45 +1143,35 @@ CMakeFiles/OP_Renderer.dir/src/test/GLtest.cpp.o: ../src/test/GLtest.cpp \
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/emmintrin.h:
 
+/usr/include/c++/11/stdlib.h:
+
 ../lib/utils/include/stb_image.h:
 
-../lib/assimp/include/assimp/metadata.h:
+../lib/assimp-src/include/assimp/anim.h:
 
-../lib/assimp/include/assimp/postprocess.h:
+../lib/assimp-src/include/assimp/camera.h:
 
-../lib/assimp/include/assimp/anim.h:
+../lib/assimp-src/include/assimp/light.h:
 
-../lib/assimp/include/assimp/material.h:
+../lib/assimp-src/include/assimp/mesh.h:
 
-../lib/assimp/include/assimp/camera.h:
-
-../lib/assimp/include/assimp/light.h:
-
-../lib/assimp/include/assimp/aabb.h:
-
-../lib/assimp/include/assimp/mesh.h:
-
-../lib/assimp/include/assimp/Compiler/poppack1.h:
-
-../lib/assimp/include/assimp/quaternion.inl:
+../lib/assimp-src/include/assimp/matrix4x4.inl:
 
 /usr/include/c++/11/algorithm:
 
-/usr/include/c++/11/stdlib.h:
+../lib/assimp-src/include/assimp/vector2.inl:
 
-../lib/assimp/include/assimp/matrix3x3.inl:
+../lib/assimp-src/include/assimp/quaternion.h:
 
-../lib/assimp/include/assimp/color4.inl:
+../lib/assimp-src/include/assimp/matrix4x4.h:
 
-../lib/assimp/include/assimp/matrix4x4.h:
+../lib/assimp-src/include/assimp/matrix3x3.h:
 
-../lib/assimp/include/assimp/color4.h:
+../lib/assimp-build/include/assimp/config.h:
 
-../lib/assimp/include/assimp/vector3.h:
+../lib/assimp-src/include/assimp/types.h:
 
-../lib/assimp/include/assimp/vector2.h:
-
-../lib/assimp/include/assimp/defs.h:
+../lib/assimp-src/include/assimp/Importer.hpp:
 
 /usr/include/c++/11/bits/stl_algo.h:
 
@@ -1199,8 +1189,6 @@ CMakeFiles/OP_Renderer.dir/src/test/GLtest.cpp.o: ../src/test/GLtest.cpp \
 
 /usr/include/c++/11/bits/uses_allocator.h:
 
-../lib/assimp/include/assimp/matrix4x4.inl:
-
 /usr/include/c++/11/tuple:
 
 /usr/include/c++/11/bits/hashtable_policy.h:
@@ -1208,6 +1196,8 @@ CMakeFiles/OP_Renderer.dir/src/test/GLtest.cpp.o: ../src/test/GLtest.cpp \
 /usr/include/c++/11/bits/hashtable.h:
 
 /usr/include/c++/11/unordered_map:
+
+../lib/assimp-src/include/assimp/scene.h:
 
 /usr/include/c++/11/bits/stl_uninitialized.h:
 
@@ -1221,13 +1211,13 @@ CMakeFiles/OP_Renderer.dir/src/test/GLtest.cpp.o: ../src/test/GLtest.cpp \
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h:
 
-../lib/assimp/include/assimp/config.h:
-
 ../src/common/Shader.h:
 
 env.h:
 
 /usr/include/strings.h:
+
+../lib/assimp-src/include/assimp/matrix3x3.inl:
 
 ../lib/glm/ext/vector_uint1_sized.hpp:
 
@@ -1254,6 +1244,8 @@ env.h:
 ../lib/glm/ext/quaternion_trigonometric.hpp:
 
 ../lib/glm/ext/quaternion_double.hpp:
+
+../lib/assimp-src/include/assimp/vector3.inl:
 
 ../lib/glm/detail/type_quat.inl:
 
@@ -1323,6 +1315,8 @@ env.h:
 
 ../lib/glm/vector_relational.hpp:
 
+../lib/assimp-src/include/assimp/material.inl:
+
 ../lib/glm/detail/func_exponential.inl:
 
 ../lib/glm/detail/type_vec1.hpp:
@@ -1335,11 +1329,11 @@ env.h:
 
 ../lib/glm/ext/matrix_float4x4.hpp:
 
+../lib/assimp-src/include/assimp/MathFunctions.h:
+
 ../lib/glm/ext/matrix_double4x4_precision.hpp:
 
 ../lib/glm/ext/matrix_double4x4.hpp:
-
-../lib/assimp/include/assimp/material.inl:
 
 /usr/include/c++/11/bits/atomic_lockfree_defines.h:
 
@@ -1364,6 +1358,8 @@ env.h:
 ../lib/glm/mat4x2.hpp:
 
 ../lib/glm/ext/matrix_float3x4_precision.hpp:
+
+../lib/assimp-src/include/assimp/Compiler/poppack1.h:
 
 ../lib/glm/detail/type_mat3x4.inl:
 
@@ -1441,6 +1437,8 @@ env.h:
 
 ../lib/glm/ext/matrix_double2x2.hpp:
 
+../lib/assimp-src/include/assimp/postprocess.h:
+
 ../lib/glm/mat2x2.hpp:
 
 ../lib/glm/ext/vector_uint4_sized.hpp:
@@ -1473,8 +1471,6 @@ env.h:
 
 /usr/include/c++/11/tr1/exp_integral.tcc:
 
-../lib/assimp/include/assimp/Compiler/pushpack1.h:
-
 /usr/include/c++/11/bits/cxxabi_forced.h:
 
 ../lib/glm/ext/matrix_float4x3_precision.hpp:
@@ -1487,11 +1483,15 @@ env.h:
 
 /usr/include/x86_64-linux-gnu/gnu/stubs.h:
 
+../lib/assimp-src/include/assimp/metadata.h:
+
 /usr/include/c++/11/backward/binders.h:
 
 ../lib/glm/detail/_fixes.hpp:
 
 /usr/include/c++/11/bits/locale_classes.h:
+
+../lib/assimp-src/include/assimp/Compiler/pushpack1.h:
 
 /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h:
 
@@ -1502,6 +1502,8 @@ env.h:
 ../lib/glm/ext/matrix_double2x2_precision.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h:
+
+../lib/assimp-src/include/assimp/aabb.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/timer_t.h:
 
@@ -1528,6 +1530,8 @@ env.h:
 /usr/include/time.h:
 
 /usr/include/pthread.h:
+
+../lib/assimp-src/include/assimp/material.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/gthr-default.h:
 
@@ -1583,9 +1587,13 @@ env.h:
 
 /usr/include/c++/11/bits/predefined_ops.h:
 
+../lib/assimp-src/include/assimp/vector2.h:
+
 ../lib/glm/ext/matrix_clip_space.inl:
 
 /usr/include/c++/11/clocale:
+
+../lib/assimp-src/include/assimp/color4.h:
 
 /usr/include/c++/11/bits/ostream.tcc:
 
@@ -1609,6 +1617,8 @@ env.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/cpu_defines.h:
 
+../lib/assimp-src/include/assimp/quaternion.inl:
+
 ../lib/glm/ext/vector_bool2.hpp:
 
 /usr/include/c++/11/exception:
@@ -1618,8 +1628,6 @@ env.h:
 /usr/include/c++/11/cstdint:
 
 /usr/include/x86_64-linux-gnu/bits/waitstatus.h:
-
-../lib/assimp/include/assimp/quaternion.h:
 
 ../lib/glm/ext/quaternion_geometric.inl:
 
@@ -1663,8 +1671,6 @@ env.h:
 
 /usr/include/c++/11/ext/type_traits.h:
 
-../lib/assimp/include/assimp/vector3.inl:
-
 ../lib/glm/ext/matrix_float3x3_precision.hpp:
 
 /usr/include/c++/11/ext/numeric_traits.h:
@@ -1672,6 +1678,8 @@ env.h:
 ../lib/glm/ext/matrix_double4x2.hpp:
 
 /usr/include/features.h:
+
+../lib/assimp-src/include/assimp/defs.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/FILE.h:
 
@@ -1753,8 +1761,6 @@ env.h:
 
 /usr/include/c++/11/bits/nested_exception.h:
 
-../lib/assimp/include/assimp/matrix3x3.h:
-
 /usr/include/x86_64-linux-gnu/bits/types/clock_t.h:
 
 /usr/include/c++/11/bits/stl_queue.h:
@@ -1797,13 +1803,9 @@ env.h:
 
 /usr/include/x86_64-linux-gnu/bits/posix2_lim.h:
 
-../lib/assimp/include/assimp/scene.h:
-
 /usr/include/c++/11/bits/exception_ptr.h:
 
 /usr/include/c++/11/ext/string_conversions.h:
-
-../lib/assimp/include/assimp/Importer.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/atomic_word.h:
 
@@ -1847,6 +1849,8 @@ env.h:
 
 /usr/include/x86_64-linux-gnu/bits/xopen_lim.h:
 
+../lib/assimp-src/include/assimp/vector3.h:
+
 /usr/include/ctype.h:
 
 /usr/include/c++/11/bits/cpp_type_traits.h:
@@ -1857,13 +1861,9 @@ env.h:
 
 /usr/include/stdlib.h:
 
-../lib/assimp/include/assimp/texture.h:
-
 /usr/include/x86_64-linux-gnu/bits/waitflags.h:
 
 /usr/include/c++/11/math.h:
-
-../lib/assimp/include/assimp/MathFunctions.h:
 
 ../lib/glm/ext/vector_float2_precision.hpp:
 
@@ -2007,6 +2007,8 @@ env.h:
 
 /usr/include/c++/11/istream:
 
+../lib/assimp-src/include/assimp/texture.h:
+
 ../lib/glm/ext/vector_double2_precision.hpp:
 
 /usr/include/c++/11/bits/istream.tcc:
@@ -2026,8 +2028,6 @@ env.h:
 /usr/include/c++/11/string_view:
 
 /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h:
-
-../lib/assimp/include/assimp/types.h:
 
 /usr/include/c++/11/cstring:
 
@@ -2070,6 +2070,8 @@ env.h:
 /usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h:
 
 /usr/include/c++/11/tr1/legendre_function.tcc:
+
+../lib/assimp-src/include/assimp/color4.inl:
 
 /usr/include/c++/11/tr1/riemann_zeta.tcc:
 
@@ -2128,8 +2130,6 @@ env.h:
 ../lib/glm/ext/vector_int2.hpp:
 
 ../lib/glm/ext/scalar_int_sized.hpp:
-
-../lib/assimp/include/assimp/vector2.inl:
 
 /usr/include/c++/11/bits/atomic_base.h:
 

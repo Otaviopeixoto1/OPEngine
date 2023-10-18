@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/g++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/otavio/openGL/OPEngine/build -I/home/otavio/openGL/OPEngine/lib/glad/include -I/home/otavio/openGL/OPEngine/lib/utils/include -I/home/otavio/openGL/OPEngine/lib/glm/.. -I/home/otavio/openGL/OPEngine/lib/jsoncpp/include -isystem /home/otavio/openGL/OPEngine/lib/assimp/include -isystem /home/otavio/openGL/OPEngine/lib/zlib/include
+CXX_INCLUDES = -I/home/otavio/openGL/OPEngine/build -I/home/otavio/openGL/OPEngine/lib/assimp-src/include -I/home/otavio/openGL/OPEngine/lib/assimp-src/code/../include -I/home/otavio/openGL/OPEngine/lib/assimp-build/code/../include -I/home/otavio/openGL/OPEngine/lib/glad/include -I/home/otavio/openGL/OPEngine/lib/utils/include -I/home/otavio/openGL/OPEngine/lib/glm/.. -I/home/otavio/openGL/OPEngine/lib/jsoncpp/include
 
 CXX_FLAGS = -g
 

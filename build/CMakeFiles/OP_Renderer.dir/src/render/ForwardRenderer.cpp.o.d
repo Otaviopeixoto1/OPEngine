@@ -169,8 +169,8 @@ CMakeFiles/OP_Renderer.dir/src/render/ForwardRenderer.cpp.o: \
  /usr/include/c++/11/bits/stl_algo.h \
  /usr/include/c++/11/bits/algorithmfwd.h \
  /usr/include/c++/11/bits/uniform_int_dist.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/Importer.hpp \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/types.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/Importer.hpp \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/types.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/limits.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/syslimits.h \
  /usr/include/limits.h /usr/include/x86_64-linux-gnu/bits/posix1_lim.h \
@@ -180,9 +180,9 @@ CMakeFiles/OP_Renderer.dir/src/render/ForwardRenderer.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/xopen_lim.h \
  /usr/include/x86_64-linux-gnu/bits/uio_lim.h /usr/include/string.h \
  /usr/include/strings.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/defs.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/config.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/vector2.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/defs.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-build/code/../include/assimp/config.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/vector2.h \
  /usr/include/c++/11/cmath /usr/include/math.h \
  /usr/include/x86_64-linux-gnu/bits/math-vector.h \
  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
@@ -206,34 +206,34 @@ CMakeFiles/OP_Renderer.dir/src/render/ForwardRenderer.cpp.o: \
  /usr/include/c++/11/tr1/poly_hermite.tcc \
  /usr/include/c++/11/tr1/poly_laguerre.tcc \
  /usr/include/c++/11/tr1/riemann_zeta.tcc \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/vector3.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/color4.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/matrix3x3.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/matrix4x4.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/quaternion.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/vector3.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/color4.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/matrix3x3.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/matrix4x4.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/quaternion.h \
  /usr/include/c++/11/cstring \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/vector2.inl \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/vector3.inl \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/color4.inl \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/matrix3x3.inl \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/vector2.inl \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/vector3.inl \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/color4.inl \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/matrix3x3.inl \
  /usr/include/c++/11/algorithm \
  /usr/include/c++/11/pstl/glue_algorithm_defs.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/matrix4x4.inl \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/MathFunctions.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/quaternion.inl \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/scene.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/texture.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/Compiler/pushpack1.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/Compiler/poppack1.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/mesh.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/aabb.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/light.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/camera.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/material.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/material.inl \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/anim.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/metadata.h \
- /home/otavio/openGL/OPEngine/lib/assimp/include/assimp/postprocess.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/matrix4x4.inl \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/MathFunctions.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/quaternion.inl \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/scene.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/texture.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/Compiler/pushpack1.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/Compiler/poppack1.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/mesh.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/aabb.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/light.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/camera.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/material.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/material.inl \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/anim.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/metadata.h \
+ /home/otavio/openGL/OPEngine/lib/assimp-src/include/assimp/postprocess.h \
  /home/otavio/openGL/OPEngine/lib/utils/include/stb_image.h \
  /usr/include/c++/11/stdlib.h \
  /home/otavio/openGL/OPEngine/src/render/../scene/../common/Shader.h \

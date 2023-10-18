@@ -124,12 +124,13 @@ OP_Renderer: CMakeFiles/OP_Renderer.dir/src/main.cpp.o
 OP_Renderer: CMakeFiles/OP_Renderer.dir/src/render/ForwardRenderer.cpp.o
 OP_Renderer: CMakeFiles/OP_Renderer.dir/src/test/GLtest.cpp.o
 OP_Renderer: CMakeFiles/OP_Renderer.dir/build.make
+OP_Renderer: ../lib/assimp-build/lib/libassimp.a
 OP_Renderer: /usr/lib/x86_64-linux-gnu/libglfw.so.3.3
 OP_Renderer: /usr/lib/x86_64-linux-gnu/libGL.so
 OP_Renderer: lib/glad/libglad.a
 OP_Renderer: lib/jsoncpp/libjsoncpp.a
-OP_Renderer: ../lib/assimp/libassimp.a
-OP_Renderer: ../lib/zlib/libzlibstatic.a
+OP_Renderer: ../lib/assimp-build/lib/libassimp.a
+OP_Renderer: ../lib/assimp-build/contrib/zlib/libzlibstatic.a
 OP_Renderer: CMakeFiles/OP_Renderer.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable OP_Renderer"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/OP_Renderer.dir/link.txt --verbose=$(VERBOSE)

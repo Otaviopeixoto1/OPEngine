@@ -68,8 +68,7 @@ all: lib/glad/all
 all: lib/utils/all
 all: lib/glm/all
 all: lib/jsoncpp/all
-all: lib/assimp/all
-all: lib/zlib/all
+all: ../lib/assimp-build/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
@@ -77,8 +76,7 @@ preinstall: lib/glad/preinstall
 preinstall: lib/utils/preinstall
 preinstall: lib/glm/preinstall
 preinstall: lib/jsoncpp/preinstall
-preinstall: lib/assimp/preinstall
-preinstall: lib/zlib/preinstall
+preinstall: ../lib/assimp-build/preinstall
 .PHONY : preinstall
 
 # The main recursive "clean" target.
@@ -87,24 +85,8 @@ clean: lib/glad/clean
 clean: lib/utils/clean
 clean: lib/glm/clean
 clean: lib/jsoncpp/clean
-clean: lib/assimp/clean
-clean: lib/zlib/clean
+clean: ../lib/assimp-build/clean
 .PHONY : clean
-
-#=============================================================================
-# Directory level rules for directory lib/assimp
-
-# Recursive "all" directory target.
-lib/assimp/all:
-.PHONY : lib/assimp/all
-
-# Recursive "preinstall" directory target.
-lib/assimp/preinstall:
-.PHONY : lib/assimp/preinstall
-
-# Recursive "clean" directory target.
-lib/assimp/clean:
-.PHONY : lib/assimp/clean
 
 #=============================================================================
 # Directory level rules for directory lib/glad
@@ -167,34 +149,69 @@ lib/utils/clean:
 .PHONY : lib/utils/clean
 
 #=============================================================================
-# Directory level rules for directory lib/zlib
+# Directory level rules for directory ../lib/assimp-build
 
 # Recursive "all" directory target.
-lib/zlib/all:
-.PHONY : lib/zlib/all
+../lib/assimp-build/all: ../lib/assimp-build/contrib/zlib/all
+../lib/assimp-build/all: ../lib/assimp-build/code/all
+.PHONY : ../lib/assimp-build/all
 
 # Recursive "preinstall" directory target.
-lib/zlib/preinstall:
-.PHONY : lib/zlib/preinstall
+../lib/assimp-build/preinstall: ../lib/assimp-build/contrib/zlib/preinstall
+../lib/assimp-build/preinstall: ../lib/assimp-build/code/preinstall
+.PHONY : ../lib/assimp-build/preinstall
 
 # Recursive "clean" directory target.
-lib/zlib/clean:
-.PHONY : lib/zlib/clean
+../lib/assimp-build/clean: ../lib/assimp-build/contrib/zlib/clean
+../lib/assimp-build/clean: ../lib/assimp-build/code/clean
+.PHONY : ../lib/assimp-build/clean
+
+#=============================================================================
+# Directory level rules for directory ../lib/assimp-build/code
+
+# Recursive "all" directory target.
+../lib/assimp-build/code/all: ../lib/assimp-build/code/CMakeFiles/assimp.dir/all
+.PHONY : ../lib/assimp-build/code/all
+
+# Recursive "preinstall" directory target.
+../lib/assimp-build/code/preinstall:
+.PHONY : ../lib/assimp-build/code/preinstall
+
+# Recursive "clean" directory target.
+../lib/assimp-build/code/clean: ../lib/assimp-build/code/CMakeFiles/assimp.dir/clean
+.PHONY : ../lib/assimp-build/code/clean
+
+#=============================================================================
+# Directory level rules for directory ../lib/assimp-build/contrib/zlib
+
+# Recursive "all" directory target.
+../lib/assimp-build/contrib/zlib/all: ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/all
+.PHONY : ../lib/assimp-build/contrib/zlib/all
+
+# Recursive "preinstall" directory target.
+../lib/assimp-build/contrib/zlib/preinstall:
+.PHONY : ../lib/assimp-build/contrib/zlib/preinstall
+
+# Recursive "clean" directory target.
+../lib/assimp-build/contrib/zlib/clean: ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/clean
+.PHONY : ../lib/assimp-build/contrib/zlib/clean
 
 #=============================================================================
 # Target rules for target CMakeFiles/OP_Renderer.dir
 
 # All Build rule for target.
-CMakeFiles/OP_Renderer.dir/all: lib/glad/CMakeFiles/glad.dir/all
+CMakeFiles/OP_Renderer.dir/all: ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/all
+CMakeFiles/OP_Renderer.dir/all: ../lib/assimp-build/code/CMakeFiles/assimp.dir/all
 CMakeFiles/OP_Renderer.dir/all: lib/jsoncpp/CMakeFiles/jsoncpp.dir/all
+CMakeFiles/OP_Renderer.dir/all: lib/glad/CMakeFiles/glad.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/OP_Renderer.dir/build.make CMakeFiles/OP_Renderer.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=1,2,3,4 "Built target OP_Renderer"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=1 "Built target OP_Renderer"
 .PHONY : CMakeFiles/OP_Renderer.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/OP_Renderer.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 8
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 100
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/OP_Renderer.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 0
 .PHONY : CMakeFiles/OP_Renderer.dir/rule
@@ -215,12 +232,12 @@ CMakeFiles/OP_Renderer.dir/clean:
 lib/glad/CMakeFiles/glad.dir/all:
 	$(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/depend
 	$(MAKE) $(MAKESILENT) -f lib/glad/CMakeFiles/glad.dir/build.make lib/glad/CMakeFiles/glad.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=5,6 "Built target glad"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num= "Built target glad"
 .PHONY : lib/glad/CMakeFiles/glad.dir/all
 
 # Build rule for subdir invocation for target.
 lib/glad/CMakeFiles/glad.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 0
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 lib/glad/CMakeFiles/glad.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 0
 .PHONY : lib/glad/CMakeFiles/glad.dir/rule
@@ -241,12 +258,12 @@ lib/glad/CMakeFiles/glad.dir/clean:
 lib/jsoncpp/CMakeFiles/jsoncpp.dir/all:
 	$(MAKE) $(MAKESILENT) -f lib/jsoncpp/CMakeFiles/jsoncpp.dir/build.make lib/jsoncpp/CMakeFiles/jsoncpp.dir/depend
 	$(MAKE) $(MAKESILENT) -f lib/jsoncpp/CMakeFiles/jsoncpp.dir/build.make lib/jsoncpp/CMakeFiles/jsoncpp.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=7,8 "Built target jsoncpp"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=93 "Built target jsoncpp"
 .PHONY : lib/jsoncpp/CMakeFiles/jsoncpp.dir/all
 
 # Build rule for subdir invocation for target.
 lib/jsoncpp/CMakeFiles/jsoncpp.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 1
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 lib/jsoncpp/CMakeFiles/jsoncpp.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 0
 .PHONY : lib/jsoncpp/CMakeFiles/jsoncpp.dir/rule
@@ -259,6 +276,58 @@ jsoncpp: lib/jsoncpp/CMakeFiles/jsoncpp.dir/rule
 lib/jsoncpp/CMakeFiles/jsoncpp.dir/clean:
 	$(MAKE) $(MAKESILENT) -f lib/jsoncpp/CMakeFiles/jsoncpp.dir/build.make lib/jsoncpp/CMakeFiles/jsoncpp.dir/clean
 .PHONY : lib/jsoncpp/CMakeFiles/jsoncpp.dir/clean
+
+#=============================================================================
+# Target rules for target ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir
+
+# All Build rule for target.
+../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/all:
+	$(MAKE) $(MAKESILENT) -f ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/build.make ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/depend
+	$(MAKE) $(MAKESILENT) -f ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/build.make ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=94,95,96,97,98,99,100 "Built target zlibstatic"
+.PHONY : ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/all
+
+# Build rule for subdir invocation for target.
+../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 7
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 0
+.PHONY : ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/rule
+
+# Convenience name for target.
+zlibstatic: ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/rule
+.PHONY : zlibstatic
+
+# clean rule for target.
+../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/clean:
+	$(MAKE) $(MAKESILENT) -f ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/build.make ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/clean
+.PHONY : ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/clean
+
+#=============================================================================
+# Target rules for target ../lib/assimp-build/code/CMakeFiles/assimp.dir
+
+# All Build rule for target.
+../lib/assimp-build/code/CMakeFiles/assimp.dir/all: ../lib/assimp-build/contrib/zlib/CMakeFiles/zlibstatic.dir/all
+	$(MAKE) $(MAKESILENT) -f ../lib/assimp-build/code/CMakeFiles/assimp.dir/build.make ../lib/assimp-build/code/CMakeFiles/assimp.dir/depend
+	$(MAKE) $(MAKESILENT) -f ../lib/assimp-build/code/CMakeFiles/assimp.dir/build.make ../lib/assimp-build/code/CMakeFiles/assimp.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/otavio/openGL/OPEngine/build/CMakeFiles --progress-num=2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92 "Built target assimp"
+.PHONY : ../lib/assimp-build/code/CMakeFiles/assimp.dir/all
+
+# Build rule for subdir invocation for target.
+../lib/assimp-build/code/CMakeFiles/assimp.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 98
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ../lib/assimp-build/code/CMakeFiles/assimp.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/otavio/openGL/OPEngine/build/CMakeFiles 0
+.PHONY : ../lib/assimp-build/code/CMakeFiles/assimp.dir/rule
+
+# Convenience name for target.
+assimp: ../lib/assimp-build/code/CMakeFiles/assimp.dir/rule
+.PHONY : assimp
+
+# clean rule for target.
+../lib/assimp-build/code/CMakeFiles/assimp.dir/clean:
+	$(MAKE) $(MAKESILENT) -f ../lib/assimp-build/code/CMakeFiles/assimp.dir/build.make ../lib/assimp-build/code/CMakeFiles/assimp.dir/clean
+.PHONY : ../lib/assimp-build/code/CMakeFiles/assimp.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

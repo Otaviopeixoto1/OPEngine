@@ -1,2 +1,4 @@
-lib/assimp/libassimp.a
-lib/zlib/libzlibstatic.a
+lib/assimp-build
+lib/assimp-src
+lib/assimp-subbuild
+build

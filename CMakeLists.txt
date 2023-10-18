@@ -17,6 +17,12 @@ file(GLOB_RECURSE headers ./src/*.h)
 
 
 
+
+
+
+
+
+
 #adding sources separetely
 target_sources(OP_Renderer PRIVATE ${sources} ${headers})
 
@@ -29,10 +35,24 @@ target_include_directories(OP_Renderer PUBLIC "${PROJECT_BINARY_DIR}")
 
 
 
-#add the external libraries 
-foreach (sub "lib/glad/" "lib/utils/" "lib/glm/" "lib/jsoncpp/" "lib/assimp/" "lib/zlib/")
+#add the external libraries "lib/assimp/" "lib/zlib/"
+foreach (sub "lib/glad/" "lib/utils/" "lib/glm/" "lib/jsoncpp/" )
     add_subdirectory("${sub}")
 endforeach ()
+
+#building assimp from scratch:
+include(FetchContent)
+set(FETCHCONTENT_BASE_DIR ${PROJECT_SOURCE_DIR}/lib CACHE PATH "Missing description." FORCE)
+FetchContent_Declare(assimp
+GIT_REPOSITORY https://github.com/assimp/assimp.git
+GIT_TAG v5.3.1)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(assimp)
+target_include_directories(OP_Renderer PRIVATE lib/assimp-src/include)
+target_link_libraries(OP_Renderer PRIVATE assimp)
 
 #linking the actual source code of the libraries
 target_link_libraries(OP_Renderer PRIVATE
@@ -43,6 +63,5 @@ target_link_libraries(OP_Renderer PRIVATE
     glm
     jsoncpp
     assimp
-    zlib
 )
 
