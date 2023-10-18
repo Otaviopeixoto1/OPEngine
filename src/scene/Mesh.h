@@ -51,7 +51,6 @@ class MeshData
 class Mesh
 {
     public:
-
         unsigned int verticesCount;
         unsigned int indicesCount;
 

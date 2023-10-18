@@ -159,7 +159,7 @@ int main()
     // hide the cursor and only show again when the window is out of focus or minimized:
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
-    Scene scene = Scene();
+    Scene scene = Scene("/data/scenes/backpack_scene.json");
 
     // Render Loop
     // -----------

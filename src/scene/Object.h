@@ -43,11 +43,8 @@ struct Object
 
     glm::mat4 objToWorld;
 
-    Object(std::shared_ptr<Mesh> srcMesh, Material *srcMaterial, glm::mat4 srcTransform)
+    Object()
     {
-        this->mesh = srcMesh;
-        this->material = srcMaterial;
-        this->objToWorld = srcTransform;
     }
 };
 
