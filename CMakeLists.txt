@@ -54,6 +54,8 @@ FetchContent_MakeAvailable(assimp)
 target_include_directories(OP_Renderer PRIVATE lib/assimp-src/include)
 target_link_libraries(OP_Renderer PRIVATE assimp)
 
+
+
 #linking the actual source code of the libraries
 target_link_libraries(OP_Renderer PRIVATE
     glfw
