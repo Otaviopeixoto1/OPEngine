@@ -13,6 +13,9 @@
 #include <stb_image.h>
 #include <json/json.h>
 
+
+#include <glm/gtx/string_cast.hpp>
+
 #include "../common/Shader.h"
 #include "../common/AssimpHelpers.h"
 #include "../common/JsonHelpers.h"
@@ -35,7 +38,7 @@
 
 
 
-//ObjectData contains references used to build objects
+//ObjectBlueprint contains data used to build objects
 struct ObjectBlueprint
 {
     glm::mat4 localTransform;
@@ -101,6 +104,8 @@ class Scene
                 std::string meshName = currObject.get("mesh", "<unspecified_object>").asString();
                 glm::vec3 worldPosition = JsonHelpers::GetJsonVec3f(currObject["pos"]); 
                 glm::vec3 scale = JsonHelpers::GetJsonVec3f(currObject["scale"]); 
+                glm::vec3 albedo = JsonHelpers::GetJsonVec3f(currObject["albedoColor"]);
+                std::cout << glm::to_string(albedo) << "\n";
                 
                 glm::mat4 rootTransform = glm::mat4(1);
                 rootTransform = glm::scale(rootTransform, scale);
@@ -111,6 +116,7 @@ class Scene
                     Object newObject = Object();
                     newObject.mesh = blueprint.mesh;
                     newObject.material = &materials[blueprint.materialId];
+                    newObject.material -> albedoColor = albedo;
                     newObject.objToWorld = rootTransform * blueprint.localTransform;
 
                     objects.push_back(newObject);
@@ -173,6 +179,15 @@ class Scene
 
         }
 
+        void AddLight()
+        {
+
+        }
+
+        //GetLightData
+
+
+
 
         
     private:
@@ -190,6 +205,8 @@ class Scene
         
         std::unordered_map<std::string, std::vector<ObjectBlueprint>> objectBlueprints;
         std::vector<Object> objects;
+
+        std::vector<BaseLight*> sceneLights;
 
         //used for batching draw calls by merging multiple objects together
         unsigned int indexBufferOffset = 0;
@@ -307,7 +324,22 @@ class Scene
                                                     aiTextureType_NORMALS, OP_TEXTURE_NORMAL, directory);
                 mTextures.insert(mTextures.end(), normalMaps.begin(), normalMaps.end());
                 
-                Material material = Material();
+                unsigned int flags = OP_MATERIAL_DEFAULT;
+
+                if (diffuseMaps.size() > 0)
+                {
+                    flags = flags | OP_MATERIAL_TEXTURED_DIFFUSE;
+                }
+                if (specularMaps.size() > 0)
+                {
+                    flags = flags | OP_MATERIAL_TEXTURED_SPECULAR;
+                }
+                if (normalMaps.size() > 0)
+                {
+                    flags = flags | OP_MATERIAL_TEXTURED_NORMAL;
+                }
+
+                Material material = Material(flags);
                 material.texturePaths = mTextures;
                 material.id = i + materialIdOffset;
                 materials.push_back(material);

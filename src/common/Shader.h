@@ -13,7 +13,8 @@
 //Todo:
 /*
 - add support for spir-v compilation and separate shader objects
-*/
+- REDEFINE SHADER CONSTRUCTOR AND SEPARATE THE COMPILE AND LINK INTO FUNCTIONS
+ */
 
 
 
@@ -22,6 +23,9 @@ class Shader
 public:
     // shader program object ID
     unsigned int ID;
+
+    //default constructor (DONT USE)
+    Shader(){}
   
     Shader(const char* vertexPath, const char* fragmentPath)
     {
@@ -137,10 +141,25 @@ public:
     { 
         glUniform1f(glGetUniformLocation(ID, name.c_str()), value); 
     } 
+
+    void setVec3(const std::string &name, glm::vec3 v) const
+    { 
+        glUniform3f(glGetUniformLocation(ID, name.c_str()), v.x, v.y, v.z); 
+    } 
+    void setVec3(const std::string &name, float v1, float v2, float v3) const
+    { 
+        glUniform3f(glGetUniformLocation(ID, name.c_str()), v1, v2, v3); 
+    } 
+
+    void setVec4(const std::string &name, glm::vec4 v) const
+    { 
+        glUniform4f(glGetUniformLocation(ID, name.c_str()), v.x, v.y, v.z, v.w); 
+    } 
     void setVec4(const std::string &name, float v1, float v2, float v3, float v4) const
     { 
         glUniform4f(glGetUniformLocation(ID, name.c_str()), v1, v2, v3, v4); 
     } 
+
     void setMat4(const std::string &name, glm::mat4 mat4, GLboolean transpose = GL_FALSE)
     {
         glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, transpose, glm::value_ptr(mat4)); 

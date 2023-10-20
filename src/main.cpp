@@ -12,7 +12,7 @@
 
 #include "scene/Camera.h"
 #include "scene/Scene.h"
-
+#include "render/renderers.h"
 
 
 //a custom library with simple objects for testing:
@@ -119,31 +119,7 @@ int main()
     glClearColor(0.25f, 0.5f,0.75f,1.0f);
 
 
-    // Reading and compiling the shader program to be used:
-    // ----------------------------------------------------
-    Shader compdShader(BASE_DIR"/data/shaders/tutorial/modelLoading.vert", BASE_DIR"/data/shaders/tutorial/modelLoading.frag");
-    
 
-
-    // world space positions for testing 
-    glm::vec3 TEST_POSITIONS[] = {
-        glm::vec3( 0.0f,  0.0f,  0.0f),
-        glm::vec3( 2.0f,  5.0f, -15.0f),
-        glm::vec3(-1.5f, -2.2f, -2.5f),
-        glm::vec3(-3.8f, -2.0f, -12.3f),
-        glm::vec3( 2.4f, -0.4f, -3.5f),
-        glm::vec3(-1.7f,  3.0f, -7.5f),
-        glm::vec3( 1.3f, -2.0f, -2.5f),
-        glm::vec3( 1.5f,  2.0f, -2.5f),
-        glm::vec3( 1.5f,  0.2f, -1.5f),
-        glm::vec3(-1.3f,  1.0f, -1.5f)
-    };
-
-
-
-    // Matrix Projection: projection matrix (view space -> clip space)
-    glm::mat4 projectionMatrix;
-    projectionMatrix = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
 
 
@@ -159,7 +135,12 @@ int main()
     // hide the cursor and only show again when the window is out of focus or minimized:
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
+
     Scene scene = Scene("/data/scenes/backpack_scene.json");
+
+    ForwardRenderer forwardRenderer = ForwardRenderer();
+    BaseRenderer* renderer = &forwardRenderer;
+
 
     // Render Loop
     // -----------
@@ -184,150 +165,8 @@ int main()
         // clear the data on the color buffer:
         glClear(GL_COLOR_BUFFER_BIT);
 
-
-        // setting the shader uniform values in the CPU before passing to GPU:
-
-        // shader has to be used before updating the uniforms
-        compdShader.use();
-
-
-        // Transformation matrices
-        // -------------------------
-        // Matrix Projection: View matrix (world space -> view (camera) space)
-        compdShader.setMat4("viewMatrix", mainCamera.GetViewMatrix());
-        // Matrix Projection: projection matrix (view space -> clip space)
-        compdShader.setMat4("projectionMatrix", projectionMatrix);
-    
-
-        // Non-indexed drawing
-        // -------------------
-        // drawing a single triangle:
-        // set the vertex data and its configuration that will be used for drawing
-        //glBindVertexArray(VAO);
+        renderer->RenderFrame(mainCamera, &scene, window);
         
-        // the model matrix depends on the object:
-        //glm::mat4 modelMatrix = glm::mat4(1.0f);
-        //modelMatrix = glm::rotate(modelMatrix, glm::radians(60.0f * (float)timeValue), glm::vec3(1.0, 0.0, 0.0));
-        //modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5, 0.5, 0.5));
-        //compdShader.setMat4("modelMatrix", glm::value_ptr(modelMatrix));
-
-        // draw the data using the currently active shader
-        //glDrawArrays(GL_TRIANGLES, 0, 3);
-
-
-
-        // drawing spinning cubes:
-        //glBindVertexArray(GetTestVAO(NI_CUBE));
-        // one cube:
-        // glDrawArrays(GL_TRIANGLES, 0, 36);
-
-        // multiple cubes:
-        /*
-        for(unsigned int i = 0; i < 10; i++)
-        {
-            // Matrix Projection: Model matrix (local space -> world space)
-            glm::mat4 modelMatrix = glm::mat4(1.0f);
-            modelMatrix = glm::translate(modelMatrix, TEST_POSITIONS[i]);
-            float angle = 20.0f * i + 60.0f * currentFrame;
-            modelMatrix = glm::rotate(modelMatrix, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            compdShader.setMat4("modelMatrix", modelMatrix);
-
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-        }*/
-
-
-        // Indexed drawing
-        // ---------------
-        // Drawing a rectangle (two triangles):
-
-        // set the vertex data and its configuration that will be used for drawing
-        //glBindVertexArray(GetTestVAO(I_RECT));
-        
-        // the model matrix depends on the object:
-        //glm::mat4 modelMatrix = glm::mat4(1.0f);
-        //modelMatrix = glm::rotate(modelMatrix, glm::radians(60.0f * (float)timeValue), glm::vec3(1.0, 0.0, 0.0));
-        //modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5, 0.5, 0.5));
-        //compdShader.setMat4("modelMatrix", glm::value_ptr(modelMatrix));
-
-        
-        // for indexed drawing, we must set the number of vetices that we want to draw (generally = n of indices)
-        // as well as the format of the index buffer (EBO)
-        //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-
-        
-
-
-
-        // Model Loading:
-        // --------------
-        
-        scene.IterateObjects([&](glm::mat4 objectToWorld, Material *material, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
-        {
-            /* setup the shader resources and draw */
-
-            // Matrix Projection: model matrix (object space -> world space)
-            compdShader.setMat4("modelMatrix", objectToWorld);
-
-
-            // the uniforms: viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix. can be passed as a uniform
-            //               buffer object (UBO)
-
-            // the uniforms: objectToWorld, albedoColor and emissiveColor have to be set per object in the scene
-            //               the uniform bindings (glVertexAttribPointers) for these can be set and stored in 
-            //               each objects VAO but can also be set dynamically of on the same UBO with bindings
-            
-
-            //Bind all textures
-            unsigned int diffuseNr = 1;
-            unsigned int specularNr = 1;
-            unsigned int normalNr = 1;
-            for (unsigned int i = 0; i < material->texturePaths.size(); i++)
-            {
-                Texture texture = scene.GetTexture(material->texturePaths[i]);
-                glActiveTexture(GL_TEXTURE0 + i); // activate proper texture unit before binding
-
-                std::string number;
-                TextureType type = texture.type;
-                std::string name;
-
-                switch (type)
-                {
-                    case OP_TEXTURE_DIFFUSE:
-                        number = std::to_string(diffuseNr++);
-                        name = "texture_diffuse";
-                        break;
-                    case OP_TEXTURE_SPECULAR:
-                        number = std::to_string(specularNr++);
-                        name = "texture_specular";
-                        break;
-                    case OP_TEXTURE_NORMAL:
-                        number = std::to_string(normalNr++);
-                        name = "texture_normal";
-                        break;
-                    
-                    default:
-                        number = "";
-                        name = "texture_unidentified";
-                        break;
-                }
-
-                compdShader.setInt((name + number).c_str(), i);
-                glBindTexture(GL_TEXTURE_2D, texture.id);
-            }
-            
-            //bind VAO
-            mesh->BindBuffers();
-            //draw indexed
-            glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
-            //mesh->UnbindBuffers();
-        });  
-
-
-
-
-
-
 
 
 

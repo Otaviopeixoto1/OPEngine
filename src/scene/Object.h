@@ -14,10 +14,19 @@ enum TextureType
     OP_TEXTURE_NORMAL
 };
 
-struct Texture {
-    unsigned int id;
-    TextureType type;
-};  
+enum MaterialFlags
+{
+    OP_MATERIAL_DEFAULT = 0, // 0
+    OP_MATERIAL_TEXTURED_DIFFUSE = 1 << 0, // 1
+    OP_MATERIAL_TEXTURED_SPECULAR = 1 << 1, // 2
+    OP_MATERIAL_TEXTURED_NORMAL = 1 << 2, // 4
+    Flag4 = 1 << 3, // 8
+    Flag5 = 1 << 4, // 16
+    Flag6 = 1 << 5, // 32
+    Flag7 = 1 << 6, // 64
+    Flag8 = 1 << 7  //128
+};
+
 
 struct Material
 {
@@ -27,13 +36,28 @@ struct Material
     glm::vec3 albedoColor;
     glm::vec3 emissiveColor;
     std::vector<std::string> texturePaths;
+    unsigned int flags;
 
-    Material()
+    struct MaterialBinding
     {
 
+    };
+    bool HasFlag(MaterialFlags flag)
+    {
+        return (flags & (int)flag) == (int)flag;
     }
+
+    Material(unsigned int setFlags)
+    {
+        this->flags = setFlags;
+    }
+
 };
 
+struct Texture {
+    unsigned int id;
+    TextureType type;
+};  
 
 struct Object
 {
