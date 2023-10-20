@@ -121,7 +121,7 @@ public:
     }
 
 
-    // use (activate) the shader
+    // use (activate) the shader but avoid too many state changes
     void use()
     { 
         glUseProgram(ID);

@@ -28,14 +28,11 @@
 
 
 
-//currently, each scene can have many object files, each object file can actualy have more than one 
-//object, one for each mesh. Each of these objects will have the same overridden properties
-//that was set on the scene file for the whole object file, but otherwise they will be treated as
-//independent objects (no hierarchy)
-
-//add property overrides in order to set some material special properties like albedo and emissive
-//and also set the root transform for the object
-
+// Observations:
+// -avoid creating openGl objects in class constructors, if that object is copied (by vector.push_back for example)
+// they will generate new objects and possibly mess with the indices
+// If that is necessary, try to allocate object in heap (so that it doesnt get destroyed when out of scope) and use 
+// hte object pointer
 
 
 //ObjectBlueprint contains data used to build objects
@@ -75,7 +72,7 @@ class Scene
                 std::cout << "Error: File " << BASE_DIR +  relativePath << ", parsing failed with errors: " << reader.getFormattedErrorMessages() << "\n";
             }
 
-            //construc blueprints from object file or use existing ones
+            //construct blueprints from object file or use existing ones
             Json::Value meshArray = configRoot["scene"]["meshes"];
 
             for (Json::ArrayIndex meshIndex = 0; meshIndex < meshArray.size(); meshIndex++)
@@ -94,7 +91,7 @@ class Scene
                 }
             }
 
-            //use the blueprints to build an objects
+            //use the blueprints to build the objects
             Json::Value objectArray = configRoot["scene"]["objects"];
 
             for (Json::ArrayIndex objectIndex = 0; objectIndex < objectArray.size(); objectIndex++)
@@ -105,12 +102,13 @@ class Scene
                 glm::vec3 worldPosition = JsonHelpers::GetJsonVec3f(currObject["pos"]); 
                 glm::vec3 scale = JsonHelpers::GetJsonVec3f(currObject["scale"]); 
                 glm::vec3 albedo = JsonHelpers::GetJsonVec3f(currObject["albedoColor"]);
-                std::cout << glm::to_string(albedo) << "\n";
                 
                 glm::mat4 rootTransform = glm::mat4(1);
                 rootTransform = glm::scale(rootTransform, scale);
                 rootTransform = glm::translate(rootTransform, worldPosition);
 
+                
+                bool hasLight = !(currObject["Light"].empty());
                 for (auto &blueprint : objectBlueprints[meshName])
                 {
                     Object newObject = Object();
@@ -118,9 +116,19 @@ class Scene
                     newObject.material = &materials[blueprint.materialId];
                     newObject.material -> albedoColor = albedo;
                     newObject.objToWorld = rootTransform * blueprint.localTransform;
-
+                    // currently the objects are being copied into the vector, but object bascially only stores
+                    // references, so it doesnt impact as much
                     objects.push_back(newObject);
+                    if(hasLight)
+                    {
+                        AddLight(currObject["Light"], &objects[objects.size() - 1]);
+                        hasLight = false;
+                    }
                 }
+
+
+
+
             }
 
 
@@ -158,7 +166,7 @@ class Scene
         void IterateObjects(ObjectCallback objectCallback)
         {
            
-            for (auto object : objects)
+            for (auto &object : objects)
             {
                 objectCallback(object.objToWorld, object.material, object.mesh, object.mesh->verticesCount, object.mesh->indicesCount);
             }
@@ -179,12 +187,27 @@ class Scene
 
         }
 
-        void AddLight()
+        void AddLight(std::unique_ptr<BaseLight> light)
         {
 
         }
 
-        //GetLightData
+        void AddLight(Json::Value lightProps, Object* boundObject)
+        {
+            std::string lightType = lightProps["type"].asString();
+
+            if (lightType == "directional")
+            {
+                glm::vec3 dir = JsonHelpers::GetJsonVec3f(lightProps["direction"]);
+                glm::vec3 col = JsonHelpers::GetJsonVec3f(lightProps["lightColor"]);
+                sceneLights.emplace_back(new DirectionalLight(dir,col));
+            }
+
+        }
+        BaseLight::LightData GetLightData(unsigned int i)
+        {
+            return sceneLights[i]->GetLightData();
+        }
 
 
 
@@ -206,7 +229,7 @@ class Scene
         std::unordered_map<std::string, std::vector<ObjectBlueprint>> objectBlueprints;
         std::vector<Object> objects;
 
-        std::vector<BaseLight*> sceneLights;
+        std::vector<std::unique_ptr<BaseLight>> sceneLights;
 
         //used for batching draw calls by merging multiple objects together
         unsigned int indexBufferOffset = 0;

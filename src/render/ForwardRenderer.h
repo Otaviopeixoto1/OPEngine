@@ -35,16 +35,36 @@ class ForwardRenderer : public BaseRenderer
             passData.viewMatrix = camera.GetViewMatrix();
             passData.projMatrix = camera.projectionMatrix;
 
-            // always use the object's shader program before assigning uniforms:
-            //shader.use();
-            // the uniform bindings (glVertexAttribPointers) have to be passed per shader and used for dynamically
-            // setting the uniform bindings here
+
+            BaseLight::LightData mainLightData = scene->GetLightData(0);
+            // Global Uniforms (dont depend on objects/materials)
+            // --------------------------------------------------
+
+            defaultVertFrag.use();
+
+            //these can all be set in a UBO: and be shared with all shaders
+
+            // ***Adopt a naming convention for all global uniform buffers***
+
+            // Matrix Projection: View matrix (world space -> view (camera) space)
+            defaultVertFrag.setMat4("viewMatrix", passData.viewMatrix);
+            // Matrix Projection: projection matrix (view space -> clip space)
+            defaultVertFrag.setMat4("projectionMatrix", passData.projMatrix);
+            // Light properties
+            defaultVertFrag.setVec3("lightColor", mainLightData.lightColor);
+
+            defaultVertTexFrag.use();
+            // Matrix Projection: View matrix (world space -> view (camera) space)
+            defaultVertTexFrag.setMat4("viewMatrix", passData.viewMatrix);
+            // Matrix Projection: projection matrix (view space -> clip space)
+            defaultVertTexFrag.setMat4("projectionMatrix", passData.projMatrix);
+            // Light properties
+            defaultVertTexFrag.setVec3("lightColor", mainLightData.lightColor);
+
+            unsigned int shaderCache = 0;
 
             scene->IterateObjects([&](glm::mat4 objectToWorld, Material *material, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
-            {
-                /* setup the shader resources and draw */
-
-                // shader has to be used before updating the uniforms
+            {    
                 Shader activeShader;
                 if (material->HasFlag(OP_MATERIAL_TEXTURED_DIFFUSE))
                 {
@@ -55,31 +75,25 @@ class ForwardRenderer : public BaseRenderer
                     activeShader = defaultVertFrag;
                 }
 
-                activeShader.use();
+                // shader has to be used before updating the uniforms
+                if (activeShader.ID != shaderCache)
+                {
+                    activeShader.use();
+                }
 
-
-                // Standard uniforms
+                // Standard uniforms (also use UBOs ?)
                 // -----------------
-                activeShader.setVec3("albedo", material->albedoColor);
-
-                // Transformation matrices
-                // -----------------------
-
-                // Matrix Projection: View matrix (world space -> view (camera) space)
-                activeShader.setMat4("viewMatrix", passData.viewMatrix);
-                // Matrix Projection: projection matrix (view space -> clip space)
-                activeShader.setMat4("projectionMatrix", passData.projMatrix);
-                // Matrix Projection: model matrix (object space -> world space)
-                activeShader.setMat4("modelMatrix", objectToWorld);
-
-
-                // the uniforms: viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix. can be passed as a uniform
-                //               buffer object (UBO)
 
                 // the uniforms: objectToWorld, albedoColor and emissiveColor have to be set per object in the scene
                 //               the uniform bindings (glVertexAttribPointers) for these can be set and stored in 
                 //               each objects VAO but can also be set dynamically of on the same UBO with bindings
-                
+
+                // albedo color of the object
+                activeShader.setVec3("albedo", material->albedoColor);
+
+                // Matrix Projection: model matrix (object space -> world space)
+                activeShader.setMat4("modelMatrix", objectToWorld);
+
 
                 //Bind all textures
                 unsigned int diffuseNr = 1;
@@ -88,7 +102,8 @@ class ForwardRenderer : public BaseRenderer
                 for (unsigned int i = 0; i < material->texturePaths.size(); i++)
                 {
                     Texture texture = scene->GetTexture(material->texturePaths[i]);
-                    glActiveTexture(GL_TEXTURE0 + i); // activate proper texture unit before binding
+                    // activate proper texture unit before binding
+                    glActiveTexture(GL_TEXTURE0 + i); 
 
                     std::string number;
                     TextureType type = texture.type;
@@ -121,7 +136,8 @@ class ForwardRenderer : public BaseRenderer
                 
                 //bind VAO
                 mesh->BindBuffers();
-                //draw indexed
+
+                //indexed draw
                 glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
             });  
 
