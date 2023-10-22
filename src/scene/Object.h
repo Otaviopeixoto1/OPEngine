@@ -28,13 +28,11 @@ enum MaterialFlags
 };
 
 
-struct Material
+
+
+struct MaterialTemplate
 {
-    // albedoColor will only be used for simple materials and simple shaders where we dont
-    // sample textures
     unsigned int id;
-    glm::vec3 albedoColor;
-    glm::vec3 emissiveColor;
     std::vector<std::string> texturePaths;
     unsigned int flags;
 
@@ -42,17 +40,60 @@ struct Material
     {
 
     };
-    bool HasFlag(MaterialFlags flag)
-    {
-        return (flags & (int)flag) == (int)flag;
-    }
 
-    Material(unsigned int setFlags)
+    
+
+    MaterialTemplate(unsigned int setFlags)
     {
         this->flags = setFlags;
     }
 
 };
+
+class MaterialInstance
+{
+    public:
+        
+        glm::vec3 albedoColor;
+        glm::vec3 emissiveColor;
+        unsigned int numTextures;
+        
+        MaterialInstance(MaterialTemplate &matTemp) 
+        {
+            this->numTextures = matTemp.texturePaths.size();
+            this->texturePaths = matTemp.texturePaths;
+            this->flags = matTemp.flags;
+            this->templateId = matTemp.id;
+        }
+        bool HasFlag(MaterialFlags flag)
+        {
+            return (flags & (int)flag) == (int)flag;
+        }
+        unsigned int TemplateId()
+        {
+            return templateId;
+        }
+        std::string GetTexturePath(unsigned int i)
+        {
+            if (i >= numTextures)
+            {
+                return "";
+            }
+
+            return texturePaths[i];
+        }
+    private:
+        unsigned int flags;
+        unsigned int templateId;
+        unsigned int instanceId;
+        std::vector<std::string> texturePaths;
+        //MaterialTemplate* baseTemplate;
+
+};
+
+
+
+
 
 struct Texture {
     unsigned int id;
@@ -63,7 +104,7 @@ struct Object
 {
     //currently each object can only have one mesh
     std::shared_ptr<Mesh> mesh;
-    Material *material;
+    std::unique_ptr<MaterialInstance> materialInstance;
 
     glm::mat4 objToWorld;
 

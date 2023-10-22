@@ -75,6 +75,7 @@
         "forward_list": "cpp",
         "unordered_set": "cpp",
         "regex": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "__bit_reference": "cpp"
     }
 }

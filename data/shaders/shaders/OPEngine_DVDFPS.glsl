@@ -4,7 +4,7 @@ out vec4 FragColor;
 in vec2 TexCoords;
 
 uniform vec3 albedo;
-in vec3 Normal;
+//uniform vec4 lightColor;
 
 void main()
 {    

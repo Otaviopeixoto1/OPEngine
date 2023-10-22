@@ -87,12 +87,14 @@ class Scene
                 if(objectBlueprints.find(meshName) == objectBlueprints.end())
                 {
                     AssimpLoadObjects(objFile, meshName);
-                    materialIdOffset = materials.size();
+                    materialIdOffset = materialTemplates.size();
                 }
             }
+            
 
             //use the blueprints to build the objects
             Json::Value objectArray = configRoot["scene"]["objects"];
+            
 
             for (Json::ArrayIndex objectIndex = 0; objectIndex < objectArray.size(); objectIndex++)
             {
@@ -102,26 +104,28 @@ class Scene
                 glm::vec3 worldPosition = JsonHelpers::GetJsonVec3f(currObject["pos"]); 
                 glm::vec3 scale = JsonHelpers::GetJsonVec3f(currObject["scale"]); 
                 glm::vec3 albedo = JsonHelpers::GetJsonVec3f(currObject["albedoColor"]);
-                
+                bool hasLight = !(currObject["Light"].empty());
+
                 glm::mat4 rootTransform = glm::mat4(1);
                 rootTransform = glm::scale(rootTransform, scale);
                 rootTransform = glm::translate(rootTransform, worldPosition);
 
                 
-                bool hasLight = !(currObject["Light"].empty());
+                
                 for (auto &blueprint : objectBlueprints[meshName])
                 {
-                    Object newObject = Object();
-                    newObject.mesh = blueprint.mesh;
-                    newObject.material = &materials[blueprint.materialId];
-                    newObject.material -> albedoColor = albedo;
-                    newObject.objToWorld = rootTransform * blueprint.localTransform;
+                    Object* newObject = new Object();
+                    newObject->mesh = blueprint.mesh;
+                    //std::cout << blueprint.materialId <<"\n";
+                    newObject->materialInstance = std::make_unique<MaterialInstance>(materialTemplates[blueprint.materialId]);
+                    newObject->materialInstance->albedoColor = albedo;
+                    newObject->objToWorld = rootTransform * blueprint.localTransform;
                     // currently the objects are being copied into the vector, but object bascially only stores
                     // references, so it doesnt impact as much
-                    objects.push_back(newObject);
+                    objects.emplace_back(newObject);
                     if(hasLight)
                     {
-                        AddLight(currObject["Light"], &objects[objects.size() - 1]);
+                        AddLight(currObject["Light"], objects[objects.size() - 1]);
                         hasLight = false;
                     }
                 }
@@ -138,14 +142,14 @@ class Scene
 
 
             std::cout << "Loading Success: " << "\n";
-            std::cout << "Materials: " << materials.size() << std::endl;
+            std::cout << "Materials: " << materialTemplates.size() << std::endl;
 
-            for (unsigned int i = 0; i < materials.size(); i++)
+            for (unsigned int i = 0; i < materialTemplates.size(); i++)
             {
                 std::cout << "->material: " + std::to_string(i) << ":\n";
-                for (unsigned int j = 0; j < materials[i].texturePaths.size(); j++)
+                for (unsigned int j = 0; j < materialTemplates[i].texturePaths.size(); j++)
                 {
-                    std::cout << "--texture[" << std::to_string(loadedTextures[materials[i].texturePaths[j]].id) << "]\n";
+                    std::cout << "--texture[" << std::to_string(loadedTextures[materialTemplates[i].texturePaths[j]].id) << "]\n";
                 }
             }
             
@@ -155,20 +159,22 @@ class Scene
 
             for (unsigned int i = 0; i < objects.size(); i++)
             {
-                std::cout << std::to_string(objects[i].material->id) << " ";
+                std::cout << std::to_string(objects[i]->materialInstance->TemplateId()) << " ";
             }
             std::cout << "]\n";
+
+            std::cout << "Lights: " << directionalLights.size() << std::endl;
         }
 
         //original:
         //using ObjectCallback = std::function<void(glm::mat4 objectToWorld, glm::vec3 albedoColor, glm::vec3 emissiveColor, vk::Buffer vertexBuffer, vk::Buffer indexBuffer, uint32_t verticesCount, uint32_t indicesCount)>;
-        using ObjectCallback = std::function<void(glm::mat4 objectToWorld, Material* material, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)>;
+        using ObjectCallback = std::function<void(glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)>;
         void IterateObjects(ObjectCallback objectCallback)
         {
            
             for (auto &object : objects)
             {
-                objectCallback(object.objToWorld, object.material, object.mesh, object.mesh->verticesCount, object.mesh->indicesCount);
+                objectCallback(object->objToWorld, object->materialInstance, object->mesh, object->mesh->verticesCount, object->mesh->indicesCount);
             }
         }
 
@@ -177,7 +183,7 @@ class Scene
             return loadedTextures.find(path) != loadedTextures.end();
         }
 
-        Texture GetTexture(std::string &path)
+        Texture GetTexture(const std::string &path)
         {
             return loadedTextures[path];
         }
@@ -187,12 +193,12 @@ class Scene
 
         }
 
-        void AddLight(std::unique_ptr<BaseLight> light)
-        {
+        //void AddLight(std::unique_ptr<BaseLight> light)
+        //{
+//
+        //}
 
-        }
-
-        void AddLight(Json::Value lightProps, Object* boundObject)
+        void AddLight(Json::Value lightProps, std::shared_ptr<Object> boundObject)
         {
             std::string lightType = lightProps["type"].asString();
 
@@ -200,13 +206,34 @@ class Scene
             {
                 glm::vec3 dir = JsonHelpers::GetJsonVec3f(lightProps["direction"]);
                 glm::vec3 col = JsonHelpers::GetJsonVec3f(lightProps["lightColor"]);
-                sceneLights.emplace_back(new DirectionalLight(dir,col));
+                directionalLights.emplace_back(dir,col,boundObject);
             }
-
         }
-        BaseLight::LightData GetLightData(unsigned int i)
+        
+        GlobalLightData GetLightData(unsigned int maxDirLights)
         {
-            return sceneLights[i]->GetLightData();
+            auto gLightData = GlobalLightData();
+
+            //gLightData.directionalLights = std::vector<DirectionalLight::DirectionalLightData>(maxDirLights);
+
+            for (unsigned int i = 0; i < maxDirLights; i++)
+            {
+                if(i > directionalLights.size() - 1)
+                {
+                    break;
+                }
+                gLightData.directionalLights[i] = directionalLights[i].GetLightData();
+            }
+            
+            //for (auto &dirLight : directionalLights)
+            //{
+            //    gLightData.directionalLights.emplace_back(dirLight.GetLightData());
+            //}
+            gLightData.numDirLights = directionalLights.size();
+
+            //std::cout << sizeof(gLightData) << " ";
+            return gLightData;
+
         }
 
 
@@ -223,13 +250,14 @@ class Scene
 
         //maps texture (file) paths to each texture object
         std::unordered_map<std::string, Texture> loadedTextures;
-        std::vector<Material> materials;
+        std::vector<MaterialTemplate> materialTemplates;
         unsigned int materialIdOffset = 0;
         
         std::unordered_map<std::string, std::vector<ObjectBlueprint>> objectBlueprints;
-        std::vector<Object> objects;
+        std::vector<std::shared_ptr<Object>> objects;
 
-        std::vector<std::unique_ptr<BaseLight>> sceneLights;
+        std::vector<DirectionalLight> directionalLights;
+        //std::vector<std::unique_ptr<BaseLight>> sceneLights;
 
         //used for batching draw calls by merging multiple objects together
         unsigned int indexBufferOffset = 0;
@@ -302,7 +330,7 @@ class Scene
                 auto blueprint = ObjectBlueprint(); 
                 blueprint.mesh = meshptr;
                 blueprint.materialId = mMesh->mMaterialIndex + materialIdOffset;
-
+                std::cout << blueprint.materialId << "\n";
                 objectBlueprints[meshName].push_back(blueprint);
 
                 
@@ -362,10 +390,10 @@ class Scene
                     flags = flags | OP_MATERIAL_TEXTURED_NORMAL;
                 }
 
-                Material material = Material(flags);
+                MaterialTemplate material = MaterialTemplate(flags);
                 material.texturePaths = mTextures;
                 material.id = i + materialIdOffset;
-                materials.push_back(material);
+                materialTemplates.push_back(material);
             }
         }
 

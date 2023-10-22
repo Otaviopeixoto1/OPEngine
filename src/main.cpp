@@ -140,7 +140,7 @@ int main()
 
     ForwardRenderer forwardRenderer = ForwardRenderer();
     BaseRenderer* renderer = &forwardRenderer;
-
+    renderer->ReloadShaders();
 
     // Render Loop
     // -----------

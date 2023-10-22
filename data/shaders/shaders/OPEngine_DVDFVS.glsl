@@ -4,7 +4,6 @@ layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoords;
 
 out vec2 TexCoords;
-out vec3 Normal;
 
 layout (std140) uniform Matrices
 {
@@ -19,5 +18,4 @@ void main()
 {
     TexCoords = aTexCoords;    
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(aPos, 1.0);
-    Normal = aNormal;
 }

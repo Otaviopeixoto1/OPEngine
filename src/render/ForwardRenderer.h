@@ -6,11 +6,13 @@
 class ForwardRenderer : public BaseRenderer
 {
     public:
+        const std::string MATRIX_UNIFORM_BLOCK = "Matrices";
+        const std::string LIGHTS_UNIFORM_BLOCK = "Lights";
+        unsigned int LightBufferSize = 0;
 
         ForwardRenderer()
         {
-            defaultVertFrag = Shader(BASE_DIR"/data/shaders/standardVert.vert", BASE_DIR"/data/shaders/albedoFrag.frag");
-            defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/standardVert.vert", BASE_DIR"/data/shaders/texturedFrag.frag");
+        
         }
 
         void RecreateSceneResources(Scene *scene)
@@ -23,50 +25,51 @@ class ForwardRenderer : public BaseRenderer
         {
 
             // the PassData can be passed as a uniform buffer that is created for the entire frame.
+            /*
             struct PassData
             {
                 //legit::ShaderMemoryPool *memoryPool;
                 glm::mat4 viewMatrix;
                 glm::mat4 projMatrix;
-                glm::mat4 lightViewMatrix;
-                glm::mat4 lightProjMatrix;
                 Scene *scene;
             }passData;
             passData.viewMatrix = camera.GetViewMatrix();
-            passData.projMatrix = camera.projectionMatrix;
+            passData.projMatrix = camera.projectionMatrix;*/
 
+            
 
-            BaseLight::LightData mainLightData = scene->GetLightData(0);
+            GlobalLightData lights = scene->GetLightData(MAX_DIR_LIGHTS);
+
+            //std::cout << sizeof(lights) << " ";
+
             // Global Uniforms (dont depend on objects/materials)
             // --------------------------------------------------
 
-            defaultVertFrag.use();
+            // the MatricesUBO is linked to the binding at 0 and we can set its data for all shaders like so:
+            glBindBuffer(GL_UNIFORM_BUFFER, MatricesUBO);
+            glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(camera.projectionMatrix));
+            glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(camera.GetViewMatrix()));
+            glBindBuffer(GL_UNIFORM_BUFFER, 0); 
 
-            //these can all be set in a UBO: and be shared with all shaders
+            // the LightsUBO is linked to the binding at 1:
+            glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
+            glBufferSubData(GL_UNIFORM_BUFFER, 0, LightBufferSize, &lights);
+            //void *ptr = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+            // now copy data into memory
+            //memcpy(ptr, &lights, sizeof(lights));
+            // make sure to tell OpenGL we're done with the pointer
+            //glUnmapBuffer(GL_UNIFORM_BUFFER);
+            //glBufferSubData(GL_UNIFORM_BUFFER, 4*sizeof(int), sizeof(glm::vec4), glm::value_ptr(lights.directionalLights[0].lightColor));
+            glBindBuffer(GL_UNIFORM_BUFFER, 0);   
 
-            // ***Adopt a naming convention for all global uniform buffers***
-
-            // Matrix Projection: View matrix (world space -> view (camera) space)
-            defaultVertFrag.setMat4("viewMatrix", passData.viewMatrix);
-            // Matrix Projection: projection matrix (view space -> clip space)
-            defaultVertFrag.setMat4("projectionMatrix", passData.projMatrix);
-            // Light properties
-            defaultVertFrag.setVec3("lightColor", mainLightData.lightColor);
-
-            defaultVertTexFrag.use();
-            // Matrix Projection: View matrix (world space -> view (camera) space)
-            defaultVertTexFrag.setMat4("viewMatrix", passData.viewMatrix);
-            // Matrix Projection: projection matrix (view space -> clip space)
-            defaultVertTexFrag.setMat4("projectionMatrix", passData.projMatrix);
-            // Light properties
-            defaultVertTexFrag.setVec3("lightColor", mainLightData.lightColor);
+        
 
             unsigned int shaderCache = 0;
 
-            scene->IterateObjects([&](glm::mat4 objectToWorld, Material *material, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
+            scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
                 Shader activeShader;
-                if (material->HasFlag(OP_MATERIAL_TEXTURED_DIFFUSE))
+                if (materialInstance->HasFlag(OP_MATERIAL_TEXTURED_DIFFUSE))
                 {
                     activeShader = defaultVertTexFrag;
                 }
@@ -82,14 +85,14 @@ class ForwardRenderer : public BaseRenderer
                 }
 
                 // Standard uniforms (also use UBOs ?)
-                // -----------------
+                // -----------------------------------
 
                 // the uniforms: objectToWorld, albedoColor and emissiveColor have to be set per object in the scene
                 //               the uniform bindings (glVertexAttribPointers) for these can be set and stored in 
                 //               each objects VAO but can also be set dynamically of on the same UBO with bindings
 
                 // albedo color of the object
-                activeShader.setVec3("albedo", material->albedoColor);
+                activeShader.setVec3("albedo", materialInstance->albedoColor);
 
                 // Matrix Projection: model matrix (object space -> world space)
                 activeShader.setMat4("modelMatrix", objectToWorld);
@@ -99,9 +102,9 @@ class ForwardRenderer : public BaseRenderer
                 unsigned int diffuseNr = 1;
                 unsigned int specularNr = 1;
                 unsigned int normalNr = 1;
-                for (unsigned int i = 0; i < material->texturePaths.size(); i++)
+                for (unsigned int i = 0; i < materialInstance->numTextures; i++)
                 {
-                    Texture texture = scene->GetTexture(material->texturePaths[i]);
+                    Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
                     // activate proper texture unit before binding
                     glActiveTexture(GL_TEXTURE0 + i); 
 
@@ -145,10 +148,83 @@ class ForwardRenderer : public BaseRenderer
         }
         void ReloadShaders()
         {
+            defaultVertFrag = Shader(BASE_DIR"/data/shaders/standardVert.vert", BASE_DIR"/data/shaders/albedoFrag.frag");
+            defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/standardVert.vert", BASE_DIR"/data/shaders/texturedFrag.frag");
 
-        }
-        void ChangeView()
-        {
+            //Add this binding process to the shader class
+
+            // ***Adopt a naming convention for all global uniform buffers***
+
+            // Get the uniform blocks defined in the shader code
+            unsigned int matrixBlockDVDF   = glGetUniformBlockIndex(defaultVertFrag.ID, MATRIX_UNIFORM_BLOCK.c_str());
+            unsigned int matrixBlockDVTF  = glGetUniformBlockIndex(defaultVertTexFrag.ID, MATRIX_UNIFORM_BLOCK.c_str());
+            unsigned int lightBlockDVDF = glGetUniformBlockIndex(defaultVertFrag.ID, LIGHTS_UNIFORM_BLOCK.c_str());
+            unsigned int lightBlockDVTF = glGetUniformBlockIndex(defaultVertTexFrag.ID, LIGHTS_UNIFORM_BLOCK.c_str());
+
+            // Set the binding point of the Matrices uniform block in all shaders to 0
+            glUniformBlockBinding(defaultVertFrag.ID,    matrixBlockDVDF, 0);
+            glUniformBlockBinding(defaultVertTexFrag.ID,  matrixBlockDVTF, 0);
+            // Set the binding point of the Lights uniform block in all shaders to 1
+            glUniformBlockBinding(defaultVertFrag.ID,    lightBlockDVDF, 1);
+            glUniformBlockBinding(defaultVertTexFrag.ID,  lightBlockDVTF, 1);
+
+            glGenBuffers(1, &MatricesUBO);
+            glGenBuffers(1, &LightsUBO);
+
+            // Matrix buffer setup
+            // -------------------
+            /* Matrices Uniform buffer structure:
+             * {
+             *    mat4 projectionMatrix;
+             *    mat4 viewMatrix;
+             * }
+             */
+            
+            // Create the buffer and specify its size:
+
+            glBindBuffer(GL_UNIFORM_BUFFER, MatricesUBO);
+            glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
+            glBindBuffer(GL_UNIFORM_BUFFER, 0);
+            
+            // Bind a certain range of the buffer to the uniform block: this allows to use multiple UBOs 
+            // per uniform block
+            glBindBufferRange(GL_UNIFORM_BUFFER, 0, MatricesUBO, 0, 2 * sizeof(glm::mat4));
+
+
+            // Light buffer setup
+            // ------------------
+
+            /* DirLight struct structure:
+             * {
+             *    vec4 lightColor; 
+             *    mat4 lightMatrix;
+             *    vec4 direction; 
+             * }
+             */
+
+            /* Lights Uniform buffer structure:
+             * {
+             *    vec4 ambientLight;
+             *    DirLight dirLights[MAX_DIR_LIGHTS];
+             *    int numDirLights;
+             *     
+             * }
+             */
+            
+            LightBufferSize = 0;
+            {
+                LightBufferSize += sizeof(glm::vec4);
+                LightBufferSize += 4 * sizeof(int);
+                LightBufferSize += MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData);
+            }
+
+            glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
+            glBufferData(GL_UNIFORM_BUFFER, LightBufferSize, NULL, GL_STATIC_DRAW);
+            glBindBuffer(GL_UNIFORM_BUFFER, 0);
+            
+            // Bind a certain range of the buffer to the uniform block: this allows to use multiple UBOs 
+            // per uniform block
+            glBindBufferRange(GL_UNIFORM_BUFFER, 1, LightsUBO, 0, LightBufferSize);
 
         }
 
@@ -157,10 +233,13 @@ class ForwardRenderer : public BaseRenderer
         //MipBuilder mipBuilder;
         //BlurBuilder blurBuilder;
         //DebugRenderer debugRenderer;
-        
-        // Define the shader structs containing shader programs
+        unsigned int MatricesUBO;
+        unsigned int LightsUBO;
+
         Shader defaultVertFrag;
         Shader defaultVertTexFrag;
+
+
 };
 
 #endif
