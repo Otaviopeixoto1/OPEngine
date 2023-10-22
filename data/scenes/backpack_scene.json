@@ -10,18 +10,43 @@
 			{
 				"name" : "sphere",
 				"filename" : "/data/models/sphere.obj"
+			},
+			{
+				"name" : "cube",
+				"filename" : "/data/models/cube.obj"
 			}
 		],
 		"objects" :
 		[
 			{
 				"mesh" : "backpack",
-				"pos" : [0.0, 0.0, 0.0],
+				"pos" : [0.0, 2.8, 0.0],
                 "scale" : [0.5, 0.5, 0.5]
 			},
 			{
+				"mesh" : "cube",
+				"pos" : [0.0, 0.0, -0.5],
+				"albedoColor" : [1.0,1.0,1.0],
+				"scale" : [0.5, 0.5, 0.5]
+			},
+			{
 				"mesh" : "sphere",
-				"pos" : [4.0, 0.0, 0.0],
+				"pos" : [0.0, 0.0, 3.0],
+				"albedoColor" : [1.0,1.0,1.0],
+				"scale" : [0.5, 0.5, 0.5],
+				"Light" :
+                {
+                    "type" : "point",
+                    "direction" : [4.0, 0.0, 0.0],
+					"lightColor" : [1.0,1.0,1.0],
+					"constant" : 1,
+					"linear" : 0.7,
+					"quadratic" : 1.8
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [15.0, 0.0, 0.0],
 				"albedoColor" : [0.0,1.0,0.0],
 				"scale" : [0.5, 0.5, 0.5],
 				"Light" :
@@ -33,7 +58,7 @@
 			},
             {
 				"mesh" : "sphere",
-				"pos" : [-4.0, 0.0, 0.0],
+				"pos" : [-15.0, 0.0, 0.0],
 				"albedoColor" : [0.0,0.0,1.0],
 				"scale" : [0.5, 0.5, 0.5],
 				"Light" :
@@ -45,14 +70,14 @@
 			},
             {
 				"mesh" : "sphere",
-				"pos" : [0.0, 6.0, 6.0],
+				"pos" : [0.0, 0.0, 15.0],
 				"albedoColor" : [1.0,0.2,0.0],
 				"scale" : [0.5, 0.5, 0.5],
                 "Light" :
                 {
                     "type" : "directional",
-                    "direction" : [0.0, 1.0, 1.0],
-					"lightColor" : [1.0,0.2,0.0]
+                    "direction" : [0.0, 0.0, 1.0],
+					"lightColor" : [1.0,0.0,0.0]
                 }
 			}
 		]

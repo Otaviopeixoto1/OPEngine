@@ -125,6 +125,7 @@ class Scene
                     objects.emplace_back(newObject);
                     if(hasLight)
                     {
+                        newObject->materialInstance->AddFlag(OP_MATERIAL_IS_LIGHT);
                         AddLight(currObject["Light"], objects[objects.size() - 1]);
                         hasLight = false;
                     }
@@ -193,10 +194,6 @@ class Scene
 
         }
 
-        //void AddLight(std::unique_ptr<BaseLight> light)
-        //{
-//
-        //}
 
         void AddLight(Json::Value lightProps, std::shared_ptr<Object> boundObject)
         {
@@ -208,15 +205,22 @@ class Scene
                 glm::vec3 col = JsonHelpers::GetJsonVec3f(lightProps["lightColor"]);
                 directionalLights.emplace_back(dir,col,boundObject);
             }
+            if (lightType == "point")
+            {
+                glm::vec3 col = JsonHelpers::GetJsonVec3f(lightProps["lightColor"]);
+                float c = lightProps["constant"].asFloat();
+                float l = lightProps["linear"].asFloat();
+                float q = lightProps["quadratic"].asFloat();
+                pointLights.emplace_back(col,c,l,q,boundObject);
+            }
         }
         
-        GlobalLightData GetLightData(unsigned int maxDirLights)
+        GlobalLightData GetLightData()
         {
             auto gLightData = GlobalLightData();
 
-            //gLightData.directionalLights = std::vector<DirectionalLight::DirectionalLightData>(maxDirLights);
-
-            for (unsigned int i = 0; i < maxDirLights; i++)
+            // DirectionalLights:
+            for (unsigned int i = 0; i < MAX_DIR_LIGHTS; i++)
             {
                 if(i > directionalLights.size() - 1)
                 {
@@ -224,12 +228,21 @@ class Scene
                 }
                 gLightData.directionalLights[i] = directionalLights[i].GetLightData();
             }
+
+            // PointLights:
+            for (unsigned int i = 0; i < MAX_POINT_LIGHTS; i++)
+            {
+                if(i > pointLights.size() - 1)
+                {
+                    break;
+                }
+                gLightData.pointLights[i] = pointLights[i].GetLightData();
+            }
             
-            //for (auto &dirLight : directionalLights)
-            //{
-            //    gLightData.directionalLights.emplace_back(dirLight.GetLightData());
-            //}
+
+
             gLightData.numDirLights = directionalLights.size();
+            gLightData.numPointLights = pointLights.size();
 
             //std::cout << sizeof(gLightData) << " ";
             return gLightData;
@@ -257,6 +270,7 @@ class Scene
         std::vector<std::shared_ptr<Object>> objects;
 
         std::vector<DirectionalLight> directionalLights;
+        std::vector<PointLight> pointLights;
         //std::vector<std::unique_ptr<BaseLight>> sceneLights;
 
         //used for batching draw calls by merging multiple objects together

@@ -24,7 +24,7 @@ enum MaterialFlags
     Flag5 = 1 << 4, // 16
     Flag6 = 1 << 5, // 32
     Flag7 = 1 << 6, // 64
-    Flag8 = 1 << 7  //128
+    OP_MATERIAL_IS_LIGHT = 1 << 7  //128
 };
 
 
@@ -68,6 +68,10 @@ class MaterialInstance
         bool HasFlag(MaterialFlags flag)
         {
             return (flags & (int)flag) == (int)flag;
+        }
+        void AddFlag(MaterialFlags flag)
+        {
+            flags = flags | flag;
         }
         unsigned int TemplateId()
         {

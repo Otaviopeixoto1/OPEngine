@@ -5,6 +5,7 @@
 #include "../scene/Scene.h"
 #include "../scene/Camera.h"
 #include "../scene/lights.h"
+#include "../common/MathUtils.h"
 
 //excpecting glfwWindow to be included in the main.cpp
 class GLFWwindow;
