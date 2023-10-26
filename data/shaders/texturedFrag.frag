@@ -117,7 +117,8 @@ void main()
     }
     for(int i = 0; i < numPointLights; i++)
     {
-        outFrag += albedo * CalcPointLight(pointLights[i], norm, sFragPos);
+        //outFrag += albedo * CalcPointLight(pointLights[i], norm, sFragPos);
+        outFrag +=  albedo * CalcPointLight(pointLights[i], norm, sFragPos);
     }
 
     //FragColor = texture(texture_diffuse1, TexCoords) * dirLights[1].lightColor;

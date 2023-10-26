@@ -107,8 +107,9 @@ class Scene
                 bool hasLight = !(currObject["Light"].empty());
 
                 glm::mat4 rootTransform = glm::mat4(1);
-                rootTransform = glm::scale(rootTransform, scale);
                 rootTransform = glm::translate(rootTransform, worldPosition);
+                rootTransform = glm::scale(rootTransform, scale);
+                //rootTransform = glm::translate(rootTransform, worldPosition);
 
                 
                 
@@ -164,7 +165,8 @@ class Scene
             }
             std::cout << "]\n";
 
-            std::cout << "Lights: " << directionalLights.size() << std::endl;
+            std::cout << "directional lights: " << directionalLights.size() << std::endl;
+            std::cout << "point lights: " << pointLights.size() << std::endl;
         }
 
         //original:

@@ -20,7 +20,7 @@
 		[
 			{
 				"mesh" : "backpack",
-				"pos" : [0.0, 2.8, 0.0],
+				"pos" : [0.0, 1.4, 0.0],
                 "scale" : [0.5, 0.5, 0.5]
 			},
 			{
@@ -31,17 +31,16 @@
 			},
 			{
 				"mesh" : "sphere",
-				"pos" : [0.0, 0.0, 3.0],
+				"pos" : [1.5, 1.5, 1.5],
 				"albedoColor" : [1.0,1.0,1.0],
-				"scale" : [0.5, 0.5, 0.5],
+				"scale" : [0.2, 0.2, 0.2],
 				"Light" :
                 {
                     "type" : "point",
-                    "direction" : [4.0, 0.0, 0.0],
 					"lightColor" : [1.0,1.0,1.0],
 					"constant" : 1,
-					"linear" : 0.7,
-					"quadratic" : 1.8
+					"linear" : 0.14,
+					"quadratic" : 0.07
                 }
 			},
 			{
