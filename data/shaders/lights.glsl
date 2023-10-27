@@ -1,7 +1,5 @@
-#version 330 core
 
-
-// MOVE ALL LIGHT STRUCTS AND CALCULATIONS TO A HEADER FILE
+// Light structs and lighting calculations (using view space data)
 
 #define MAX_DIR_LIGHTS 3
 #define MAX_POINT_LIGHTS 5
@@ -38,30 +36,12 @@ layout(std140) uniform Lights
 
 
 
-out vec4 FragColor;
-
-in vec2 TexCoords;
-in vec3 sNormal;
-in mat4 ViewMatrix;
-in vec3 sFragPos; 
-
-
-uniform sampler2D texture_diffuse1;
-uniform sampler2D texture_specular1;
-
-
-
-
-
-
 vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
 {
-    //vec4 ld = normalize(vec4(light.direction.xyz, 0.0));
-    //vec4 lightDir = normalize(ViewMatrix * ld);
-    vec3 lightDir = normalize(light.direction.xyz);
-    vec4 diffuse = max(dot(normal,lightDir), 0.0) * light.lightColor;
+    vec4 lightDir = vec4(normalize(light.direction.xyz), 0.0);
+    vec4 diffuse = max(dot(normal,lightDir.xyz), 0.0) * light.lightColor;
 
-    vec3 reflectDir = reflect(-lightDir, normal);  
+    vec3 reflectDir = reflect(-lightDir.xyz, normal);  
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
 
     vec4 specular = (0.5 * spec * light.lightColor);  
@@ -74,9 +54,8 @@ vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
 
 vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos)
 {
-    //vec3 lightPos = vec3(ViewMatrix * light.position);
     vec3 lightPos = light.position.xyz;
-    vec3 viewDir  = -normalize(fragPos);
+    vec3 viewDir = -normalize(fragPos);
     vec3 lightDir = normalize(lightPos - fragPos);
 
     // diffuse shading
@@ -98,29 +77,3 @@ vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos)
     specular *= attenuation;
     return (diffuse + specular);
 } 
-
-
-
-void main()
-{    
-    vec4 albedo = texture(texture_diffuse1, TexCoords);
-    vec4 specMap = texture(texture_specular1, TexCoords);
-
-    vec4 outFrag = vec4(ambientLight.xyz * ambientLight.w,1.0) * albedo;
-
-    vec3 norm = normalize(sNormal);
-    for(int i = 0; i < numDirLights; i++)
-    {
-        vec3 viewDir = -normalize(sFragPos);
-        outFrag += albedo * CalcDirLight(dirLights[i], norm, viewDir);
-    }
-    for(int i = 0; i < numPointLights; i++)
-    {
-        //outFrag += albedo * CalcPointLight(pointLights[i], norm, sFragPos);
-        outFrag +=  albedo * CalcPointLight(pointLights[i], norm, sFragPos);
-    }
-
-    //FragColor = texture(texture_diffuse1, TexCoords) * dirLights[1].lightColor;
-    FragColor = outFrag;
-
-}

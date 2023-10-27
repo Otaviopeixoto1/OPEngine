@@ -109,8 +109,6 @@ class Scene
                 glm::mat4 rootTransform = glm::mat4(1);
                 rootTransform = glm::translate(rootTransform, worldPosition);
                 rootTransform = glm::scale(rootTransform, scale);
-                //rootTransform = glm::translate(rootTransform, worldPosition);
-
                 
                 
                 for (auto &blueprint : objectBlueprints[meshName])
@@ -126,7 +124,7 @@ class Scene
                     objects.emplace_back(newObject);
                     if(hasLight)
                     {
-                        newObject->materialInstance->AddFlag(OP_MATERIAL_IS_LIGHT);
+                        newObject->materialInstance->AddFlag(OP_MATERIAL_UNLIT);
                         AddLight(currObject["Light"], objects[objects.size() - 1]);
                         hasLight = false;
                     }
@@ -217,7 +215,7 @@ class Scene
             }
         }
         
-        GlobalLightData GetLightData()
+        GlobalLightData GetLightData(glm::mat4 &viewMatrix)
         {
             auto gLightData = GlobalLightData();
 
@@ -228,7 +226,9 @@ class Scene
                 {
                     break;
                 }
-                gLightData.directionalLights[i] = directionalLights[i].GetLightData();
+                auto lightData = directionalLights[i].GetLightData();
+                lightData.lightDirection = viewMatrix * lightData.lightDirection;
+                gLightData.directionalLights[i] = lightData;
             }
 
             // PointLights:
@@ -238,7 +238,9 @@ class Scene
                 {
                     break;
                 }
-                gLightData.pointLights[i] = pointLights[i].GetLightData();
+                auto lightData = pointLights[i].GetLightData();
+                lightData.position = viewMatrix * lightData.position;
+                gLightData.pointLights[i] = lightData;
             }
             
 
@@ -246,7 +248,6 @@ class Scene
             gLightData.numDirLights = directionalLights.size();
             gLightData.numPointLights = pointLights.size();
 
-            //std::cout << sizeof(gLightData) << " ";
             return gLightData;
 
         }

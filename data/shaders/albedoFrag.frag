@@ -67,12 +67,11 @@ void main()
     vec3 norm = normalize(sNormal);
     for(int i = 0; i < numDirLights; i++)
     {
-        vec4 ld = normalize(vec4(dirLights[i].direction.xyz, 0.0));
-        vec4 lightDir = normalize(ViewMatrix * ld);
-        vec4 diffuse = max(dot(norm,lightDir.xyz), 0.0) * dirLights[i].lightColor;
+        vec3 lightDir = normalize(dirLights[i].direction.xyz);
+        vec4 diffuse = max(dot(norm,lightDir), 0.0) * dirLights[i].lightColor;
 
         vec3 viewDir = -normalize(sFragPos);
-        vec3 reflectDir = reflect(-lightDir.xyz, norm);  
+        vec3 reflectDir = reflect(-lightDir, norm);  
         float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
         vec4 specular = 0.5 * spec * dirLights[i].lightColor;  
 
