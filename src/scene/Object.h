@@ -41,8 +41,6 @@ struct MaterialTemplate
 
     };
 
-    
-
     MaterialTemplate(unsigned int setFlags)
     {
         this->flags = setFlags;
@@ -53,9 +51,15 @@ struct MaterialTemplate
 class MaterialInstance
 {
     public:
+        #pragma pack(push, 1)
+        struct MaterialProperties
+        {
+            glm::vec4 albedoColor;
+            glm::vec4 emissiveColor;
+            glm::vec4 specular;
+        }properties;
+        #pragma pack(pop)
         
-        glm::vec3 albedoColor;
-        glm::vec3 emissiveColor;
         unsigned int numTextures;
         
         MaterialInstance(MaterialTemplate &matTemp) 
@@ -91,7 +95,6 @@ class MaterialInstance
         unsigned int templateId;
         unsigned int instanceId;
         std::vector<std::string> texturePaths;
-        //MaterialTemplate* baseTemplate;
 
 };
 

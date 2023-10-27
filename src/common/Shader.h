@@ -121,46 +121,54 @@ public:
     }
 
 
+    // bind the property block to a binding point using its name
+    void BindUniformBlock(const std::string &block, unsigned int binding)
+    {
+        unsigned int blockId = glGetUniformBlockIndex(ID, block.c_str());
+        glUniformBlockBinding(ID, blockId, binding);
+    } 
+
+
     // use (activate) the shader but avoid too many state changes
-    void use()
+    void UseProgram()
     { 
         glUseProgram(ID);
     }  
 
     
     // utility functions for setting uniforms
-    void setBool(const std::string &name, bool value) const
+    void SetBool(const std::string &name, bool value) const
     {         
         glUniform1i(glGetUniformLocation(ID, name.c_str()), (int)value); 
     }
-    void setInt(const std::string &name, int value) const
+    void SetInt(const std::string &name, int value) const
     { 
         glUniform1i(glGetUniformLocation(ID, name.c_str()), value); 
     }
-    void setFloat(const std::string &name, float value) const
+    void SetFloat(const std::string &name, float value) const
     { 
         glUniform1f(glGetUniformLocation(ID, name.c_str()), value); 
     } 
 
-    void setVec3(const std::string &name, glm::vec3 v) const
+    void SetVec3(const std::string &name, glm::vec3 v) const
     { 
         glUniform3f(glGetUniformLocation(ID, name.c_str()), v.x, v.y, v.z); 
     } 
-    void setVec3(const std::string &name, float v1, float v2, float v3) const
+    void SetVec3(const std::string &name, float v1, float v2, float v3) const
     { 
         glUniform3f(glGetUniformLocation(ID, name.c_str()), v1, v2, v3); 
     } 
 
-    void setVec4(const std::string &name, glm::vec4 v) const
+    void SetVec4(const std::string &name, glm::vec4 v) const
     { 
         glUniform4f(glGetUniformLocation(ID, name.c_str()), v.x, v.y, v.z, v.w); 
     } 
-    void setVec4(const std::string &name, float v1, float v2, float v3, float v4) const
+    void SetVec4(const std::string &name, float v1, float v2, float v3, float v4) const
     { 
         glUniform4f(glGetUniformLocation(ID, name.c_str()), v1, v2, v3, v4); 
     } 
 
-    void setMat4(const std::string &name, glm::mat4 mat4, GLboolean transpose = GL_FALSE)
+    void SetMat4(const std::string &name, glm::mat4 mat4, GLboolean transpose = GL_FALSE)
     {
         glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, transpose, glm::value_ptr(mat4)); 
     }

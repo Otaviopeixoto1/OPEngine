@@ -6,8 +6,10 @@
 class ForwardRenderer : public BaseRenderer
 {
     public:
-        const std::string MATRIX_UNIFORM_BLOCK = "Matrices";
+        const std::string GMATRIX_UNIFORM_BLOCK = "GlobalMatrices";
+        const std::string LMATRIX_UNIFORM_BLOCK = "LocalMatrices";
         const std::string LIGHTS_UNIFORM_BLOCK = "Lights";
+        const std::string MATERIAL_UNIFORM_BLOCK = "MaterialProperties";
         
 
         ForwardRenderer()
@@ -23,7 +25,6 @@ class ForwardRenderer : public BaseRenderer
         //virtual void RenderFrame(const legit::InFlightQueue::FrameInfo &frameInfo, const Camera &camera, const Camera &light, Scene *scene, GLFWwindow *window){}
         void RenderFrame(const Camera &camera, Scene *scene, GLFWwindow *window)
         {
-
             // the PassData can be passed as a uniform buffer that is created for the entire frame.
             /*
             struct PassData
@@ -36,10 +37,6 @@ class ForwardRenderer : public BaseRenderer
             passData.viewMatrix = camera.GetViewMatrix();
             passData.projMatrix = camera.projectionMatrix;*/
 
-            
-
-            
-
 
 
             // Global Uniforms (dont depend on objects/materials)
@@ -47,15 +44,16 @@ class ForwardRenderer : public BaseRenderer
 
             glm::mat4 viewMatrix = camera.GetViewMatrix();
 
-            // the MatricesUBO is linked to the binding at 0 and we can set its data for all shaders like so:
-            glBindBuffer(GL_UNIFORM_BUFFER, MatricesUBO);
+            // Setting GlobalMatricesUBO:
+            glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
             glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(camera.projectionMatrix));
             glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(viewMatrix));
             glBindBuffer(GL_UNIFORM_BUFFER, 0); 
 
+            // Get Light data in view space:
             GlobalLightData lights = scene->GetLightData(viewMatrix);
             
-            // the LightsUBO is linked to the binding at 1:
+            // Setting LightsUBO:
             glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
             glBufferSubData(GL_UNIFORM_BUFFER, 0, LightBufferSize, &lights);
             glBindBuffer(GL_UNIFORM_BUFFER, 0);   
@@ -83,7 +81,7 @@ class ForwardRenderer : public BaseRenderer
                 // shader has to be used before updating the uniforms
                 if (activeShader.ID != shaderCache)
                 {
-                    activeShader.use();
+                    activeShader.UseProgram();
                 }
 
 
@@ -94,12 +92,16 @@ class ForwardRenderer : public BaseRenderer
                 // ---------------------------------
 
                 // albedo color of the object
-                activeShader.setVec3("albedo", materialInstance->albedoColor);
+                //activeShader.SetVec3("albedo", glm::vec3(materialInstance->properties.albedoColor));
+                glBindBuffer(GL_UNIFORM_BUFFER, MaterialUBO);
+                glBufferSubData(GL_UNIFORM_BUFFER, 0, MaterialBufferSize, &(materialInstance->properties));
+                glBindBuffer(GL_UNIFORM_BUFFER, 0);   
+
 
                 // Update model and normal matrices:
-                glBindBuffer(GL_UNIFORM_BUFFER, MatricesUBO);
-                glBufferSubData(GL_UNIFORM_BUFFER, 2*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(objectToWorld));
-                glBufferSubData(GL_UNIFORM_BUFFER, 3*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)));
+                glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
+                glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(objectToWorld));
+                glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)));
                 glBindBuffer(GL_UNIFORM_BUFFER, 0); 
 
 
@@ -107,6 +109,7 @@ class ForwardRenderer : public BaseRenderer
                 unsigned int diffuseNr = 1;
                 unsigned int specularNr = 1;
                 unsigned int normalNr = 1;
+
                 for (unsigned int i = 0; i < materialInstance->numTextures; i++)
                 {
                     Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
@@ -138,7 +141,7 @@ class ForwardRenderer : public BaseRenderer
                             break;
                     }
 
-                    activeShader.setInt((name + number).c_str(), i);
+                    activeShader.SetInt((name + number).c_str(), i);
                     glBindTexture(GL_TEXTURE_2D, texture.id);
                 }
                 
@@ -161,46 +164,71 @@ class ForwardRenderer : public BaseRenderer
 
             // ***Adopt a naming convention for all global uniform buffers***
 
-            // Get the uniform blocks defined in the shader code
-            unsigned int matrixBlockDVDF   = glGetUniformBlockIndex(defaultVertFrag.ID, MATRIX_UNIFORM_BLOCK.c_str());
-            unsigned int matrixBlockDVTF  = glGetUniformBlockIndex(defaultVertTexFrag.ID, MATRIX_UNIFORM_BLOCK.c_str());
-            unsigned int matrixBlockDVUF  = glGetUniformBlockIndex(defaultVertUnlitFrag.ID, MATRIX_UNIFORM_BLOCK.c_str());
+            unsigned int GLOBAL_MATRICES_BINDING = 0;
+            unsigned int LOCAL_MATRICES_BINDING = 1;
+            unsigned int GLOBAL_LIGHTS_BINDING = 2;
+            unsigned int MATERIAL_PROPERTIES_BINDING = 3;
 
-            unsigned int lightBlockDVDF = glGetUniformBlockIndex(defaultVertFrag.ID, LIGHTS_UNIFORM_BLOCK.c_str());
-            unsigned int lightBlockDVTF = glGetUniformBlockIndex(defaultVertTexFrag.ID, LIGHTS_UNIFORM_BLOCK.c_str());
+            // Set the binding point of the Matrices uniform blocks in ALL shaders to 0 and 1:
+            defaultVertFrag.BindUniformBlock(GMATRIX_UNIFORM_BLOCK, GLOBAL_MATRICES_BINDING);
+            defaultVertTexFrag.BindUniformBlock(GMATRIX_UNIFORM_BLOCK, GLOBAL_MATRICES_BINDING);
+            defaultVertUnlitFrag.BindUniformBlock(GMATRIX_UNIFORM_BLOCK, GLOBAL_MATRICES_BINDING);
 
-            // Set the binding point of the Matrices uniform block in all shaders to 0
-            glUniformBlockBinding(defaultVertFrag.ID,    matrixBlockDVDF, 0);
-            glUniformBlockBinding(defaultVertTexFrag.ID,  matrixBlockDVTF, 0);
-            glUniformBlockBinding(defaultVertUnlitFrag.ID,  matrixBlockDVUF, 0);
-            // Set the binding point of the Lights uniform block in all shaders to 1
-            glUniformBlockBinding(defaultVertFrag.ID,    lightBlockDVDF, 1);
-            glUniformBlockBinding(defaultVertTexFrag.ID,  lightBlockDVTF, 1);
+            defaultVertFrag.BindUniformBlock(LMATRIX_UNIFORM_BLOCK, LOCAL_MATRICES_BINDING);
+            defaultVertTexFrag.BindUniformBlock(LMATRIX_UNIFORM_BLOCK, LOCAL_MATRICES_BINDING);
+            defaultVertUnlitFrag.BindUniformBlock(LMATRIX_UNIFORM_BLOCK, LOCAL_MATRICES_BINDING);
 
-            glGenBuffers(1, &MatricesUBO);
-            glGenBuffers(1, &LightsUBO);
 
-            // Matrix buffer setup
+            // Set the binding point of the Lights uniform block in LIT shaders to 2:
+            defaultVertFrag.BindUniformBlock(LIGHTS_UNIFORM_BLOCK, GLOBAL_LIGHTS_BINDING);
+            defaultVertTexFrag.BindUniformBlock(LIGHTS_UNIFORM_BLOCK, GLOBAL_LIGHTS_BINDING);
+
+
+            // Set the binding point of the Material uniform block in ALL shaders to 3:
+            defaultVertFrag.BindUniformBlock(MATERIAL_UNIFORM_BLOCK, MATERIAL_PROPERTIES_BINDING);
+            defaultVertTexFrag.BindUniformBlock(MATERIAL_UNIFORM_BLOCK, MATERIAL_PROPERTIES_BINDING);
+            defaultVertUnlitFrag.BindUniformBlock(MATERIAL_UNIFORM_BLOCK, MATERIAL_PROPERTIES_BINDING);
+
+
+
+            // Binding UBOs to the same binding points
+
+            glGenBuffers(1, &GlobalMatricesUBO);
+            glGenBuffers(1, &LocalMatricesUBO);
+
+            // Matrix buffers setup
             // -------------------
-            /* Matrices Uniform buffer structure:
+            /* GlobalMatrices Uniform buffer structure:
              * {
-             *    mat4 projectionMatrix; //scene
-             *    mat4 viewMatrix;       //scene
-             *    mat4 modelMatrix;      //model
-             *    mat4 normalMatrix;     //model
+             *    mat4 projectionMatrix; 
+             *    mat4 viewMatrix;       
+             * }
+             * 
+             * LocalMatrices Uniform buffer structure:
+             * {
+             *    mat4 modelMatrix;     
+             *    mat4 normalMatrix;    
              * }
              */
             
             // Create the buffer and specify its size:
 
-            glBindBuffer(GL_UNIFORM_BUFFER, MatricesUBO);
-            glBufferData(GL_UNIFORM_BUFFER, 4 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
+            glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
+            glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
+            glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
+            glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
             glBindBuffer(GL_UNIFORM_BUFFER, 0);
             
             // Bind a certain range of the buffer to the uniform block: this allows to use multiple UBOs 
             // per uniform block
-            glBindBufferRange(GL_UNIFORM_BUFFER, 0, MatricesUBO, 0, 4 * sizeof(glm::mat4));
+            glBindBufferRange(GL_UNIFORM_BUFFER, GLOBAL_MATRICES_BINDING, GlobalMatricesUBO, 0, 2 * sizeof(glm::mat4));
+            glBindBufferRange(GL_UNIFORM_BUFFER, LOCAL_MATRICES_BINDING, LocalMatricesUBO, 0, 2 * sizeof(glm::mat4));
 
+
+
+
+
+            glGenBuffers(1, &LightsUBO);
 
             // Light buffer setup
             // ------------------
@@ -239,20 +267,47 @@ class ForwardRenderer : public BaseRenderer
             glBufferData(GL_UNIFORM_BUFFER, LightBufferSize, NULL, GL_DYNAMIC_DRAW);
             glBindBuffer(GL_UNIFORM_BUFFER, 0);
             
-            // Bind a certain range of the buffer to the uniform block: this allows to use multiple UBOs 
-            // per uniform block
-            glBindBufferRange(GL_UNIFORM_BUFFER, 1, LightsUBO, 0, LightBufferSize);
+            glBindBufferRange(GL_UNIFORM_BUFFER, GLOBAL_LIGHTS_BINDING, LightsUBO, 0, LightBufferSize);
+
+
+
+
+            glGenBuffers(1, &MaterialUBO);
+
+            // Material buffer setup
+            // -------------------
+            /* MaterialProperties Uniform buffer structure:
+             * {
+             *    vec4 albedoColor; 
+             *    vec4 emissiveColor; 
+             *    vec4 specular;      
+             * }
+             */
+            MaterialBufferSize = 0;
+            {
+                MaterialBufferSize += 3 * sizeof(glm::vec4);
+            }
+
+            glBindBuffer(GL_UNIFORM_BUFFER, MaterialUBO);
+            glBufferData(GL_UNIFORM_BUFFER, MaterialBufferSize, NULL, GL_DYNAMIC_DRAW);
+            glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+            glBindBufferRange(GL_UNIFORM_BUFFER, MATERIAL_PROPERTIES_BINDING, MaterialUBO, 0, MaterialBufferSize);
+
 
         }
 
     private:
 
         unsigned int LightBufferSize = 0;
+        unsigned int MaterialBufferSize = 0;
         //MipBuilder mipBuilder;
         //BlurBuilder blurBuilder;
         //DebugRenderer debugRenderer;
-        unsigned int MatricesUBO;
+        unsigned int GlobalMatricesUBO;
+        unsigned int LocalMatricesUBO;
         unsigned int LightsUBO;
+        unsigned int MaterialUBO;
 
         Shader defaultVertFrag;
         Shader defaultVertTexFrag;

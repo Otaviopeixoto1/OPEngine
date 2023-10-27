@@ -38,6 +38,54 @@ layout(std140) uniform Lights
 }; 
 
 
+vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 specularStrength, float specularPower)
+{
+    vec3 lightDir = normalize(light.direction.xyz);
+    vec4 diffuse = max(dot(normal,lightDir), 0.0) * light.lightColor;
+
+    vec3 reflectDir = reflect(-lightDir, normal);  
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), specularPower);
+
+    vec4 specular = ( spec * light.lightColor) * vec4(specularStrength, 0.0);  
+
+    // if it has specular map:
+    //vec4 specular = (0.5 * spec * light.lightColor) * specMap;  
+
+    return (diffuse + specular);
+}
+
+vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 specularStrength, float specularPower)
+{
+    vec3 lightPos = light.position.xyz;
+    vec3 viewDir  = -normalize(fragPos);
+    vec3 lightDir = normalize(lightPos - fragPos);
+
+    // diffuse shading
+    float diff = max(dot(normal, lightDir), 0.0);
+
+    // specular shading
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), specularPower);
+
+    // attenuation
+    float distance    = length(lightPos - fragPos);
+    float attenuation = 1.0 / (light.constant + light.linear * distance + 
+  			     light.quadratic * (distance * distance));    
+
+
+    vec4 diffuse  = light.lightColor * diff;
+    vec4 specular = light.lightColor * spec * vec4(specularStrength, 0.0);
+    diffuse  *= attenuation;
+    specular *= attenuation;
+    return (diffuse + specular);
+} 
+
+
+
+
+
+
+
 
 
 uniform vec3 albedo;
@@ -46,41 +94,33 @@ out vec4 FragColor;
 
 in vec2 TexCoords;
 in vec3 sNormal;
-in mat4 ViewMatrix;
 in vec3 sFragPos; 
 
 
-
-
-
-
-
+layout (std140) uniform MaterialProperties
+{
+    vec4 albedoColor;
+    vec4 emissiveColor;
+    vec4 specular;
+};
 
 
 
 void main()
 {    
-    
-
-    vec4 outFrag = vec4(ambientLight.xyz * ambientLight.w,1.0) * vec4(albedo,1.0);
+    vec4 outFrag = vec4(ambientLight.xyz * ambientLight.w,1.0) * albedoColor;
 
     vec3 norm = normalize(sNormal);
     for(int i = 0; i < numDirLights; i++)
     {
-        vec3 lightDir = normalize(dirLights[i].direction.xyz);
-        vec4 diffuse = max(dot(norm,lightDir), 0.0) * dirLights[i].lightColor;
-
         vec3 viewDir = -normalize(sFragPos);
-        vec3 reflectDir = reflect(-lightDir, norm);  
-        float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-        vec4 specular = 0.5 * spec * dirLights[i].lightColor;  
-
-        outFrag += vec4(albedo,1.0) * (diffuse + specular);
+        outFrag += albedoColor * CalcDirLight(dirLights[i], norm, viewDir, specular.xyz, specular.w);
     }
-    //FragColor = texture(texture_diffuse1, TexCoords) * dirLights[1].lightColor;
-    FragColor = outFrag;
+    for(int i = 0; i < numPointLights; i++)
+    {
+        outFrag +=  albedoColor * CalcPointLight(pointLights[i], norm, sFragPos, specular.xyz, specular.w);
+    }
 
-    //FragColor = vec4(albedo,1.0)*lightColor;
-    //FragColor = vec4(albedo,1.0);
+    FragColor = outFrag;
 
 }

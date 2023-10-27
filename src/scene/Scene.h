@@ -103,7 +103,23 @@ class Scene
                 std::string meshName = currObject.get("mesh", "<unspecified_object>").asString();
                 glm::vec3 worldPosition = JsonHelpers::GetJsonVec3f(currObject["pos"]); 
                 glm::vec3 scale = JsonHelpers::GetJsonVec3f(currObject["scale"]); 
-                glm::vec3 albedo = JsonHelpers::GetJsonVec3f(currObject["albedoColor"]);
+
+
+                // Material properties. 
+                // Refactor: the properties being set should depend on material type:
+
+                glm::vec3 albedo = JsonHelpers::GetJsonVec3f(currObject["Material"]["albedoColor"]);
+                glm::vec4 specular = glm::vec4(0.0);
+                if (currObject["Material"]["type"].asString() == "default")
+                {
+                    specular = glm::vec4(
+                        JsonHelpers::GetJsonVec3f(currObject["Material"]["specularStrength"]), 
+                        currObject["Material"]["specularPower"].asFloat()
+                    );
+                }
+                
+
+
                 bool hasLight = !(currObject["Light"].empty());
 
                 glm::mat4 rootTransform = glm::mat4(1);
@@ -115,10 +131,15 @@ class Scene
                 {
                     Object* newObject = new Object();
                     newObject->mesh = blueprint.mesh;
-                    //std::cout << blueprint.materialId <<"\n";
                     newObject->materialInstance = std::make_unique<MaterialInstance>(materialTemplates[blueprint.materialId]);
-                    newObject->materialInstance->albedoColor = albedo;
+                    
+                    //Material properties:
+                    newObject->materialInstance->properties.albedoColor = glm::vec4(albedo,1.0);
+                    newObject->materialInstance->properties.specular = specular;
+                    
+                    
                     newObject->objToWorld = rootTransform * blueprint.localTransform;
+
                     // currently the objects are being copied into the vector, but object bascially only stores
                     // references, so it doesnt impact as much
                     objects.emplace_back(newObject);

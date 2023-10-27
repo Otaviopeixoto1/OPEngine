@@ -36,35 +36,15 @@ layout(std140) uniform Lights
 }; 
 
 
-
-
-out vec4 FragColor;
-
-in vec2 TexCoords;
-in vec3 sNormal;
-in mat4 ViewMatrix;
-in vec3 sFragPos; 
-
-
-uniform sampler2D texture_diffuse1;
-uniform sampler2D texture_specular1;
-
-
-
-
-
-
-vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
+vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 specularStrength, float specularPower)
 {
-    //vec4 ld = normalize(vec4(light.direction.xyz, 0.0));
-    //vec4 lightDir = normalize(ViewMatrix * ld);
     vec3 lightDir = normalize(light.direction.xyz);
     vec4 diffuse = max(dot(normal,lightDir), 0.0) * light.lightColor;
 
     vec3 reflectDir = reflect(-lightDir, normal);  
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), specularPower);
 
-    vec4 specular = (0.5 * spec * light.lightColor);  
+    vec4 specular = ( spec * light.lightColor) * vec4(specularStrength, 0.0);  
 
     // if it has specular map:
     //vec4 specular = (0.5 * spec * light.lightColor) * specMap;  
@@ -72,9 +52,8 @@ vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
     return (diffuse + specular);
 }
 
-vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos)
+vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 specularStrength, float specularPower)
 {
-    //vec3 lightPos = vec3(ViewMatrix * light.position);
     vec3 lightPos = light.position.xyz;
     vec3 viewDir  = -normalize(fragPos);
     vec3 lightDir = normalize(lightPos - fragPos);
@@ -84,7 +63,7 @@ vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos)
 
     // specular shading
     vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), specularPower);
 
     // attenuation
     float distance    = length(lightPos - fragPos);
@@ -93,11 +72,37 @@ vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos)
 
 
     vec4 diffuse  = light.lightColor * diff;
-    vec4 specular = light.lightColor * spec;
+    vec4 specular = light.lightColor * spec * vec4(specularStrength, 0.0);
     diffuse  *= attenuation;
     specular *= attenuation;
     return (diffuse + specular);
 } 
+
+
+
+
+
+
+
+
+
+out vec4 FragColor;
+
+in vec2 TexCoords;
+in vec3 sNormal;
+in vec3 sFragPos; 
+
+
+uniform sampler2D texture_diffuse1;
+uniform sampler2D texture_specular1;
+
+layout (std140) uniform MaterialProperties
+{
+    vec4 albedoColor;
+    vec4 emissiveColor;
+    vec4 specular;
+};
+
 
 
 
@@ -106,21 +111,20 @@ void main()
     vec4 albedo = texture(texture_diffuse1, TexCoords);
     vec4 specMap = texture(texture_specular1, TexCoords);
 
+
     vec4 outFrag = vec4(ambientLight.xyz * ambientLight.w,1.0) * albedo;
 
     vec3 norm = normalize(sNormal);
     for(int i = 0; i < numDirLights; i++)
     {
         vec3 viewDir = -normalize(sFragPos);
-        outFrag += albedo * CalcDirLight(dirLights[i], norm, viewDir);
+        outFrag += albedo * CalcDirLight(dirLights[i], norm, viewDir, specular.xyz, specular.w);
     }
     for(int i = 0; i < numPointLights; i++)
     {
-        //outFrag += albedo * CalcPointLight(pointLights[i], norm, sFragPos);
-        outFrag +=  albedo * CalcPointLight(pointLights[i], norm, sFragPos);
+        outFrag +=  albedo * CalcPointLight(pointLights[i], norm, sFragPos, specular.xyz, specular.w);
     }
 
-    //FragColor = texture(texture_diffuse1, TexCoords) * dirLights[1].lightColor;
     FragColor = outFrag;
 
 }
