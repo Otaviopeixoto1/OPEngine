@@ -39,10 +39,15 @@ vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 specularStreng
     vec3 lightDir = normalize(light.direction.xyz);
     vec4 diffuse = max(dot(normal,lightDir), 0.0) * light.lightColor;
 
-    vec3 reflectDir = reflect(-lightDir, normal);  
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), specularPower);
+    //Phong:
+    //vec3 reflectDir = reflect(-lightDir, normal);  
+    //float spec = pow(max(dot(viewDir, reflectDir), 0.0), specularPower);
 
-    vec4 specular = ( spec * light.lightColor) * vec4(specularStrength, 0.0);  
+    //Blinn-Phong:
+    vec3 halfwayDir = normalize(lightDir + viewDir);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), specularPower);
+
+    vec4 specular = (spec * light.lightColor) * vec4(specularStrength, 0.0);  
 
     // if it has specular map:
     //vec4 specular = (0.5 * spec * light.lightColor) * specMap;  
@@ -60,8 +65,16 @@ vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 specularSt
     float diff = max(dot(normal, lightDir), 0.0);
 
     // specular shading
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), specularPower);
+
+    //Phong:
+    //vec3 reflectDir = reflect(-lightDir, normal);
+    //float spec = pow(max(dot(viewDir, reflectDir), 0.0), specularPower);
+
+    //Blinn-Phong:
+    vec3 halfwayDir = normalize(lightDir + viewDir);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), specularPower);
+
+    
 
     // attenuation
     float distance    = length(lightPos - fragPos);

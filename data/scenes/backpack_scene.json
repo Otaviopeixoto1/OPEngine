@@ -26,8 +26,8 @@
                 {
                     "type" : "default",
 					"albedoColor" : [1.0,1.0,1.0],
-					"specularStrength" : [1.0,1.0,1.0],
-					"specularPower" : 64.0
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 10.0
                 }
 				
 			},
@@ -40,7 +40,7 @@
                     "type" : "default",
 					"albedoColor" : [1.0,1.0,1.0],
 					"specularStrength" : [1.0,1.0,1.0],
-					"specularPower" : 32.0
+					"specularPower" : 10.0
                 }
 			},
 			{
