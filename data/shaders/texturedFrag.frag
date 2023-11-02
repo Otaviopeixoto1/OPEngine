@@ -3,7 +3,6 @@
 #include "lights.glsl"
 
 
-
 out vec4 FragColor;
 
 in vec2 TexCoords;

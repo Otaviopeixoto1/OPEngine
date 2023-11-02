@@ -2,22 +2,18 @@
 #define FORWARD_RENDERER_H
 
 #include "BaseRenderer.h"
-#include <exception>
 
-enum FRBufferBindings{
+enum DRBufferBindings{
     GLOBAL_MATRICES_BINDING = 0,
     LOCAL_MATRICES_BINDING = 1,
     GLOBAL_LIGHTS_BINDING = 2,
     MATERIAL_PROPERTIES_BINDING = 3
 };
 
-class ForwardRenderer : public BaseRenderer
+class DeferredRenderer : public BaseRenderer
 {
     public:
         
-        unsigned int MSAASamples = 4; 
-
-
         // ***Adopted naming conventions for the global uniform blocks***
 
         std::string NamedBufferBindings[4] = {
@@ -27,68 +23,26 @@ class ForwardRenderer : public BaseRenderer
             "MaterialProperties"
         };
 
-        ForwardRenderer(unsigned int vpWidth, unsigned int vpHeight)
+        DeferredRenderer()
         {
-            this->viewportWidth = vpWidth;
-            this->viewportHeight = vpHeight;
+        
         }
 
         void RecreateResources(Scene &scene)
         {
-            glEnable(GL_MULTISAMPLE);
-            //get the shaders used by the scene
-            glGenFramebuffers(1, &multisampledFBO);
-            glBindFramebuffer(GL_FRAMEBUFFER, multisampledFBO);
-
-            //setting the multisampled color attachment
-            glGenTextures(1, &MSAATextureColorBuffer);
-            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, MSAATextureColorBuffer);
-            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MSAASamples, GL_RGB, viewportWidth, viewportHeight, GL_TRUE);
-            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, MSAATextureColorBuffer, 0);
             
-            //setting the depth and stencil attachments (with multisampling)
-            glGenRenderbuffers(1, &MSAADepthStencilRBO);
-            glBindRenderbuffer(GL_RENDERBUFFER, MSAADepthStencilRBO);
-            glRenderbufferStorageMultisample(GL_RENDERBUFFER, MSAASamples, GL_DEPTH24_STENCIL8, viewportWidth, viewportHeight);
-            glBindRenderbuffer(GL_RENDERBUFFER, 0);
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, MSAADepthStencilRBO);
-
-            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            {
-                throw RendererException("ERROR::FRAMEBUFFER:: Framebuffer for MSAA is incomplete");
-            }
-                
-
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }
 
         void ViewportUpdate(int vpWidth, int vpHeight)
         {
-            this->viewportWidth = vpWidth;
-            this->viewportHeight = vpHeight;
-            
-            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, MSAATextureColorBuffer);
-            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MSAASamples, GL_RGB, vpWidth, vpHeight, GL_TRUE);
-            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0); 
 
-
-            glBindRenderbuffer(GL_RENDERBUFFER, MSAADepthStencilRBO);
-            glRenderbufferStorageMultisample(GL_RENDERBUFFER, MSAASamples, GL_DEPTH24_STENCIL8, vpWidth, vpHeight);
-            glBindRenderbuffer(GL_RENDERBUFFER, 0);
         }
-
 
         //Original:
         //virtual void RenderFrame(const legit::InFlightQueue::FrameInfo &frameInfo, const Camera &camera, const Camera &light, Scene *scene, GLFWwindow *window){}
         void RenderFrame(const Camera &camera, Scene *scene, GLFWwindow *window)
         {
-            // Setting the MSAA buffer:
-            glBindFramebuffer(GL_FRAMEBUFFER, multisampledFBO);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-
-            // The PassData can be passed as a uniform buffer that is created for the entire frame.
+            // the PassData can be passed as a uniform buffer that is created for the entire frame.
             /*
             struct PassData
             {
@@ -212,11 +166,6 @@ class ForwardRenderer : public BaseRenderer
             });  
 
 
-            //blit the MSAA buffer to the screen
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, multisampledFBO);
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-            glBlitFramebuffer(0, 0, viewportWidth, viewportHeight, 0, 0, viewportWidth, viewportHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST); 
-
         }
         void ReloadShaders()
         {
@@ -339,18 +288,12 @@ class ForwardRenderer : public BaseRenderer
         }
 
     private:
-        unsigned int viewportWidth;
-        unsigned int viewportHeight;
 
         unsigned int LightBufferSize = 0;
         unsigned int MaterialBufferSize = 0;
         //MipBuilder mipBuilder;
         //BlurBuilder blurBuilder;
         //DebugRenderer debugRenderer;
-        unsigned int multisampledFBO;
-        unsigned int MSAATextureColorBuffer;
-        unsigned int MSAADepthStencilRBO;
-
         unsigned int GlobalMatricesUBO;
         unsigned int LocalMatricesUBO;
         unsigned int LightsUBO;
@@ -360,19 +303,6 @@ class ForwardRenderer : public BaseRenderer
         Shader defaultVertTexFrag;
         Shader defaultVertUnlitFrag;
 
-        class RendererException: public std::exception
-        {
-            std::string message;
-            public:
-                RendererException(const std::string &message)
-                {
-                    this->message = message;
-                }
-                virtual const char* what() const throw()
-                {
-                    return message.c_str();
-                }
-        };
 
 };
 

@@ -3,8 +3,6 @@
 #include "lights.glsl"
 
 
-uniform vec3 albedo;
-
 out vec4 FragColor;
 
 in vec2 TexCoords;

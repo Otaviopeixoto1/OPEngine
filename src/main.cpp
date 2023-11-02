@@ -29,13 +29,14 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f; 
 
 //starting window size
-const unsigned int BASE_WINDOW_WIDTH = 800;
-const unsigned int BASE_WINDOW_HEIGHT = 600;
+unsigned int windowWidth = 800;
+unsigned int windowHeight = 600;
 
 //mouse position
 float lastMouseX, lastMouseY;
 const float mouseSensitivity = 0.1f;
 bool firstMouseMovement = true;
+bool windowResized = false;
 
 //initializing the camera
 Camera mainCamera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -47,7 +48,6 @@ void processInput(GLFWwindow *window);
 
 int main()
 {
-
     // GLFW: initialize and configure
     // ------------------------------
     GLFWwindow* window;
@@ -69,7 +69,7 @@ int main()
 
     // GLFW: rendering window creation
     // -------------------------------
-    window = glfwCreateWindow(BASE_WINDOW_WIDTH, BASE_WINDOW_HEIGHT, PROJECT_NAME " " VERSION, NULL, NULL);
+    window = glfwCreateWindow(windowWidth, windowHeight, PROJECT_NAME " " VERSION, NULL, NULL);
     glfwMakeContextCurrent(window);
 
 
@@ -87,15 +87,14 @@ int main()
     // GLFW: initial viewport configuration and callbacks
     // --------------------------------------------------
 
-
     // the viewport is the rendering window i.e. its the region where openGL will draw and it can be different from
     // GLFW's window size processed coordinates in OpenGL are between -1 and 1 so we effectively map from the range 
     // (-1 to 1) to (0, 640) and (0, 360). 
-    glViewport(0, 0, BASE_WINDOW_WIDTH, BASE_WINDOW_HEIGHT);
+    glViewport(0, 0, windowWidth, windowHeight);
 
     // setting the initial mouse position to the center of the screen
-    lastMouseX = BASE_WINDOW_WIDTH/2;
-    lastMouseY = BASE_WINDOW_HEIGHT/2;
+    lastMouseX = windowWidth/2;
+    lastMouseY = windowHeight/2;
 
     // callback functions can be customized for certain events:
 
@@ -110,8 +109,6 @@ int main()
     glfwSetScrollCallback(window, scroll_callback); 
 
     // We register the callback functions after we've created the window and before the render loop is initiated. 
-
-
 
 
     //we call glClear and clear the color buffer, the entire color buffer will be filled with the color as configured 
@@ -143,12 +140,13 @@ int main()
 
     Scene scene = Scene("/data/scenes/backpack_scene.json");
 
-    ForwardRenderer forwardRenderer = ForwardRenderer();
+    ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight);
     BaseRenderer* renderer = &forwardRenderer;
     
     try
     {
         renderer->ReloadShaders();
+        renderer->RecreateResources(scene);
     }
     catch(const std::exception& e)
     {
@@ -157,6 +155,7 @@ int main()
     }
     
     
+
 
     // Render Loop
     // -----------
@@ -171,7 +170,12 @@ int main()
         // Input Handling
         // --------------
         processInput(window);
-        
+
+        if (windowResized)
+        {
+            renderer->ViewportUpdate(windowWidth, windowHeight);
+            windowResized = false;
+        }
 
         // Rendering
         // ---------
@@ -179,7 +183,7 @@ int main()
         // clear the data on the depth buffer:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // clear the data on the color buffer:
-        glClear(GL_COLOR_BUFFER_BIT);
+        //glClear(GL_COLOR_BUFFER_BIT);
 
         renderer->RenderFrame(mainCamera, &scene, window);
         
@@ -224,6 +228,10 @@ int main()
 // -----------------------------------------------------------------------------------------------------
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
+    windowResized = true;
+    windowWidth = width;
+    windowHeight = height;
+    mainCamera.SetProjectionAspect(width/(float)height);
     glViewport(0, 0, width, height);
 }  
 
