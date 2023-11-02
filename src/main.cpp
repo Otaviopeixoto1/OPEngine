@@ -132,6 +132,11 @@ int main()
     // Enable z (depth) testing:
     glEnable(GL_DEPTH_TEST);  
 
+    // Enable backface culling: 
+    glEnable(GL_CULL_FACE);  
+    glCullFace(GL_BACK); 
+    glFrontFace(GL_CCW);
+
     // hide the cursor and only show again when the window is out of focus or minimized:
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
@@ -140,7 +145,18 @@ int main()
 
     ForwardRenderer forwardRenderer = ForwardRenderer();
     BaseRenderer* renderer = &forwardRenderer;
-    renderer->ReloadShaders();
+    
+    try
+    {
+        renderer->ReloadShaders();
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+        return 1;
+    }
+    
+    
 
     // Render Loop
     // -----------

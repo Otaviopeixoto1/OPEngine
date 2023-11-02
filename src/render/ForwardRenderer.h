@@ -3,14 +3,25 @@
 
 #include "BaseRenderer.h"
 
+enum FRBufferBindings{
+    GLOBAL_MATRICES_BINDING = 0,
+    LOCAL_MATRICES_BINDING = 1,
+    GLOBAL_LIGHTS_BINDING = 2,
+    MATERIAL_PROPERTIES_BINDING = 3
+};
+
 class ForwardRenderer : public BaseRenderer
 {
     public:
-        const std::string GMATRIX_UNIFORM_BLOCK = "GlobalMatrices";
-        const std::string LMATRIX_UNIFORM_BLOCK = "LocalMatrices";
-        const std::string LIGHTS_UNIFORM_BLOCK = "Lights";
-        const std::string MATERIAL_UNIFORM_BLOCK = "MaterialProperties";
         
+        // ***Adopted naming conventions for the global uniform blocks***
+
+        std::string NamedBufferBindings[4] = {
+            "GlobalMatrices",
+            "LocalMatrices",
+            "Lights",
+            "MaterialProperties"
+        };
 
         ForwardRenderer()
         {
@@ -91,8 +102,6 @@ class ForwardRenderer : public BaseRenderer
                 // Setting object-related properties
                 // ---------------------------------
 
-                // albedo color of the object
-                //activeShader.SetVec3("albedo", glm::vec3(materialInstance->properties.albedoColor));
                 glBindBuffer(GL_UNIFORM_BUFFER, MaterialUBO);
                 glBufferSubData(GL_UNIFORM_BUFFER, 0, MaterialBufferSize, &(materialInstance->properties));
                 glBindBuffer(GL_UNIFORM_BUFFER, 0);   
@@ -156,42 +165,23 @@ class ForwardRenderer : public BaseRenderer
         }
         void ReloadShaders()
         {
+            
             defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/albedoFrag.frag");
             defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/texturedFrag.frag");
             defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
             
-            //Add this binding process to the shader class
+            
+            
+            
 
-            // ***Adopt a naming convention for all global uniform buffers***
-
-            unsigned int GLOBAL_MATRICES_BINDING = 0;
-            unsigned int LOCAL_MATRICES_BINDING = 1;
-            unsigned int GLOBAL_LIGHTS_BINDING = 2;
-            unsigned int MATERIAL_PROPERTIES_BINDING = 3;
-
-            // Set the binding point of the Matrices uniform blocks in ALL shaders to 0 and 1:
-            defaultVertFrag.BindUniformBlock(GMATRIX_UNIFORM_BLOCK, GLOBAL_MATRICES_BINDING);
-            defaultVertTexFrag.BindUniformBlock(GMATRIX_UNIFORM_BLOCK, GLOBAL_MATRICES_BINDING);
-            defaultVertUnlitFrag.BindUniformBlock(GMATRIX_UNIFORM_BLOCK, GLOBAL_MATRICES_BINDING);
-
-            defaultVertFrag.BindUniformBlock(LMATRIX_UNIFORM_BLOCK, LOCAL_MATRICES_BINDING);
-            defaultVertTexFrag.BindUniformBlock(LMATRIX_UNIFORM_BLOCK, LOCAL_MATRICES_BINDING);
-            defaultVertUnlitFrag.BindUniformBlock(LMATRIX_UNIFORM_BLOCK, LOCAL_MATRICES_BINDING);
-
-
-            // Set the binding point of the Lights uniform block in LIT shaders to 2:
-            defaultVertFrag.BindUniformBlock(LIGHTS_UNIFORM_BLOCK, GLOBAL_LIGHTS_BINDING);
-            defaultVertTexFrag.BindUniformBlock(LIGHTS_UNIFORM_BLOCK, GLOBAL_LIGHTS_BINDING);
-
-
-            // Set the binding point of the Material uniform block in ALL shaders to 3:
-            defaultVertFrag.BindUniformBlock(MATERIAL_UNIFORM_BLOCK, MATERIAL_PROPERTIES_BINDING);
-            defaultVertTexFrag.BindUniformBlock(MATERIAL_UNIFORM_BLOCK, MATERIAL_PROPERTIES_BINDING);
-            defaultVertUnlitFrag.BindUniformBlock(MATERIAL_UNIFORM_BLOCK, MATERIAL_PROPERTIES_BINDING);
+            defaultVertFrag.BindUniformBlocks(NamedBufferBindings,4);
+            defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,4);
+            defaultVertUnlitFrag.BindUniformBlocks(NamedBufferBindings,4);
 
 
 
-            // Binding UBOs to the same binding points
+            // Binding UBOs to the correct points
+            // ----------------------------------
 
             glGenBuffers(1, &GlobalMatricesUBO);
             glGenBuffers(1, &LocalMatricesUBO);
@@ -232,7 +222,6 @@ class ForwardRenderer : public BaseRenderer
 
             // Light buffer setup
             // ------------------
-
             /* DirLight struct structure:
              * {
              *    vec4 lightColor; 

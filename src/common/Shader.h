@@ -9,12 +9,16 @@
 #include <iostream>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <boost/regex.hpp>
+#include <exception>
+#include "env.h"
 
 //Todo:
 /*
 - add support for spir-v compilation and separate shader objects
-- REDEFINE SHADER CONSTRUCTOR AND SEPARATE THE COMPILE AND LINK INTO FUNCTIONS
  */
+
+#define SHADER_INCLUDE_SUBDIR "/data/shaders/include/"
 
 
 
@@ -27,38 +31,21 @@ public:
     //default constructor (DONT USE)
     Shader(){}
   
-    Shader(const char* vertexPath, const char* fragmentPath)
+    Shader(std::string vertexPath, std::string fragmentPath)
     {
         // retrieve the vertex/fragment source code from filePath
-        std::string vertexCode;
-        std::string fragmentCode;
-        std::ifstream vShaderFile;
-        std::ifstream fShaderFile;
-        // ensure ifstream objects can throw exceptions:
-        vShaderFile.exceptions (std::ifstream::failbit | std::ifstream::badbit);
-        fShaderFile.exceptions (std::ifstream::failbit | std::ifstream::badbit);
-        try 
-        {
-            // open files
-            vShaderFile.open(vertexPath);
-            fShaderFile.open(fragmentPath);
-            std::stringstream vShaderStream, fShaderStream;
-            // read file's buffer contents into streams
-            vShaderStream << vShaderFile.rdbuf();
-            fShaderStream << fShaderFile.rdbuf();		
-            // close file handlers
-            vShaderFile.close();
-            fShaderFile.close();
-            // convert stream into string
-            vertexCode   = vShaderStream.str();
-            fragmentCode = fShaderStream.str();		
-        }
-        catch(std::ifstream::failure e)
-        {
-            std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
-        }
-        const char* vShaderCode = vertexCode.c_str();
-        const char* fShaderCode = fragmentCode.c_str();
+        std::string vertexCode = ReadShaderFile(vertexPath);
+        std::string fragmentCode = ReadShaderFile(fragmentPath);
+        
+        std::string ppVertexCode = PreProcessShader(vertexCode, vertexPath, 0);
+        std::string ppFragmentCode = PreProcessShader(fragmentCode, fragmentPath, 0);
+        //std::cout << ppVertexCode <<std::endl;
+
+        //std::cout << PreProcessShader(vertexCode, vertexPath, 0) << std::endl;
+        const char* vShaderCode = ppVertexCode.c_str();
+        const char* fShaderCode = ppFragmentCode.c_str();
+        //const char* vShaderCode = (vertexCode).c_str();
+        //const char* fShaderCode = (fragmentCode).c_str();
 
         // compile shaders:
         unsigned int vertex, fragment;
@@ -120,6 +107,54 @@ public:
 
     }
 
+    
+
+    std::string PreProcessShader(std::string &source, std::string &filePath, unsigned int level)
+    {
+        if(level > 32)
+            throw ShaderException("the" + filePath + "header inclusion reached depth limit (32), might be caused by cyclic header inclusion");
+
+        static const boost::regex re("^[ ]*#[ ]*include[ ]+[\"<](.*)[\">].*");
+        static const std::string includeDir = BASE_DIR  SHADER_INCLUDE_SUBDIR;
+
+        std::stringstream input;
+        std::stringstream output;
+        input << source;
+
+        size_t line_number = 2;
+        boost::smatch matches;
+        
+        std::string line;
+
+        while(std::getline(input,line))
+        {
+            if (boost::regex_search(line, matches, re))
+            {
+                std::string include_file = matches[1];
+
+                std::string include_string = ReadShaderFile(includeDir + include_file);
+                
+                output << PreProcessShader(include_string, include_file, level + 1) << std::endl;
+            }
+            else
+            {
+                
+                output <<  line << std::endl;
+                output << "#line "<< line_number << " \"" << filePath << "\""  << std::endl;
+            }
+            ++line_number;
+        }
+        return output.str();
+    }
+
+    void BindUniformBlocks(std::string namedBindings[], std::size_t size, unsigned int bindingOffset = 0)
+    {
+        for (size_t i = 0; i < size; i++)
+        {
+            BindUniformBlock(namedBindings[i], i + bindingOffset);
+        }
+        
+    }
 
     // bind the property block to a binding point using its name
     void BindUniformBlock(const std::string &block, unsigned int binding)
@@ -129,7 +164,7 @@ public:
     } 
 
 
-    // use (activate) the shader but avoid too many state changes
+    // use (activate) the shader program
     void UseProgram()
     { 
         glUseProgram(ID);
@@ -172,6 +207,51 @@ public:
     {
         glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, transpose, glm::value_ptr(mat4)); 
     }
+
+
+    class ShaderException: public std::exception
+    {
+        std::string message;
+        public:
+            ShaderException(const std::string &message)
+            {
+                this->message = message;
+            }
+            virtual const char* what() const throw()
+            {
+                return message.c_str();
+            }
+    };
+private:
+    std::string ReadShaderFile(std::string path)
+    {
+        std::string sourceCode = "";
+        std::ifstream file;
+        // ensure ifstream objects can throw exceptions:
+        file.exceptions (std::ifstream::failbit | std::ifstream::badbit);
+        try 
+        {
+            // open files
+            file.open(path);
+            std::stringstream shaderStream;
+            // read file's buffer contents into streams
+            shaderStream << file.rdbuf();
+
+            // close file handlers
+            file.close();
+            // convert stream into string
+            sourceCode = shaderStream.str();	
+        }
+        catch(std::ifstream::failure e)
+        {
+            std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
+            throw ShaderException("Shader construction failed. Cannot read file: " + path);
+        }
+
+        return sourceCode;
+    }
+
+
 };
   
 #endif

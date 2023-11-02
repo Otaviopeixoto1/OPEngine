@@ -76,6 +76,9 @@
         "unordered_set": "cpp",
         "regex": "cpp",
         "variant": "cpp",
-        "__bit_reference": "cpp"
+        "__bit_reference": "cpp",
+        "rope": "cpp",
+        "ios": "cpp",
+        "locale": "cpp"
     }
 }

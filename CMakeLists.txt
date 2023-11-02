@@ -20,9 +20,6 @@ file(GLOB_RECURSE headers ./src/*.h)
 
 
 
-
-
-
 #adding sources separetely
 target_sources(OP_Renderer PRIVATE ${sources} ${headers})
 
@@ -35,7 +32,7 @@ target_include_directories(OP_Renderer PUBLIC "${PROJECT_BINARY_DIR}")
 
 
 
-#add the external libraries "lib/assimp/" "lib/zlib/"
+#add the external libraries
 foreach (sub "lib/glad/" "lib/utils/" "lib/glm/" "lib/jsoncpp/" )
     add_subdirectory("${sub}")
 endforeach ()
@@ -52,7 +49,15 @@ set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
 set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(assimp)
 target_include_directories(OP_Renderer PRIVATE lib/assimp-src/include)
-#target_link_libraries(OP_Renderer PRIVATE assimp)
+
+#building Boost-regex
+FetchContent_Declare(boost_regex
+GIT_REPOSITORY https://github.com/boostorg/regex.git
+GIT_TAG boost-1.83.0)
+set(BOOST_REGEX_STANDALONE ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(boost_regex)
+target_include_directories(OP_Renderer PRIVATE lib/boostregex-src/include)
+
 
 
 
@@ -65,5 +70,6 @@ target_link_libraries(OP_Renderer PRIVATE
     glm
     jsoncpp
     assimp
+    boost_regex
 )
 

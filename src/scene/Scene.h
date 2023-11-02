@@ -368,7 +368,6 @@ class Scene
                 auto blueprint = ObjectBlueprint(); 
                 blueprint.mesh = meshptr;
                 blueprint.materialId = mMesh->mMaterialIndex + materialIdOffset;
-                std::cout << blueprint.materialId << "\n";
                 objectBlueprints[meshName].push_back(blueprint);
 
                 
