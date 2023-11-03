@@ -37,7 +37,8 @@ layout(std140) uniform Lights
 vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 specularStrength, float specularPower)
 {
     vec3 lightDir = normalize(light.direction.xyz);
-    vec4 diffuse = max(dot(normal,lightDir), 0.0) * light.lightColor;
+    float diff = max(dot(normal,lightDir), 0.0);
+    
 
     //Phong:
     //vec3 reflectDir = reflect(-lightDir, normal);  
@@ -47,7 +48,10 @@ vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 specularStreng
     vec3 halfwayDir = normalize(lightDir + viewDir);
     float spec = pow(max(dot(normal, halfwayDir), 0.0), specularPower);
 
-    vec4 specular = (spec * light.lightColor) * vec4(specularStrength, 0.0);  
+
+
+    vec4 diffuse = diff * light.lightColor;
+    vec4 specular = (spec * light.lightColor) * vec4(specularStrength, 0.0) * (1.0 - max(sign(-diff), 0.0));  
 
     // if it has specular map:
     //vec4 specular = (0.5 * spec * light.lightColor) * specMap;  
@@ -72,7 +76,7 @@ vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 specularSt
 
     //Blinn-Phong:
     vec3 halfwayDir = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), specularPower);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), specularPower) * max(sign(diff),0.0f);
 
     
 

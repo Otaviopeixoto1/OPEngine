@@ -120,7 +120,7 @@ class PointLight
 #pragma pack(push, 1)
 struct GlobalLightData
 {
-    glm::vec4 ambientLight = glm::vec4(1.0,1.0,1.0,0.3);
+    glm::vec4 ambientLight = glm::vec4(1.0,1.0,1.0,0.05);
     int numDirLights;
     int numPointLights;
     int pad2;

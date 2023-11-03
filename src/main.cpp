@@ -77,7 +77,7 @@ int main()
     // ---------------------------------------
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        std::cout << "couldn't load openGL" << std::endl;
+        std::cout << "ERROR: couldn't load openGL" << std::endl;
 
         glfwTerminate();
         return -1;

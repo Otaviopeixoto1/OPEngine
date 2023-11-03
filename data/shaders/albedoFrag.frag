@@ -34,6 +34,8 @@ void main()
         outFrag +=  albedoColor * CalcPointLight(pointLights[i], norm, sFragPos, specular.xyz, specular.w);
     }
 
+    //Tonemapping:
+    //outFrag = vec4(vec3(1.0) - exp(-outFrag.xyz * 1.0f),1.0);
     FragColor = outFrag;
 
 }
