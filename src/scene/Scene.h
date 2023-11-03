@@ -239,11 +239,13 @@ class Scene
         GlobalLightData GetLightData(glm::mat4 &viewMatrix)
         {
             auto gLightData = GlobalLightData();
+            gLightData.ambientLight = glm::vec4(1.0,1.0,1.0,0.1f);
+
 
             // DirectionalLights:
-            for (unsigned int i = 0; i < MAX_DIR_LIGHTS; i++)
+            for (std::size_t i = 0; i < MAX_DIR_LIGHTS; i++)
             {
-                if(i > directionalLights.size() - 1)
+                if(i >= directionalLights.size())
                 {
                     break;
                 }
@@ -253,9 +255,9 @@ class Scene
             }
 
             // PointLights:
-            for (unsigned int i = 0; i < MAX_POINT_LIGHTS; i++)
+            for (std::size_t i = 0; i < MAX_POINT_LIGHTS; i++)
             {
-                if(i > pointLights.size() - 1)
+                if(i >= pointLights.size())
                 {
                     break;
                 }
@@ -269,6 +271,7 @@ class Scene
             gLightData.numDirLights = directionalLights.size();
             gLightData.numPointLights = pointLights.size();
 
+            std::cout << "lightnum = " <<gLightData.numDirLights + gLightData.numPointLights << std::endl;
             return gLightData;
 
         }
