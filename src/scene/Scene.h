@@ -271,7 +271,6 @@ class Scene
             gLightData.numDirLights = directionalLights.size();
             gLightData.numPointLights = pointLights.size();
 
-            std::cout << "lightnum = " <<gLightData.numDirLights + gLightData.numPointLights << std::endl;
             return gLightData;
 
         }

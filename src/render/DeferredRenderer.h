@@ -1,59 +1,143 @@
-#ifndef FORWARD_RENDERER_H
-#define FORWARD_RENDERER_H
+#ifndef DEFERRED_RENDERER_H
+#define DEFERRED_RENDERER_H
 
 #include "BaseRenderer.h"
 
-enum DRBufferBindings{
-    GLOBAL_MATRICES_BINDING = 0,
-    LOCAL_MATRICES_BINDING = 1,
-    GLOBAL_LIGHTS_BINDING = 2,
-    MATERIAL_PROPERTIES_BINDING = 3
-};
+
 
 class DeferredRenderer : public BaseRenderer
 {
     public:
+
         
         // ***Adopted naming conventions for the global uniform blocks***
 
-        std::string NamedBufferBindings[4] = {
+        std::string NamedBufferBindings[4] = { // The indexes have to match values in DRBufferBindings enum
             "GlobalMatrices",
             "LocalMatrices",
-            "Lights",
-            "MaterialProperties"
+            "MaterialProperties",
+            "Lights"
         };
 
-        DeferredRenderer()
+        enum DRBufferBindings
         {
-        
+            GLOBAL_MATRICES_BINDING = 0,
+            LOCAL_MATRICES_BINDING = 1,
+            MATERIAL_PROPERTIES_BINDING = 2,
+            GLOBAL_LIGHTS_BINDING = 3
+        };
+
+        DeferredRenderer(unsigned int vpWidth, unsigned int vpHeight)
+        {
+            this->viewportWidth = vpWidth;
+            this->viewportHeight = vpHeight;
         }
 
         void RecreateResources(Scene &scene)
         {
+            // Quad object for rendering the final scene:
+            glGenVertexArrays(1, &screenQuadVAO);
+            glGenBuffers(1, &screenQuadVBO);
+            glBindVertexArray(screenQuadVAO);
+            glBindBuffer(GL_ARRAY_BUFFER, screenQuadVBO);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+
+            // gBuffer:
+            glGenFramebuffers(1, &gBufferFBO);
+            glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
+
+            // 1) HDR color + specular buffer attachment 
+            glGenTextures(1, &gColorBuffer);
+            glBindTexture(GL_TEXTURE_2D, gColorBuffer);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glBindTexture(GL_TEXTURE_2D, 0); 
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gColorBuffer, 0);
             
+            // 2) View space normal buffer attachment 
+            glGenTextures(1, &gNormalBuffer);
+            glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glBindTexture(GL_TEXTURE_2D, 0); 
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormalBuffer, 0);
+
+            // 3) View space position buffer attachment 
+            glGenTextures(1, &gPositionBuffer);
+            glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glBindTexture(GL_TEXTURE_2D, 0); 
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gPositionBuffer, 0);
+
+
+            //setting the depth and stencil attachments
+            glGenRenderbuffers(1, &depthStencilBuffer); 
+            glBindRenderbuffer(GL_RENDERBUFFER, depthStencilBuffer);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, viewportWidth, viewportHeight);
+            glBindRenderbuffer(GL_RENDERBUFFER, 0);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencilBuffer);
+
+
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            {
+                throw RendererException("ERROR::FRAMEBUFFER:: Framebuffer for MSAA is incomplete");
+            }
+                
+            unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+            glDrawBuffers(3, attachments);
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }
 
         void ViewportUpdate(int vpWidth, int vpHeight)
         {
+            this->viewportWidth = vpWidth;
+            this->viewportHeight = vpHeight;
 
+            glBindTexture(GL_TEXTURE_2D, gColorBuffer);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, vpWidth, vpHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glBindTexture(GL_TEXTURE_2D, 0); 
+
+
+            glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, vpWidth, vpHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glBindTexture(GL_TEXTURE_2D, 0); 
+
+;
+            glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, vpWidth, vpHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glBindTexture(GL_TEXTURE_2D, 0); 
+
+
+            glBindRenderbuffer(GL_RENDERBUFFER, depthStencilBuffer);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, vpWidth, vpHeight);
+            glBindRenderbuffer(GL_RENDERBUFFER, 0);
         }
 
-        //Original:
-        //virtual void RenderFrame(const legit::InFlightQueue::FrameInfo &frameInfo, const Camera &camera, const Camera &light, Scene *scene, GLFWwindow *window){}
+
         void RenderFrame(const Camera &camera, Scene *scene, GLFWwindow *window)
         {
-            // the PassData can be passed as a uniform buffer that is created for the entire frame.
-            /*
-            struct PassData
-            {
-                //legit::ShaderMemoryPool *memoryPool;
-                glm::mat4 viewMatrix;
-                glm::mat4 projMatrix;
-                Scene *scene;
-            }passData;
-            passData.viewMatrix = camera.GetViewMatrix();
-            passData.projMatrix = camera.projectionMatrix;*/
-
+            // Rendering to the gBuffer:
+            // -------------------------
+            glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glEnable(GL_DEPTH_TEST);
 
 
             // Global Uniforms (dont depend on objects/materials)
@@ -67,15 +151,6 @@ class DeferredRenderer : public BaseRenderer
             glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(projectionMatrix));
             glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(viewMatrix));
             glBindBuffer(GL_UNIFORM_BUFFER, 0); 
-
-            // Get Light data in view space:
-            GlobalLightData lights = scene->GetLightData(viewMatrix);
-            
-            // Setting LightsUBO:
-            glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
-            glBufferSubData(GL_UNIFORM_BUFFER, 0, LightBufferSize, &lights);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);   
-
         
 
             unsigned int shaderCache = 0;
@@ -87,10 +162,10 @@ class DeferredRenderer : public BaseRenderer
                 {
                     activeShader = defaultVertTexFrag;
                 }
-                else if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
-                {
-                    activeShader = defaultVertUnlitFrag;
-                }
+                //else if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
+                //{
+                //    activeShader = defaultVertUnlitFrag;
+                //}
                 else
                 {
                     activeShader = defaultVertFrag;
@@ -166,23 +241,77 @@ class DeferredRenderer : public BaseRenderer
             });  
 
 
+
+            // Lighting pass: use g-buffer to calculate the scene's lighting
+            // -------------------------------------------------------------
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glDisable(GL_DEPTH_TEST);
+
+            // Get Light data in view space:
+            GlobalLightData lights = scene->GetLightData(viewMatrix);
+            
+            // Setting LightsUBO:
+            glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
+            glBufferSubData(GL_UNIFORM_BUFFER, 0, LightBufferSize, &lights);
+            glBindBuffer(GL_UNIFORM_BUFFER, 0);   
+
+            lightingPass.UseProgram();
+            glBindVertexArray(screenQuadVAO);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, gColorBuffer); 
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
+
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+
+            // For additonal draws: Copy the gBuffer depth to default framebuffer's depth buffer
+            // ---------------------------------------------------------------------------------
+            //glEnable(GL_DEPTH_TEST);
+            //glBindFramebuffer(GL_READ_FRAMEBUFFER, gBufferFBO);
+            //glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); 
+
+            //glBlitFramebuffer(0, 0, viewportWidth, viewportHeight, 0, 0, viewportWidth, viewportHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+            //glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
         }
+
+
+
+
         void ReloadShaders()
         {
+            defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/gBuffer/gBufferAlbedo.frag");
+            defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/gBuffer/gBufferTextured.frag");
+            //defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
             
-            defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/albedoFrag.frag");
-            defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/texturedFrag.frag");
-            defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
-            
-            
-            defaultVertFrag.BindUniformBlocks(NamedBufferBindings,4);
-            defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,4);
-            defaultVertUnlitFrag.BindUniformBlocks(NamedBufferBindings,4);
+            defaultVertFrag.BindUniformBlocks(NamedBufferBindings,3);
+            defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,3);
+            //defaultVertUnlitFrag.BindUniformBlocks(NamedBufferBindings,4);
 
 
 
-            // Binding UBOs to the correct points
-            // ----------------------------------
+            lightingPass = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/gBuffer/deferredLighting.frag");
+            
+            lightingPass.UseProgram();
+
+            // binding points of the gbuffer textures:
+            lightingPass.SetInt("gAlbedoSpec", 0); 
+            lightingPass.SetInt("gNormal", 1);
+            lightingPass.SetInt("gPosition", 2);
+
+            lightingPass.BindUniformBlock(NamedBufferBindings[GLOBAL_LIGHTS_BINDING], GLOBAL_LIGHTS_BINDING);
+            
+            
+
+
+
+            // Setting UBOs to the correct binding points
+            // ------------------------------------------
 
             glGenBuffers(1, &GlobalMatricesUBO);
             glGenBuffers(1, &LocalMatricesUBO);
@@ -288,6 +417,13 @@ class DeferredRenderer : public BaseRenderer
         }
 
     private:
+        unsigned int viewportWidth;
+        unsigned int viewportHeight;
+
+        unsigned int gBufferFBO;
+        unsigned int gColorBuffer, gNormalBuffer, gPositionBuffer;
+        unsigned int depthStencilBuffer;
+
 
         unsigned int LightBufferSize = 0;
         unsigned int MaterialBufferSize = 0;
@@ -301,8 +437,41 @@ class DeferredRenderer : public BaseRenderer
 
         Shader defaultVertFrag;
         Shader defaultVertTexFrag;
-        Shader defaultVertUnlitFrag;
+        //Shader defaultVertUnlitFrag;
 
+        Shader lightingPass;
+
+
+        unsigned int screenQuadVAO, screenQuadVBO;
+
+        float quadVertices[24] = 
+        {   // vertex attributes for a quad that fills the entire screen 
+            // positions   // texCoords
+            -1.0f,  1.0f,  0.0f, 1.0f,
+            -1.0f, -1.0f,  0.0f, 0.0f,
+            1.0f, -1.0f,  1.0f, 0.0f,
+
+            -1.0f,  1.0f,  0.0f, 1.0f,
+            1.0f, -1.0f,  1.0f, 0.0f,
+            1.0f,  1.0f,  1.0f, 1.0f
+        };
+
+
+
+
+        class RendererException: public std::exception
+        {
+            std::string message;
+            public:
+                RendererException(const std::string &message)
+                {
+                    this->message = message;
+                }
+                virtual const char* what() const throw()
+                {
+                    return message.c_str();
+                }
+        };
 
 };
 

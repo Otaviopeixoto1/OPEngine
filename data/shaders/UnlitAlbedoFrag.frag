@@ -4,7 +4,6 @@
 out vec4 FragColor;
 
 in vec2 TexCoords;
-in vec3 Normal;
 
 layout (std140) uniform MaterialProperties
 {

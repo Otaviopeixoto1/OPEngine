@@ -6,8 +6,8 @@
 out vec4 FragColor;
 
 in vec2 TexCoords;
-in vec3 sNormal;
-in vec3 sFragPos; 
+in vec3 ViewNormal;
+in vec3 ViewFragPos; 
 
 
 uniform sampler2D texture_diffuse1;
@@ -31,15 +31,15 @@ void main()
 
     vec4 outFrag = vec4(ambientLight.xyz * ambientLight.w,1.0) * albedo;
 
-    vec3 norm = normalize(sNormal);
+    vec3 norm = normalize(ViewNormal);
     for(int i = 0; i < numDirLights; i++)
     {
-        vec3 viewDir = -normalize(sFragPos);
+        vec3 viewDir = -normalize(ViewFragPos);
         outFrag += albedo * CalcDirLight(dirLights[i], norm, viewDir, specular.xyz, specular.w);
     }
     for(int i = 0; i < numPointLights; i++)
     {
-        outFrag +=  albedo * CalcPointLight(pointLights[i], norm, sFragPos, specular.xyz, specular.w);
+        outFrag +=  albedo * CalcPointLight(pointLights[i], norm, ViewFragPos, specular.xyz, specular.w);
     }
 
     FragColor = outFrag;

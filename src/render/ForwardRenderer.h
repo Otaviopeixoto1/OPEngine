@@ -4,17 +4,13 @@
 #include "BaseRenderer.h"
 #include <exception>
 
-enum FRBufferBindings{
-    GLOBAL_MATRICES_BINDING = 0,
-    LOCAL_MATRICES_BINDING = 1,
-    GLOBAL_LIGHTS_BINDING = 2,
-    MATERIAL_PROPERTIES_BINDING = 3
-};
 
 class ForwardRenderer : public BaseRenderer
 {
     public:
         
+        
+
         unsigned int MSAASamples = 4; 
         float tonemapExposure = 1.0f;
 
@@ -26,6 +22,14 @@ class ForwardRenderer : public BaseRenderer
             "LocalMatrices",
             "Lights",
             "MaterialProperties"
+        };
+        
+        enum FRBufferBindings
+        {
+            GLOBAL_MATRICES_BINDING = 0,
+            LOCAL_MATRICES_BINDING = 1,
+            GLOBAL_LIGHTS_BINDING = 2,
+            MATERIAL_PROPERTIES_BINDING = 3
         };
 
         ForwardRenderer(unsigned int vpWidth, unsigned int vpHeight)
@@ -55,7 +59,7 @@ class ForwardRenderer : public BaseRenderer
             //creating color attachment of screen texture
             glGenTextures(1, &screenTexture);
             glBindTexture(GL_TEXTURE_2D, screenTexture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, viewportWidth, viewportHeight, 0, GL_RGB, GL_FLOAT, NULL);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0); 
@@ -77,10 +81,10 @@ class ForwardRenderer : public BaseRenderer
             glGenFramebuffers(1, &multisampledFBO);
             glBindFramebuffer(GL_FRAMEBUFFER, multisampledFBO);
 
-            //setting the multisampled color attachment GL_RGB16F
+            //setting the multisampled color attachment GL_RGBA16F
             glGenTextures(1, &MSAATextureColorBuffer);
             glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, MSAATextureColorBuffer);
-            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MSAASamples, GL_RGB16F, viewportWidth, viewportHeight, GL_TRUE);
+            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MSAASamples, GL_RGBA16F, viewportWidth, viewportHeight, GL_TRUE);
             glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0); 
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, MSAATextureColorBuffer, 0);
             
@@ -106,13 +110,13 @@ class ForwardRenderer : public BaseRenderer
             this->viewportHeight = vpHeight;
 
             glBindTexture(GL_TEXTURE_2D, screenTexture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, vpWidth, vpHeight, 0, GL_RGB, GL_FLOAT, NULL);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, vpWidth, vpHeight, 0, GL_RGBA, GL_FLOAT, NULL);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0); 
             
             glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, MSAATextureColorBuffer);
-            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MSAASamples, GL_RGB16F, vpWidth, vpHeight, GL_TRUE);
+            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MSAASamples, GL_RGBA16F, vpWidth, vpHeight, GL_TRUE);
             glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0); 
 
 
@@ -122,14 +126,14 @@ class ForwardRenderer : public BaseRenderer
         }
 
 
-        //Original:
-        //virtual void RenderFrame(const legit::InFlightQueue::FrameInfo &frameInfo, const Camera &camera, const Camera &light, Scene *scene, GLFWwindow *window){}
         void RenderFrame(const Camera &camera, Scene *scene, GLFWwindow *window)
         {
             // Setting the MSAA buffer:
             glBindFramebuffer(GL_FRAMEBUFFER, multisampledFBO);
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glEnable(GL_DEPTH_TEST);
+            
 
             // The PassData can be passed as a uniform buffer that is created for the entire frame.
             /*
@@ -270,7 +274,6 @@ class ForwardRenderer : public BaseRenderer
 
             //render quad for sampling the screen texture
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT);
             glDisable(GL_DEPTH_TEST);
 

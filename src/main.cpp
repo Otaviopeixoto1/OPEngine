@@ -113,7 +113,7 @@ int main()
 
     //we call glClear and clear the color buffer, the entire color buffer will be filled with the color as configured 
     //by glClearColor:
-    glClearColor(0.25f, 0.5f,0.75f,1.0f);
+    //glClearColor(0.25f, 0.5f,0.75f,1.0f);
 
 
 
@@ -141,7 +141,8 @@ int main()
     Scene scene = Scene("/data/scenes/backpack_scene.json");
 
     ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight);
-    BaseRenderer* renderer = &forwardRenderer;
+    DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight);
+    BaseRenderer* renderer = &deferredRenderer;
     
     try
     {

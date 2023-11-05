@@ -6,8 +6,8 @@
 out vec4 FragColor;
 
 in vec2 TexCoords;
-in vec3 sNormal;
-in vec3 sFragPos; 
+in vec3 ViewNormal;
+in vec3 ViewFragPos; 
 
 
 layout (std140) uniform MaterialProperties
@@ -23,15 +23,15 @@ void main()
 {    
     vec4 outFrag = vec4(ambientLight.xyz * ambientLight.w,1.0) * albedoColor;
 
-    vec3 norm = normalize(sNormal);
+    vec3 norm = normalize(ViewNormal);
     for(int i = 0; i < numDirLights; i++)
     {
-        vec3 viewDir = -normalize(sFragPos);
+        vec3 viewDir = -normalize(ViewFragPos);
         outFrag += albedoColor * CalcDirLight(dirLights[i], norm, viewDir, specular.xyz, specular.w);
     }
     for(int i = 0; i < numPointLights; i++)
     {
-        outFrag +=  albedoColor * CalcPointLight(pointLights[i], norm, sFragPos, specular.xyz, specular.w);
+        outFrag +=  albedoColor * CalcPointLight(pointLights[i], norm, ViewFragPos, specular.xyz, specular.w);
     }
 
     //Tonemapping:

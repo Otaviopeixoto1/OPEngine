@@ -6,8 +6,8 @@ layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoords;
 
 out vec2 TexCoords;
-out vec3 sNormal;
-out vec3 sFragPos; 
+out vec3 ViewNormal;
+out vec3 ViewFragPos; 
 
 layout (std140) uniform GlobalMatrices
 {
@@ -28,6 +28,6 @@ void main()
 {
     TexCoords = aTexCoords;    
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(aPos, 1.0);
-    sNormal = vec3(normalMatrix * vec4(aNormal,0.0));  
-    sFragPos = vec3(viewMatrix * modelMatrix * vec4(aPos, 1.0));
+    ViewNormal = vec3(normalMatrix * vec4(aNormal,0.0));  
+    ViewFragPos = vec3(viewMatrix * modelMatrix * vec4(aPos, 1.0));
 }
