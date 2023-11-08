@@ -1,5 +1,7 @@
 #version 330 core
 
+#include "lights.glsl"
+
 out vec4 FragColor;
   
 in vec2 TexCoords;
@@ -17,5 +19,28 @@ void main()
     float Specular = texture(gAlbedoSpec, TexCoords).a;
     
 
-    FragColor = vec4(ViewNormal,1.0);
+
+    vec4 outFrag = vec4(Albedo,1.0) * vec4(ambientLight.xyz * ambientLight.w, 1.0);
+
+    vec3 norm = normalize(ViewNormal);
+    for(int i = 0; i < numDirLights; i++)
+    {
+        vec3 viewDir = -normalize(ViewFragPos);
+        outFrag += vec4(Albedo,1.0) * CalcDirLight(dirLights[i], norm, viewDir, vec3(1,1,1), Specular);
+    }
+    for(int i = 0; i < numPointLights; i++)
+    {
+        outFrag += vec4(Albedo,1.0) * CalcPointLight(pointLights[i], norm, ViewFragPos, vec3(1,1,1), Specular);
+    }
+    
+     
+    // exposure tonemapping
+    float exposure = 0.5f;
+    float gamma = 2.2f;
+    vec3 mapped = vec3(1.0) - exp(-outFrag.xyz * exposure);
+    
+    // gamma correction 
+    mapped = pow(mapped, vec3(1.0 / gamma));
+
+    FragColor = vec4(mapped, 1.0f);
 }  

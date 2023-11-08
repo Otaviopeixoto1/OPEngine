@@ -8,8 +8,6 @@
 class DeferredRenderer : public BaseRenderer
 {
     public:
-
-        
         // ***Adopted naming conventions for the global uniform blocks***
 
         std::string NamedBufferBindings[4] = { // The indexes have to match values in DRBufferBindings enum
@@ -63,7 +61,7 @@ class DeferredRenderer : public BaseRenderer
             // 2) View space normal buffer attachment 
             glGenTextures(1, &gNormalBuffer);
             glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindTexture(GL_TEXTURE_2D, 0); 
@@ -142,7 +140,6 @@ class DeferredRenderer : public BaseRenderer
 
             // Global Uniforms (dont depend on objects/materials)
             // --------------------------------------------------
-
             glm::mat4 viewMatrix = camera.GetViewMatrix();
             glm::mat4 projectionMatrix = camera.GetProjectionMatrix();
 
@@ -153,7 +150,8 @@ class DeferredRenderer : public BaseRenderer
             glBindBuffer(GL_UNIFORM_BUFFER, 0); 
         
 
-            unsigned int shaderCache = 0;
+            int shaderCache = -1;
+
 
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
@@ -162,10 +160,11 @@ class DeferredRenderer : public BaseRenderer
                 {
                     activeShader = defaultVertTexFrag;
                 }
-                //else if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
-                //{
-                //    activeShader = defaultVertUnlitFrag;
-                //}
+                else if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
+                {
+                    //activeShader = defaultVertUnlitFrag;
+                    return;
+                }
                 else
                 {
                     activeShader = defaultVertFrag;
@@ -175,6 +174,7 @@ class DeferredRenderer : public BaseRenderer
                 if (activeShader.ID != shaderCache)
                 {
                     activeShader.UseProgram();
+                    shaderCache = activeShader.ID;
                 }
 
 
@@ -201,6 +201,7 @@ class DeferredRenderer : public BaseRenderer
                 for (unsigned int i = 0; i < materialInstance->numTextures; i++)
                 {
                     Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
+
                     // activate proper texture unit before binding
                     glActiveTexture(GL_TEXTURE0 + i); 
 
@@ -270,12 +271,47 @@ class DeferredRenderer : public BaseRenderer
 
             // For additonal draws: Copy the gBuffer depth to default framebuffer's depth buffer
             // ---------------------------------------------------------------------------------
-            //glEnable(GL_DEPTH_TEST);
-            //glBindFramebuffer(GL_READ_FRAMEBUFFER, gBufferFBO);
-            //glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); 
+            glEnable(GL_DEPTH_TEST);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, gBufferFBO);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); 
 
-            //glBlitFramebuffer(0, 0, viewportWidth, viewportHeight, 0, 0, viewportWidth, viewportHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-            //glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glBlitFramebuffer(0, 0, viewportWidth, viewportHeight, 0, 0, viewportWidth, viewportHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+            // Unlit and Transparent Pass: render objects with different lighting models using same depth buffer:
+            // --------------------------------------------------------------------------------------------------
+            
+            scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
+            {    
+                Shader activeShader;
+                if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
+                {
+                    activeShader = defaultVertUnlitFrag;   
+                }
+                else
+                {
+                    return;
+                }
+
+                if (activeShader.ID != shaderCache)
+                {
+                    activeShader.UseProgram();
+                    shaderCache = activeShader.ID; 
+                }
+
+                glBindBuffer(GL_UNIFORM_BUFFER, MaterialUBO);
+                glBufferSubData(GL_UNIFORM_BUFFER, 0, MaterialBufferSize, &(materialInstance->properties));
+                glBindBuffer(GL_UNIFORM_BUFFER, 0);   
+
+                glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
+                glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(objectToWorld));
+                glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)));
+                glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+
+                mesh->BindBuffers();
+                glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
+            }); 
 
 
         }
@@ -287,11 +323,11 @@ class DeferredRenderer : public BaseRenderer
         {
             defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/gBuffer/gBufferAlbedo.frag");
             defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/gBuffer/gBufferTextured.frag");
-            //defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
+            defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
             
             defaultVertFrag.BindUniformBlocks(NamedBufferBindings,3);
             defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,3);
-            //defaultVertUnlitFrag.BindUniformBlocks(NamedBufferBindings,4);
+            defaultVertUnlitFrag.BindUniformBlocks(NamedBufferBindings,4);
 
 
 
@@ -437,7 +473,7 @@ class DeferredRenderer : public BaseRenderer
 
         Shader defaultVertFrag;
         Shader defaultVertTexFrag;
-        //Shader defaultVertUnlitFrag;
+        Shader defaultVertUnlitFrag;
 
         Shader lightingPass;
 

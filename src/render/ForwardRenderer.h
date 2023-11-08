@@ -171,7 +171,7 @@ class ForwardRenderer : public BaseRenderer
 
         
 
-            unsigned int shaderCache = 0;
+            int shaderCache = -1;
 
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
@@ -193,6 +193,7 @@ class ForwardRenderer : public BaseRenderer
                 if (activeShader.ID != shaderCache)
                 {
                     activeShader.UseProgram();
+                    shaderCache = activeShader.ID;
                 }
 
 
