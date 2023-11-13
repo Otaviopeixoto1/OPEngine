@@ -1,6 +1,11 @@
 
+#ifndef MAX_DIR_LIGHTS
 #define MAX_DIR_LIGHTS 3
+#endif
+
+#ifndef MAX_POINT_LIGHTS
 #define MAX_POINT_LIGHTS 5
+#endif
 
 struct DirLight 
 {
@@ -30,7 +35,10 @@ layout(std140) uniform Lights
     int pad2;
     int pad3;
     DirLight dirLights[MAX_DIR_LIGHTS]; 
-    PointLight pointLights[MAX_POINT_LIGHTS];
+
+    #ifndef LIGHT_VOLUMES
+        PointLight pointLights[MAX_POINT_LIGHTS];
+    #endif
 }; 
 
 
@@ -58,6 +66,7 @@ vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 specularStreng
 
     return (diffuse + specular);
 }
+
 
 vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 specularStrength, float specularPower)
 {

@@ -9,8 +9,11 @@ class DeferredRenderer : public BaseRenderer
 {
     public:
 
-        std::string PreprocessorDefines[1] = { 
+        std::string PreprocessorDefines[3] = { 
             "LIGHT_VOLUMES",
+            "MAX_DIR_LIGHTS 5",
+            "MAX_POINT_LIGHTS 3"
+
         };
 
         // ***Adopted naming conventions for the global uniform blocks***
@@ -348,15 +351,21 @@ class DeferredRenderer : public BaseRenderer
             defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/gBuffer/gBufferAlbedo.frag");
             defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/gBuffer/gBufferTextured.frag");
             defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
-            
+
+            defaultVertFrag.Build();
+            defaultVertTexFrag.Build();
+            defaultVertUnlitFrag.Build();
+
             defaultVertFrag.BindUniformBlocks(NamedBufferBindings,3);
             defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,3);
             defaultVertUnlitFrag.BindUniformBlocks(NamedBufferBindings,3);
 
 
 
-            directionalLightingPass = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/gBuffer/deferredLighting.frag");
-            
+            directionalLightingPass = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/gBuffer/fsDeferredLighting.frag");
+            directionalLightingPass.AddPreProcessorDefines(PreprocessorDefines,3);
+            directionalLightingPass.Build();
+
             directionalLightingPass.UseProgram();
 
             // binding points of the gbuffer textures:

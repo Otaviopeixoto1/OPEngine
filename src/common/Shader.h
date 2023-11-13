@@ -4,6 +4,7 @@
 
 #include <glad/glad.h> 
 #include <string>
+#include <vector>
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -28,24 +29,28 @@ public:
     // shader program object ID
     unsigned int ID;
 
-    //default constructor (DONT USE)
+
     Shader(){}
-  
+    
     Shader(std::string vertexPath, std::string fragmentPath)
     {
-        // retrieve the vertex/fragment source code from filePath
-        std::string vertexCode = ReadShaderFile(vertexPath);
-        std::string fragmentCode = ReadShaderFile(fragmentPath);
-        
-        std::string ppVertexCode = PreProcessShader(vertexCode, vertexPath, 0);
-        std::string ppFragmentCode = PreProcessShader(fragmentCode, fragmentPath, 0);
-        //std::cout << ppVertexCode <<std::endl;
+        this->vertexShaderPath = vertexPath;
+        this->fragmentShaderPath = fragmentPath;
+    }
 
-        //std::cout << PreProcessShader(vertexCode, vertexPath, 0) << std::endl;
+  
+    void Build()
+    {
+        // retrieve the vertex/fragment source code from filePath
+        std::string vertexCode = ReadShaderFile(vertexShaderPath);
+        std::string fragmentCode = ReadShaderFile(fragmentShaderPath);
+        
+        std::string ppVertexCode = PreProcessShader(vertexCode, vertexShaderPath, 0);
+        std::string ppFragmentCode = PreProcessShader(fragmentCode, fragmentShaderPath, 0);
+
         const char* vShaderCode = ppVertexCode.c_str();
         const char* fShaderCode = ppFragmentCode.c_str();
-        //const char* vShaderCode = (vertexCode).c_str();
-        //const char* fShaderCode = (fragmentCode).c_str();
+
 
         // compile shaders:
         unsigned int vertex, fragment;
@@ -64,6 +69,8 @@ public:
         {
             glGetShaderInfoLog(vertex, 512, NULL, infoLog);
             std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+            throw ShaderException(vertexShaderPath +  ": vertex Shader compilation failed failed\n");
+            //throw ShaderException(ppVertexCode);
         };
         
         // 2) Fragment shader
@@ -77,7 +84,8 @@ public:
         if(!success)
         {
             glGetShaderInfoLog(fragment, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+            std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+            throw ShaderException(fragmentShaderPath +  ": fragment Shader compilation failed failed\n");
         };
 
 
@@ -95,6 +103,8 @@ public:
         {
             glGetProgramInfoLog(ID, 512, NULL, infoLog);
             std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+            throw ShaderException("Shader linking failed\n");
+            
         }
         else
         {
@@ -105,11 +115,20 @@ public:
         glDeleteShader(vertex);
         glDeleteShader(fragment);
 
+        isReady = true;
     }
 
+    void AddPreProcessorDefines(std::string defines[], int count)
+    {
+        for (size_t i = 0; i < count; i++)
+        {
+            preDefines.push_back(defines[i]);
+        }
+        
+    }
     
 
-    std::string PreProcessShader(std::string &source, std::string &filePath, unsigned int level)
+    std::string PreProcessShader(std::string &source, std::string &filePath, unsigned int level, bool versionMatch = false)
     {
         if(level > 32)
             throw ShaderException("the" + filePath + "header inclusion reached depth limit (32), might be caused by cyclic header inclusion");
@@ -117,24 +136,51 @@ public:
         static const boost::regex re("^[ ]*#[ ]*include[ ]+[\"<](.*)[\">].*");
         static const std::string includeDir = BASE_DIR  SHADER_INCLUDE_SUBDIR;
 
+        static const boost::regex ver("^[ ]*#[ ]*version[ ]+(.*).*");
+        static bool hasPreDefines;
+
         std::stringstream input;
         std::stringstream output;
         input << source;
 
-        size_t line_number = 2;
-        boost::smatch matches;
+        size_t line_number = 1;
+        boost::smatch reMatches;
+        boost::smatch verMatches;
         
         std::string line;
 
+
         while(std::getline(input,line))
         {
-            if (boost::regex_search(line, matches, re))
+            if(!versionMatch)
             {
-                std::string include_file = matches[1];
+                hasPreDefines = false;
+                versionMatch = boost::regex_search(line, verMatches, ver);
 
+                if(versionMatch)
+                    output <<  line << std::endl;
+
+                ++line_number;
+                continue;
+            }
+
+            if (!hasPreDefines)
+            {
+                for (size_t i = 0; i < preDefines.size(); i++)
+                {
+                    output << "#define " <<  preDefines[i] << std::endl;
+                }
+                
+                hasPreDefines = true;
+            }
+            
+            
+            if (boost::regex_search(line, reMatches, re))
+            {
+                std::string include_file = reMatches[1];
                 std::string include_string = ReadShaderFile(includeDir + include_file);
                 
-                output << PreProcessShader(include_string, include_file, level + 1) << std::endl;
+                output << PreProcessShader(include_string, include_file, level + 1, versionMatch) << std::endl;
             }
             else
             {
@@ -144,6 +190,7 @@ public:
             }
             ++line_number;
         }
+
         return output.str();
     }
 
@@ -167,6 +214,10 @@ public:
     // use (activate) the shader program
     void UseProgram()
     { 
+        if (!isReady)
+        {
+            throw ShaderException("Shader Object is incomplete");
+        }
         glUseProgram(ID);
     }  
 
@@ -223,6 +274,11 @@ public:
             }
     };
 private:
+    std::string vertexShaderPath;
+    std::string fragmentShaderPath;
+    bool isReady = false;
+    std::vector<std::string> preDefines;
+
     std::string ReadShaderFile(std::string path)
     {
         std::string sourceCode = "";

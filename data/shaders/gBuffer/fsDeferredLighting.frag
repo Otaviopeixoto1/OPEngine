@@ -28,11 +28,13 @@ void main()
         vec3 viewDir = -normalize(ViewFragPos);
         outFrag += vec4(Albedo,1.0) * CalcDirLight(dirLights[i], norm, viewDir, vec3(1,1,1), Specular);
     }
-    for(int i = 0; i < numPointLights; i++)
-    {
-        outFrag += vec4(Albedo,1.0) * CalcPointLight(pointLights[i], norm, ViewFragPos, vec3(1,1,1), Specular);
-    }
     
+    #ifndef LIGHT_VOLUMES
+        for(int i = 0; i < numPointLights; i++)
+        {
+            outFrag += vec4(Albedo,1.0) * CalcPointLight(pointLights[i], norm, ViewFragPos, vec3(1,1,1), Specular);
+        }
+    #endif
      
     // exposure tonemapping
     float exposure = 0.5f;

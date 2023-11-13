@@ -295,8 +295,12 @@ class ForwardRenderer : public BaseRenderer
             defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/albedoFrag.frag");
             defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/texturedFrag.frag");
             defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
-            
             postProcessShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemap.frag");
+
+            defaultVertFrag.Build();
+            defaultVertTexFrag.Build();
+            defaultVertUnlitFrag.Build();
+            postProcessShader.Build();
 
             defaultVertFrag.BindUniformBlocks(NamedBufferBindings,4);
             defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,4);
