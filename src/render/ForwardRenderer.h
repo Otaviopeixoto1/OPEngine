@@ -24,7 +24,7 @@ class ForwardRenderer : public BaseRenderer
             "MaterialProperties"
         };
         
-        enum FRBufferBindings
+        enum FRGlobalBufferBindings
         {
             GLOBAL_MATRICES_BINDING = 0,
             LOCAL_MATRICES_BINDING = 1,

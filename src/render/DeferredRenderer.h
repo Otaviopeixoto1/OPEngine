@@ -8,8 +8,12 @@
 class DeferredRenderer : public BaseRenderer
 {
     public:
-        // ***Adopted naming conventions for the global uniform blocks***
 
+        std::string PreprocessorDefines[1] = { 
+            "LIGHT_VOLUMES",
+        };
+
+        // ***Adopted naming conventions for the global uniform blocks***
         std::string NamedBufferBindings[4] = { // The indexes have to match values in DRBufferBindings enum
             "GlobalMatrices",
             "LocalMatrices",
@@ -17,7 +21,13 @@ class DeferredRenderer : public BaseRenderer
             "Lights"
         };
 
-        enum DRBufferBindings
+        enum GBufferBindings
+        {
+            COLOR_SPEC_BUFFER_BINDING = 0,
+            NORMAL_BUFFER_BINDING = 1,
+            POSITION_BUFFER_BINDING = 2,
+        };
+        enum DRGlobalBufferBindings
         {
             GLOBAL_MATRICES_BINDING = 0,
             LOCAL_MATRICES_BINDING = 1,
@@ -114,7 +124,7 @@ class DeferredRenderer : public BaseRenderer
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindTexture(GL_TEXTURE_2D, 0); 
 
-;
+
             glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, vpWidth, vpHeight, 0, GL_RGBA, GL_FLOAT, NULL);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -135,7 +145,9 @@ class DeferredRenderer : public BaseRenderer
             glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glDepthMask(GL_TRUE);
             glEnable(GL_DEPTH_TEST);
+            glDisable(GL_BLEND);
 
 
             // Global Uniforms (dont depend on objects/materials)
@@ -247,6 +259,7 @@ class DeferredRenderer : public BaseRenderer
             // -------------------------------------------------------------
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glDepthMask(GL_FALSE);
             glDisable(GL_DEPTH_TEST);
 
             // Get Light data in view space:
@@ -257,21 +270,32 @@ class DeferredRenderer : public BaseRenderer
             glBufferSubData(GL_UNIFORM_BUFFER, 0, LightBufferSize, &lights);
             glBindBuffer(GL_UNIFORM_BUFFER, 0);   
 
-            lightingPass.UseProgram();
+            // Light Volume pass:
+            //lights.pointLights
+
+
+
+            // Directional Light Pass:
+            directionalLightingPass.UseProgram();
             glBindVertexArray(screenQuadVAO);
-            glActiveTexture(GL_TEXTURE0);
+            glActiveTexture(GL_TEXTURE0 + COLOR_SPEC_BUFFER_BINDING);
             glBindTexture(GL_TEXTURE_2D, gColorBuffer); 
-            glActiveTexture(GL_TEXTURE1);
+            glActiveTexture(GL_TEXTURE0 + NORMAL_BUFFER_BINDING);
             glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
-            glActiveTexture(GL_TEXTURE2);
+            glActiveTexture(GL_TEXTURE0 + POSITION_BUFFER_BINDING);
             glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
 
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
 
+
+
             // For additonal draws: Copy the gBuffer depth to default framebuffer's depth buffer
             // ---------------------------------------------------------------------------------
+            glDepthMask(GL_TRUE);
             glEnable(GL_DEPTH_TEST);
+            glDisable(GL_BLEND);
+
             glBindFramebuffer(GL_READ_FRAMEBUFFER, gBufferFBO);
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); 
 
@@ -327,20 +351,20 @@ class DeferredRenderer : public BaseRenderer
             
             defaultVertFrag.BindUniformBlocks(NamedBufferBindings,3);
             defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,3);
-            defaultVertUnlitFrag.BindUniformBlocks(NamedBufferBindings,4);
+            defaultVertUnlitFrag.BindUniformBlocks(NamedBufferBindings,3);
 
 
 
-            lightingPass = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/gBuffer/deferredLighting.frag");
+            directionalLightingPass = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/gBuffer/deferredLighting.frag");
             
-            lightingPass.UseProgram();
+            directionalLightingPass.UseProgram();
 
             // binding points of the gbuffer textures:
-            lightingPass.SetInt("gAlbedoSpec", 0); 
-            lightingPass.SetInt("gNormal", 1);
-            lightingPass.SetInt("gPosition", 2);
+            directionalLightingPass.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
+            directionalLightingPass.SetInt("gNormal", NORMAL_BUFFER_BINDING);
+            directionalLightingPass.SetInt("gPosition", POSITION_BUFFER_BINDING);
 
-            lightingPass.BindUniformBlock(NamedBufferBindings[GLOBAL_LIGHTS_BINDING], GLOBAL_LIGHTS_BINDING);
+            directionalLightingPass.BindUniformBlock(NamedBufferBindings[GLOBAL_LIGHTS_BINDING], GLOBAL_LIGHTS_BINDING);
             
             
 
@@ -475,7 +499,7 @@ class DeferredRenderer : public BaseRenderer
         Shader defaultVertTexFrag;
         Shader defaultVertUnlitFrag;
 
-        Shader lightingPass;
+        Shader directionalLightingPass;
 
 
         unsigned int screenQuadVAO, screenQuadVBO;
