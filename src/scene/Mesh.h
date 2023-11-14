@@ -4,19 +4,22 @@
 #include <glad/glad.h>
 #include <vector>
 #include <glm/glm.hpp>
+#include <memory>
 
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+#include "../common/AssimpHelpers.h"
 
 #include "../common/Shader.h"
 
 
-
+class Mesh;
 
 // Container for mesh data as well as methods to generate useful meshes
 class MeshData
 {
     public:
-
-        
         struct Vertex 
         {
             glm::vec3 Position;
@@ -36,8 +39,56 @@ class MeshData
         }
 
         //static functions for generating meshes based on an input mesh:
+        
+        static std::shared_ptr<Mesh> LoadMeshFromFile(const std::string& filePath)
+        {
+            Assimp::Importer import;
+            const aiScene *scene = import.ReadFile(filePath, aiProcess_Triangulate | aiProcess_FlipUVs);	
+                
+            if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) 
+            {
+                std::cout << "ERROR::ASSIMP::" << import.GetErrorString() << std::endl;
+            }
 
+            aiMesh *mMesh = scene->mMeshes[0];
+            
+            std::vector<MeshData::Vertex> mVertices;
+            std::vector<unsigned int> mIndices;
 
+            // process vertex positions, normals and texture coordinates for each vertex in the mesh
+            for(unsigned int i = 0; i < mMesh->mNumVertices; i++)
+            {
+                MeshData::Vertex vertex;
+                vertex.Position = AssimpHelpers::GetGLMVec3(mMesh->mVertices[i]);
+
+                if (mMesh->HasNormals())
+                {
+                    vertex.Normal = AssimpHelpers::GetGLMVec3(mMesh->mNormals[i]);
+                }
+
+                //there can be up to 8 texcoords
+                if(mMesh->mTextureCoords[0]) // check if the mesh contain texture coordinates
+                {
+                    glm::vec2 vec;
+                    vec.x = mMesh->mTextureCoords[0][i].x; 
+                    vec.y = mMesh->mTextureCoords[0][i].y;
+                    vertex.TexCoords = vec;
+                }
+                else
+                    vertex.TexCoords = glm::vec2(0.0f, 0.0f); 
+
+                mVertices.push_back(vertex);
+            }
+            // process indices
+            for(unsigned int i = 0; i < mMesh->mNumFaces; i++)
+            {
+                aiFace face = mMesh->mFaces[i];
+                for(unsigned int j = 0; j < face.mNumIndices; j++)
+                    mIndices.push_back(face.mIndices[j]);
+            }  
+            
+            return std::make_shared<Mesh>(mVertices, mIndices);
+        }
 
 
 

@@ -46,17 +46,7 @@ class DeferredRenderer : public BaseRenderer
 
         void RecreateResources(Scene &scene)
         {
-            // Quad object for rendering the final scene:
-            glGenVertexArrays(1, &screenQuadVAO);
-            glGenBuffers(1, &screenQuadVBO);
-            glBindVertexArray(screenQuadVAO);
-            glBindBuffer(GL_ARRAY_BUFFER, screenQuadVBO);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-            glEnableVertexAttribArray(1);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
+            LoadLightingResources();
 
             // gBuffer:
             glGenFramebuffers(1, &gBufferFBO);
@@ -140,6 +130,24 @@ class DeferredRenderer : public BaseRenderer
             glBindRenderbuffer(GL_RENDERBUFFER, 0);
         }
 
+        void LoadLightingResources()
+        {
+            // Quad object for rendering the final scene:
+            glGenVertexArrays(1, &screenQuadVAO);
+            glGenBuffers(1, &screenQuadVBO);
+            glBindVertexArray(screenQuadVAO);
+            glBindBuffer(GL_ARRAY_BUFFER, screenQuadVBO);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+
+            //Point Light volume
+            pointLightVolume = MeshData::LoadMeshFromFile(BASE_DIR "/data/models/light_volumes/pointLightVolume.obj");
+        }
+
 
         void RenderFrame(const Camera &camera, Scene *scene, GLFWwindow *window)
         {
@@ -177,7 +185,6 @@ class DeferredRenderer : public BaseRenderer
                 }
                 else if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
                 {
-                    //activeShader = defaultVertUnlitFrag;
                     return;
                 }
                 else
@@ -265,6 +272,19 @@ class DeferredRenderer : public BaseRenderer
             glDepthMask(GL_FALSE);
             glDisable(GL_DEPTH_TEST);
 
+            // Blend the lighting passes
+            glEnable(GL_BLEND);
+            glBlendEquation(GL_FUNC_ADD);
+            glBlendFunc(GL_ONE, GL_ONE);
+
+            // Binding the gBuffer textures:
+            glActiveTexture(GL_TEXTURE0 + COLOR_SPEC_BUFFER_BINDING);
+            glBindTexture(GL_TEXTURE_2D, gColorBuffer); 
+            glActiveTexture(GL_TEXTURE0 + NORMAL_BUFFER_BINDING);
+            glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
+            glActiveTexture(GL_TEXTURE0 + POSITION_BUFFER_BINDING);
+            glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
+
             // Get Light data in view space:
             GlobalLightData lights = scene->GetLightData(viewMatrix);
             
@@ -273,21 +293,26 @@ class DeferredRenderer : public BaseRenderer
             glBufferSubData(GL_UNIFORM_BUFFER, 0, LightBufferSize, &lights);
             glBindBuffer(GL_UNIFORM_BUFFER, 0);   
 
-            // Light Volume pass:
-            //lights.pointLights
+            // Light Volume pass: Render all point light volumes
+            pointLightVolShader.UseProgram();
+            pointLightVolume->BindBuffers();
+            for (size_t i = 0; i < lights.numPointLights; i++)
+            {
+                glm::mat4 rootTransform = glm::mat4(1);
+                rootTransform = glm::translate(rootTransform, glm::vec3(lights.pointLights[i].position));
+                pointLightVolShader.SetMat4("modelViewMatrix", rootTransform);
 
+                glDrawElements(GL_TRIANGLES, pointLightVolume->indicesCount, GL_UNSIGNED_INT, 0);
+            }
+            
+            
+            
+            
 
 
             // Directional Light Pass:
             directionalLightingPass.UseProgram();
             glBindVertexArray(screenQuadVAO);
-            glActiveTexture(GL_TEXTURE0 + COLOR_SPEC_BUFFER_BINDING);
-            glBindTexture(GL_TEXTURE_2D, gColorBuffer); 
-            glActiveTexture(GL_TEXTURE0 + NORMAL_BUFFER_BINDING);
-            glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
-            glActiveTexture(GL_TEXTURE0 + POSITION_BUFFER_BINDING);
-            glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
-
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
 
@@ -348,8 +373,9 @@ class DeferredRenderer : public BaseRenderer
 
         void ReloadShaders()
         {
-            defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/gBuffer/gBufferAlbedo.frag");
-            defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/gBuffer/gBufferTextured.frag");
+            //Material specific shaders. These should dynamically load depending on available scene materials
+            defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferAlbedo.frag");
+            defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
             defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
 
             defaultVertFrag.Build();
@@ -362,7 +388,7 @@ class DeferredRenderer : public BaseRenderer
 
 
 
-            directionalLightingPass = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/gBuffer/fsDeferredLighting.frag");
+            directionalLightingPass = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/deferred/fsDeferredLighting.frag");
             directionalLightingPass.AddPreProcessorDefines(PreprocessorDefines,3);
             directionalLightingPass.Build();
 
@@ -377,6 +403,9 @@ class DeferredRenderer : public BaseRenderer
             
             
 
+            pointLightVolShader = Shader(BASE_DIR"/data/shaders/deferred/lightVolume.vert", BASE_DIR"/data/shaders/deferred/pointVolDeferredLighting.frag");
+            pointLightVolShader.Build();
+            pointLightVolShader.BindUniformBlocks(NamedBufferBindings,3);
 
 
             // Setting UBOs to the correct binding points
@@ -448,7 +477,8 @@ class DeferredRenderer : public BaseRenderer
                 LightBufferSize += sizeof(glm::vec4);
                 LightBufferSize += 4 * sizeof(int);
                 LightBufferSize += MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData);
-                LightBufferSize += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
+                // By using light volumes, we dont send this data to the shaders
+                //LightBufferSize += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
             }
 
             glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
@@ -496,9 +526,7 @@ class DeferredRenderer : public BaseRenderer
 
         unsigned int LightBufferSize = 0;
         unsigned int MaterialBufferSize = 0;
-        //MipBuilder mipBuilder;
-        //BlurBuilder blurBuilder;
-        //DebugRenderer debugRenderer;
+
         unsigned int GlobalMatricesUBO;
         unsigned int LocalMatricesUBO;
         unsigned int LightsUBO;
@@ -511,7 +539,12 @@ class DeferredRenderer : public BaseRenderer
         Shader directionalLightingPass;
 
 
+        Shader pointLightVolShader;
+
+
         unsigned int screenQuadVAO, screenQuadVBO;
+        //unsigned int pointLightVolumeVAO, pointLightVolumeVBO;
+        std::shared_ptr<Mesh> pointLightVolume;
 
         float quadVertices[24] = 
         {   // vertex attributes for a quad that fills the entire screen 
