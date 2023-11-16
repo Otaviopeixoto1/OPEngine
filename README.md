@@ -1,2 +1,2 @@
 # OPEngine
-A custom rendering engine writter in c/c++ with openGL, mainly for implementing Global Illumination (GI) rendering techniques and other personal projects
+A custom rendering engine written in c/c++ with openGL, mainly for implementing different lighting algorithms and rendering techniques 
