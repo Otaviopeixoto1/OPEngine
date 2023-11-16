@@ -43,7 +43,8 @@ layout(std140) uniform Lights
 vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 specularStrength, float specularPower)
 {
     vec3 lightDir = normalize(light.direction.xyz);
-    float diff = max(dot(normal,lightDir), 0.0);
+    float NdotL = dot(normal,lightDir);
+    float diff = max(NdotL, 0.0);
     
 
     //Phong:
@@ -56,8 +57,8 @@ vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 specularStreng
 
 
 
-    vec4 diffuse = diff * light.lightColor;
-    vec4 specular = (spec * light.lightColor) * vec4(specularStrength, 0.0) * (1.0 - max(sign(-diff), 0.0));  
+    vec4 diffuse = diff * light.lightColor;                               // max(sign(NdotL-0.001),0.0f)
+    vec4 specular = (spec * light.lightColor) * vec4(specularStrength, 0.0) * smoothstep(-0.1,0.1,NdotL);  
 
     // if it has specular map:
     //vec4 specular = (0.5 * spec * light.lightColor) * specMap;  
@@ -73,7 +74,8 @@ vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 specularSt
     vec3 lightDir = normalize(lightPos - fragPos);
 
     // diffuse shading
-    float diff = max(dot(normal, lightDir), 0.0);
+    float NdotL = dot(normal,lightDir);
+    float diff = max(NdotL, 0.0);
 
     // specular shading
 
@@ -83,14 +85,14 @@ vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 specularSt
 
     //Blinn-Phong:
     vec3 halfwayDir = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), specularPower) * max(sign(diff),0.0f);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), specularPower) *  smoothstep(-0.1,0.1,NdotL);
 
     
 
     // attenuation
-    float distance    = length(lightPos - fragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + 
-  			     light.quadratic * (distance * distance));    
+    float dist    = length(lightPos - fragPos);
+    float attenuation = 1.0 / (light.constant + light.linear * dist + 
+  			            light.quadratic * (dist * dist));    
 
 
     vec4 diffuse  = light.lightColor * diff;
