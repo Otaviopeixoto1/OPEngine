@@ -50,12 +50,12 @@
 				"Material" :
                 {
                     "type" : "unlit",
-					"albedoColor" : [1.0,1.0,1.0]
+					"albedoColor" : [30.0,0.0,30.0]
                 },
 				"Light" :
                 {
                     "type" : "point",
-					"lightColor" : [10.0,10.0,10.0],
+					"lightColor" : [30.0,0.0,30.0],
 					"constant" : 1,
 					"linear" : 20,
 					"quadratic" : 30
@@ -68,13 +68,13 @@
 				"Material" :
                 {
                     "type" : "unlit",
-					"albedoColor" : [0.0,1.0,0.0]
+					"albedoColor" : [0.0,0.5,0.0]
                 },
 				"Light" :
                 {
                     "type" : "directional",
                     "direction" : [1.0, 0.0, 0.0],
-					"lightColor" : [0.0,1.0,0.0]
+					"lightColor" : [0.0,0.5,0.0]
                 }
 			},
             {
@@ -84,13 +84,13 @@
 				"Material" :
                 {
                     "type" : "unlit",
-					"albedoColor" : [0.0,0.0,1.0]
+					"albedoColor" : [0.0,0.0,0.5]
                 },
 				"Light" :
                 {
                     "type" : "directional",
                     "direction" : [-1.0, 0.0, 0.0],
-					"lightColor" : [0.0,0.0,1.0]
+					"lightColor" : [0.0,0.0,0.5]
                 }
 			},
             {
@@ -100,13 +100,25 @@
 				"Material" :
                 {
                     "type" : "unlit",
-					"albedoColor" : [1.0,0.0,0.0]
+					"albedoColor" : [0.5,0.0,0.0]
                 },
                 "Light" :
                 {
                     "type" : "directional",
                     "direction" : [0.0, 0.0, 1.0],
-					"lightColor" : [1.0,0.0,0.0]
+					"lightColor" : [0.5,0.0,0.0]
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [0.0, 0.0, 15.0],
+				"scale" : [1, 1, 1],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 0.0
                 }
 			}
 		]

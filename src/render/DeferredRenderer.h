@@ -8,6 +8,10 @@
 class DeferredRenderer : public BaseRenderer
 {
     public:
+
+        float tonemapExposure = 1.0f;
+        const bool enableLightVolumes = true;
+
         enum GBufferBindings
         {
             COLOR_SPEC_BUFFER_BINDING = 0,
@@ -15,8 +19,6 @@ class DeferredRenderer : public BaseRenderer
             POSITION_BUFFER_BINDING = 2,
             ACCUMULATION_BUFFER_BINDING = 3,
         };
-
-        const bool enableLightVolumes = true;
 
         std::string PreprocessorDefines[2] = { 
             "MAX_DIR_LIGHTS 5",
@@ -308,18 +310,19 @@ class DeferredRenderer : public BaseRenderer
             });  
 
 
-
+            
             // Lighting pass: use g-buffer to calculate the scene's lighting
             // -------------------------------------------------------------
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, gBufferFBO);
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); 
+            glBindFramebuffer(GL_FRAMEBUFFER, lightAccumulationFBO);
+            glClear(GL_COLOR_BUFFER_BIT);
 
-            glBlitFramebuffer(0, 0, viewportWidth, viewportHeight, 0, 0, viewportWidth, viewportHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            //glBindFramebuffer(GL_READ_FRAMEBUFFER, gBufferFBO);
+            //glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); 
+            //glBlitFramebuffer(0, 0, viewportWidth, viewportHeight, 0, 0, viewportWidth, viewportHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+            
+            //glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glDepthMask(GL_FALSE);
-            //glDisable(GL_DEPTH_TEST);
+
 
             // Binding the gBuffer textures:
             //these binding dont have to be the same as the gbuffer bindings but it will be better follow a convention
@@ -453,6 +456,17 @@ class DeferredRenderer : public BaseRenderer
                 glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
             }); 
 
+            // Render quad for sampling the light accumulation:
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glDisable(GL_DEPTH_TEST);
+
+            postProcessShader.UseProgram();
+            postProcessShader.SetFloat("exposure", tonemapExposure);
+            glBindVertexArray(screenQuadVAO);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture); 
+            glDrawArrays(GL_TRIANGLES, 0, 6);
 
         }
 
@@ -507,6 +521,12 @@ class DeferredRenderer : public BaseRenderer
             pointLightVolShader.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
             pointLightVolShader.SetInt("gNormal", NORMAL_BUFFER_BINDING);
             pointLightVolShader.SetInt("gPosition", POSITION_BUFFER_BINDING);
+
+
+            postProcessShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemap.frag");
+            postProcessShader.Build();
+
+
 
             // Setting UBOs to the correct binding points
             // ------------------------------------------
@@ -660,7 +680,7 @@ class DeferredRenderer : public BaseRenderer
         std::shared_ptr<Mesh> pointLightVolume;
         
         
-
+        Shader postProcessShader;
         
 
 
