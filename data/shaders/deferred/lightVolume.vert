@@ -16,11 +16,6 @@ layout (std140) uniform GlobalMatrices
     mat4 viewMatrix;
 };
 
-layout (std140) uniform LocalMatrices
-{
-    mat4 modelMatrix;
-    mat4 normalMatrix;
-};
 
  
 

@@ -8,35 +8,41 @@
 class DeferredRenderer : public BaseRenderer
 {
     public:
-
-        std::string PreprocessorDefines[3] = { 
-            "LIGHT_VOLUMES",
-            "MAX_DIR_LIGHTS 5",
-            "MAX_POINT_LIGHTS 3"
-
-        };
-
-        // ***Adopted naming conventions for the global uniform blocks***
-        std::string NamedBufferBindings[4] = { // The indexes have to match values in DRBufferBindings enum
-            "GlobalMatrices",
-            "LocalMatrices",
-            "MaterialProperties",
-            "Lights"
-        };
-
         enum GBufferBindings
         {
             COLOR_SPEC_BUFFER_BINDING = 0,
             NORMAL_BUFFER_BINDING = 1,
             POSITION_BUFFER_BINDING = 2,
+            ACCUMULATION_BUFFER_BINDING = 3,
         };
+
+        const bool enableLightVolumes = true;
+
+        std::string PreprocessorDefines[2] = { 
+            "MAX_DIR_LIGHTS 5",
+            "MAX_POINT_LIGHTS 3",
+        };
+
+        // ***Adopted naming conventions for the global uniform blocks***
+        std::string NamedBufferBindings[5] = { // The indexes have to match values in DRBufferBindings enum
+            "GlobalMatrices",
+            "LocalMatrices",
+            "MaterialProperties",
+            "Lights",
+
+            "PointLightData"
+        };
+        
         enum DRGlobalBufferBindings
         {
             GLOBAL_MATRICES_BINDING = 0,
             LOCAL_MATRICES_BINDING = 1,
             MATERIAL_PROPERTIES_BINDING = 2,
-            GLOBAL_LIGHTS_BINDING = 3
+            GLOBAL_LIGHTS_BINDING = 3,
+
         };
+
+        
 
         DeferredRenderer(unsigned int vpWidth, unsigned int vpHeight)
         {
@@ -59,7 +65,7 @@ class DeferredRenderer : public BaseRenderer
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindTexture(GL_TEXTURE_2D, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gColorBuffer, 0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + COLOR_SPEC_BUFFER_BINDING, GL_TEXTURE_2D, gColorBuffer, 0);
             
             // 2) View space normal buffer attachment 
             glGenTextures(1, &gNormalBuffer);
@@ -68,7 +74,7 @@ class DeferredRenderer : public BaseRenderer
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindTexture(GL_TEXTURE_2D, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormalBuffer, 0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + NORMAL_BUFFER_BINDING, GL_TEXTURE_2D, gNormalBuffer, 0);
 
             // 3) View space position buffer attachment 
             glGenTextures(1, &gPositionBuffer);
@@ -77,7 +83,7 @@ class DeferredRenderer : public BaseRenderer
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindTexture(GL_TEXTURE_2D, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gPositionBuffer, 0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + POSITION_BUFFER_BINDING, GL_TEXTURE_2D, gPositionBuffer, 0);
 
 
             //setting the depth and stencil attachments
@@ -93,10 +99,43 @@ class DeferredRenderer : public BaseRenderer
                 throw RendererException("ERROR::FRAMEBUFFER:: Framebuffer for MSAA is incomplete");
             }
                 
-            unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+            unsigned int attachments[3] = { 
+                GL_COLOR_ATTACHMENT0 + COLOR_SPEC_BUFFER_BINDING, 
+                GL_COLOR_ATTACHMENT0 + NORMAL_BUFFER_BINDING, 
+                GL_COLOR_ATTACHMENT0 + POSITION_BUFFER_BINDING
+            };
             glDrawBuffers(3, attachments);
 
+
+
+
+            // Light Accumulation:
+            glGenFramebuffers(1, &lightAccumulationFBO);
+            glBindFramebuffer(GL_FRAMEBUFFER, lightAccumulationFBO);
+
+            glGenTextures(1, &lightAccumulationTexture);
+            glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glBindTexture(GL_TEXTURE_2D, 0); 
+
+            // Bind the accumulation texture, making sure it will be a different binding from those
+            // that will be used for the gbuffer textures that will be sampled on the accumulation pass
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + ACCUMULATION_BUFFER_BINDING, GL_TEXTURE_2D, lightAccumulationTexture, 0);
+            // Bind the same depth buffer for drawing light volumes
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencilBuffer);
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            {
+                throw RendererException("ERROR::FRAMEBUFFER:: Intermediate Framebuffer is incomplete");
+            }
+            glDrawBuffer(GL_COLOR_ATTACHMENT0 + ACCUMULATION_BUFFER_BINDING);
+
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+
+
         }
 
         void ViewportUpdate(int vpWidth, int vpHeight)
@@ -128,6 +167,12 @@ class DeferredRenderer : public BaseRenderer
             glBindRenderbuffer(GL_RENDERBUFFER, depthStencilBuffer);
             glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, vpWidth, vpHeight);
             glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+            glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glBindTexture(GL_TEXTURE_2D, 0); 
         }
 
         void LoadLightingResources()
@@ -278,6 +323,7 @@ class DeferredRenderer : public BaseRenderer
             glBlendFunc(GL_ONE, GL_ONE);
 
             // Binding the gBuffer textures:
+            //these binding dont have to be the same as the gbuffer bindings but it will be better follow a convention
             glActiveTexture(GL_TEXTURE0 + COLOR_SPEC_BUFFER_BINDING);
             glBindTexture(GL_TEXTURE_2D, gColorBuffer); 
             glActiveTexture(GL_TEXTURE0 + NORMAL_BUFFER_BINDING);
@@ -293,21 +339,27 @@ class DeferredRenderer : public BaseRenderer
             glBufferSubData(GL_UNIFORM_BUFFER, 0, LightBufferSize, &lights);
             glBindBuffer(GL_UNIFORM_BUFFER, 0);   
 
-            // Light Volume pass: Render all point light volumes
-            pointLightVolShader.UseProgram();
-            pointLightVolume->BindBuffers();
-            for (size_t i = 0; i < lights.numPointLights; i++)
-            {
-                glm::mat4 rootTransform = glm::mat4(1);
-                rootTransform = glm::translate(rootTransform, glm::vec3(lights.pointLights[i].position));
-                pointLightVolShader.SetMat4("modelViewMatrix", rootTransform);
 
-                glDrawElements(GL_TRIANGLES, pointLightVolume->indicesCount, GL_UNSIGNED_INT, 0);
+
+            // Light Volume pass: Render all point light volumes
+            if (enableLightVolumes)
+            {
+                pointLightVolShader.UseProgram();
+                pointLightVolume->BindBuffers();
+                for (size_t i = 0; i < lights.numPointLights; i++)
+                {
+                    PointLight::PointLightData l = lights.pointLights[i];
+                    glm::mat4 rootTransform = glm::mat4(1);
+                    rootTransform = glm::translate(rootTransform, glm::vec3(l.position));
+                    rootTransform = glm::scale(rootTransform, glm::vec3(l.radius, l.radius, l.radius));
+
+                    pointLightVolShader.SetInt("instanceID",i);
+                    pointLightVolShader.SetMat4("modelViewMatrix", rootTransform);
+                    pointLightVolShader.SetVec2("gScreenSize" , glm::vec2(viewportWidth, viewportHeight));
+
+                    glDrawElements(GL_TRIANGLES, pointLightVolume->indicesCount, GL_UNSIGNED_INT, 0);
+                }
             }
-            
-            
-            
-            
 
 
             // Directional Light Pass:
@@ -389,24 +441,32 @@ class DeferredRenderer : public BaseRenderer
 
 
             directionalLightingPass = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/deferred/fsDeferredLighting.frag");
-            directionalLightingPass.AddPreProcessorDefines(PreprocessorDefines,3);
-            directionalLightingPass.Build();
+            directionalLightingPass.AddPreProcessorDefines(PreprocessorDefines,2);
+            if (enableLightVolumes)
+            {
+                std::string pd = "LIGHT_VOLUMES";
+                directionalLightingPass.AddPreProcessorDefines(&pd,1);
+            }
 
+            directionalLightingPass.Build();
             directionalLightingPass.UseProgram();
 
             // binding points of the gbuffer textures:
             directionalLightingPass.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
             directionalLightingPass.SetInt("gNormal", NORMAL_BUFFER_BINDING);
             directionalLightingPass.SetInt("gPosition", POSITION_BUFFER_BINDING);
-
             directionalLightingPass.BindUniformBlock(NamedBufferBindings[GLOBAL_LIGHTS_BINDING], GLOBAL_LIGHTS_BINDING);
             
             
 
             pointLightVolShader = Shader(BASE_DIR"/data/shaders/deferred/lightVolume.vert", BASE_DIR"/data/shaders/deferred/pointVolDeferredLighting.frag");
             pointLightVolShader.Build();
-            pointLightVolShader.BindUniformBlocks(NamedBufferBindings,3);
-
+            pointLightVolShader.BindUniformBlock(NamedBufferBindings[GLOBAL_MATRICES_BINDING],GLOBAL_MATRICES_BINDING);
+            pointLightVolShader.BindUniformBlock(NamedBufferBindings[GLOBAL_LIGHTS_BINDING],GLOBAL_LIGHTS_BINDING);
+            pointLightVolShader.UseProgram();
+            pointLightVolShader.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
+            pointLightVolShader.SetInt("gNormal", NORMAL_BUFFER_BINDING);
+            pointLightVolShader.SetInt("gPosition", POSITION_BUFFER_BINDING);
 
             // Setting UBOs to the correct binding points
             // ------------------------------------------
@@ -477,8 +537,7 @@ class DeferredRenderer : public BaseRenderer
                 LightBufferSize += sizeof(glm::vec4);
                 LightBufferSize += 4 * sizeof(int);
                 LightBufferSize += MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData);
-                // By using light volumes, we dont send this data to the shaders
-                //LightBufferSize += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
+                LightBufferSize += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
             }
 
             glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
@@ -523,6 +582,8 @@ class DeferredRenderer : public BaseRenderer
         unsigned int gColorBuffer, gNormalBuffer, gPositionBuffer;
         unsigned int depthStencilBuffer;
 
+        unsigned int lightAccumulationFBO;
+        unsigned int lightAccumulationTexture;
 
         unsigned int LightBufferSize = 0;
         unsigned int MaterialBufferSize = 0;
@@ -536,16 +597,10 @@ class DeferredRenderer : public BaseRenderer
         Shader defaultVertTexFrag;
         Shader defaultVertUnlitFrag;
 
+
+
         Shader directionalLightingPass;
-
-
-        Shader pointLightVolShader;
-
-
         unsigned int screenQuadVAO, screenQuadVBO;
-        //unsigned int pointLightVolumeVAO, pointLightVolumeVBO;
-        std::shared_ptr<Mesh> pointLightVolume;
-
         float quadVertices[24] = 
         {   // vertex attributes for a quad that fills the entire screen 
             // positions   // texCoords
@@ -557,6 +612,15 @@ class DeferredRenderer : public BaseRenderer
             1.0f, -1.0f,  1.0f, 0.0f,
             1.0f,  1.0f,  1.0f, 1.0f
         };
+        
+
+
+        Shader pointLightVolShader;
+        std::shared_ptr<Mesh> pointLightVolume;
+        
+        
+
+        
 
 
 

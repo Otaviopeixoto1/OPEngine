@@ -55,10 +55,10 @@
 				"Light" :
                 {
                     "type" : "point",
-					"lightColor" : [1.0,1.0,1.0],
+					"lightColor" : [10.0,10.0,10.0],
 					"constant" : 1,
-					"linear" : 0.14,
-					"quadratic" : 0.07
+					"linear" : 0.7,
+					"quadratic" : 1.8
                 }
 			},
 			{

@@ -27,4 +27,7 @@ class BaseRenderer
         virtual void ViewportUpdate(int vpWidth, int vpHeight){}
 };
 
+
+
+
 #endif
