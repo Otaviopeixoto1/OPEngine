@@ -27,6 +27,5 @@ void main()
 
     vec3 norm = normalize(ViewNormal);
 
-    FragColor = texture(gNormal, uv);
     FragColor = vec4(AlbedoSpec.rgb,1.0) * CalcPointLight(pointLights[instanceID], norm, ViewFragPos, vec3(1,1,1), AlbedoSpec.a);
 }  

@@ -70,9 +70,9 @@ class DirectionalLight
 
 namespace LightVolumes
 {
-    float GetPointLightVolumeRadius(glm::vec3 color, float constant, float linear, float quadratic)
+    static inline float GetPointLightVolumeRadius(glm::vec3 color, float constant, float linear, float quadratic)
     {
-        float maxC =std::max(color.x, std::max(color.y,color.z));
+        float maxC = std::max(color.x, std::max(color.y,color.z));
         return (-linear + sqrt(linear * linear -4* quadratic * (constant - 256 * maxC) ))/(2 * quadratic);
     } 
 }
@@ -107,7 +107,7 @@ class PointLight
             this->lightData.linear = l;
             this->lightData.quadratic = q;
             this->lightData.radius = LightVolumes::GetPointLightVolumeRadius(color, c,l,q);
-            //std::cout <<"lightradius:>>>>>>" << lightData.radius << "\n"; 
+            std::cout <<"lightradius:>>>>>>" << lightData.radius << "\n"; 
         }
         
 

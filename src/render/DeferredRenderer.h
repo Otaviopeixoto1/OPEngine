@@ -24,13 +24,12 @@ class DeferredRenderer : public BaseRenderer
         };
 
         // ***Adopted naming conventions for the global uniform blocks***
-        std::string NamedBufferBindings[5] = { // The indexes have to match values in DRBufferBindings enum
+        std::string NamedBufferBindings[4] = { // The indexes have to match values in DRBufferBindings enum
             "GlobalMatrices",
             "LocalMatrices",
             "MaterialProperties",
             "Lights",
 
-            "PointLightData"
         };
         
         enum DRGlobalBufferBindings
@@ -203,7 +202,7 @@ class DeferredRenderer : public BaseRenderer
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glDepthMask(GL_TRUE);
             glEnable(GL_DEPTH_TEST);
-            glDisable(GL_BLEND);
+
 
 
             // Global Uniforms (dont depend on objects/materials)
@@ -314,13 +313,13 @@ class DeferredRenderer : public BaseRenderer
             // -------------------------------------------------------------
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glDepthMask(GL_FALSE);
-            glDisable(GL_DEPTH_TEST);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, gBufferFBO);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); 
 
-            // Blend the lighting passes
-            glEnable(GL_BLEND);
-            glBlendEquation(GL_FUNC_ADD);
-            glBlendFunc(GL_ONE, GL_ONE);
+            glBlitFramebuffer(0, 0, viewportWidth, viewportHeight, 0, 0, viewportWidth, viewportHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glDepthMask(GL_FALSE);
+            //glDisable(GL_DEPTH_TEST);
 
             // Binding the gBuffer textures:
             //these binding dont have to be the same as the gbuffer bindings but it will be better follow a convention
@@ -340,25 +339,61 @@ class DeferredRenderer : public BaseRenderer
             glBindBuffer(GL_UNIFORM_BUFFER, 0);   
 
 
-
+            
+            
             // Light Volume pass: Render all point light volumes
             if (enableLightVolumes)
             {
-                pointLightVolShader.UseProgram();
+                // Blend the lighting passes
+                glEnable(GL_BLEND);
+                glBlendEquation(GL_FUNC_ADD);
+                glBlendFunc(GL_ONE, GL_ONE);
+
+                glEnable(GL_STENCIL_TEST);
                 pointLightVolume->BindBuffers();
+                
                 for (size_t i = 0; i < lights.numPointLights; i++)
                 {
+                    
+                    // Stencil Pass:
+                    lightVolumeStencilPass.UseProgram();
+
+                    glDisable(GL_CULL_FACE);
+                    glClear(GL_STENCIL_BUFFER_BIT);
+                    // We need the stencil test to be enabled but we want it to succeed always.
+                    // Only the depth test matters.
+                    glStencilFunc(GL_ALWAYS, 0, 0);
+
+                    glStencilOpSeparate(GL_BACK, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
+                    glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
+
                     PointLight::PointLightData l = lights.pointLights[i];
                     glm::mat4 rootTransform = glm::mat4(1);
                     rootTransform = glm::translate(rootTransform, glm::vec3(l.position));
                     rootTransform = glm::scale(rootTransform, glm::vec3(l.radius, l.radius, l.radius));
 
-                    pointLightVolShader.SetInt("instanceID",i);
-                    pointLightVolShader.SetMat4("modelViewMatrix", rootTransform);
-                    pointLightVolShader.SetVec2("gScreenSize" , glm::vec2(viewportWidth, viewportHeight));
+                    lightVolumeStencilPass.SetMat4("modelViewMatrix", rootTransform);
 
                     glDrawElements(GL_TRIANGLES, pointLightVolume->indicesCount, GL_UNSIGNED_INT, 0);
+
+
+
+                    // Lighting Pass
+                    glDisable(GL_DEPTH_TEST);
+                    glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
+                    glEnable(GL_CULL_FACE);
+                    glCullFace(GL_FRONT);
+
+                    pointLightVolShader.UseProgram();
+
+                    pointLightVolShader.SetInt("instanceID", i);
+                    pointLightVolShader.SetMat4("modelViewMatrix", rootTransform);
+                    pointLightVolShader.SetVec2("gScreenSize", glm::vec2(viewportWidth, viewportHeight));
+
+                    glDrawElements(GL_TRIANGLES, pointLightVolume->indicesCount, GL_UNSIGNED_INT, 0);
+                    glCullFace(GL_BACK);
                 }
+                glDisable(GL_STENCIL_TEST);
             }
 
 
@@ -376,11 +411,12 @@ class DeferredRenderer : public BaseRenderer
             glEnable(GL_DEPTH_TEST);
             glDisable(GL_BLEND);
 
+            /*
             glBindFramebuffer(GL_READ_FRAMEBUFFER, gBufferFBO);
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); 
 
             glBlitFramebuffer(0, 0, viewportWidth, viewportHeight, 0, 0, viewportWidth, viewportHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);*/
 
 
             // Unlit and Transparent Pass: render objects with different lighting models using same depth buffer:
@@ -457,6 +493,10 @@ class DeferredRenderer : public BaseRenderer
             directionalLightingPass.SetInt("gPosition", POSITION_BUFFER_BINDING);
             directionalLightingPass.BindUniformBlock(NamedBufferBindings[GLOBAL_LIGHTS_BINDING], GLOBAL_LIGHTS_BINDING);
             
+
+            lightVolumeStencilPass = Shader(BASE_DIR"/data/shaders/deferred/lightVolume.vert", BASE_DIR"/data/shaders/deferred/nullFrag.frag");
+            lightVolumeStencilPass.Build();
+            lightVolumeStencilPass.BindUniformBlock(NamedBufferBindings[GLOBAL_MATRICES_BINDING],GLOBAL_MATRICES_BINDING);
             
 
             pointLightVolShader = Shader(BASE_DIR"/data/shaders/deferred/lightVolume.vert", BASE_DIR"/data/shaders/deferred/pointVolDeferredLighting.frag");
@@ -614,6 +654,7 @@ class DeferredRenderer : public BaseRenderer
         };
         
 
+        Shader lightVolumeStencilPass; 
 
         Shader pointLightVolShader;
         std::shared_ptr<Mesh> pointLightVolume;
