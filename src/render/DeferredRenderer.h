@@ -10,7 +10,10 @@ class DeferredRenderer : public BaseRenderer
     public:
 
         float tonemapExposure = 1.0f;
+        float FXAAContrastThreshold = 0.0312f;
+        float FXAABrightnessThreshold = 0.063f;
         const bool enableLightVolumes = true;
+
 
         enum GBufferBindings
         {
@@ -132,11 +135,33 @@ class DeferredRenderer : public BaseRenderer
             }
             glDrawBuffer(GL_COLOR_ATTACHMENT0 + ACCUMULATION_BUFFER_BINDING);
 
+
+
+
+            // Postprocessing Pass (Tonemapping): 
+            glGenFramebuffers(1, &postProcessFBO);
+            glBindFramebuffer(GL_FRAMEBUFFER, postProcessFBO);
+
+            glGenTextures(1, &postProcessColorBuffer);
+            glBindTexture(GL_TEXTURE_2D, postProcessColorBuffer);
+            // Clamped between 0 and 1 (no longer needs to be a floating point buffer)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glBindTexture(GL_TEXTURE_2D, 0);
+
+            // This texture will not have a special binding, instead we just bind to 0 (the standard binding)
+            // as currently we dont use the gBuffer in this pass (no bind conflicts)
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, postProcessColorBuffer, 0);
+
+            // no depth buffer needed
+
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            {
+                throw RendererException("ERROR::FRAMEBUFFER:: Intermediate Framebuffer is incomplete");
+            }
+
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-
-
-
         }
 
         void ViewportUpdate(int vpWidth, int vpHeight)
@@ -174,11 +199,16 @@ class DeferredRenderer : public BaseRenderer
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindTexture(GL_TEXTURE_2D, 0); 
+
+            glBindTexture(GL_TEXTURE_2D, postProcessColorBuffer);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glBindTexture(GL_TEXTURE_2D, 0);
         }
 
         void LoadLightingResources()
         {
-            // Quad object for rendering the final scene:
             glGenVertexArrays(1, &screenQuadVAO);
             glGenBuffers(1, &screenQuadVBO);
             glBindVertexArray(screenQuadVAO);
@@ -189,8 +219,6 @@ class DeferredRenderer : public BaseRenderer
             glEnableVertexAttribArray(1);
             glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
-
-            //Point Light volume
             pointLightVolume = MeshData::LoadMeshFromFile(BASE_DIR "/data/models/light_volumes/pointLightVolume.obj");
         }
 
@@ -313,14 +341,9 @@ class DeferredRenderer : public BaseRenderer
             
             // Lighting pass: use g-buffer to calculate the scene's lighting
             // -------------------------------------------------------------
+
             glBindFramebuffer(GL_FRAMEBUFFER, lightAccumulationFBO);
             glClear(GL_COLOR_BUFFER_BIT);
-
-            //glBindFramebuffer(GL_READ_FRAMEBUFFER, gBufferFBO);
-            //glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); 
-            //glBlitFramebuffer(0, 0, viewportWidth, viewportHeight, 0, 0, viewportWidth, viewportHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-            
-            //glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glDepthMask(GL_FALSE);
 
 
@@ -343,8 +366,7 @@ class DeferredRenderer : public BaseRenderer
 
 
             
-            
-            // Light Volume pass: Render all point light volumes
+            // Light Volumes: Render all point light volumes
             if (enableLightVolumes)
             {
                 // Blend the lighting passes
@@ -357,7 +379,6 @@ class DeferredRenderer : public BaseRenderer
                 
                 for (size_t i = 0; i < lights.numPointLights; i++)
                 {
-                    
                     // Stencil Pass:
                     lightVolumeStencilPass.UseProgram();
 
@@ -380,9 +401,9 @@ class DeferredRenderer : public BaseRenderer
                     glDrawElements(GL_TRIANGLES, pointLightVolume->indicesCount, GL_UNSIGNED_INT, 0);
 
 
-
-                    // Lighting Pass
+                    // Lighting calculation pass:
                     glDisable(GL_DEPTH_TEST);
+                    // Discard all pixels that are not equal to zero:
                     glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
                     glEnable(GL_CULL_FACE);
                     glCullFace(GL_FRONT);
@@ -391,7 +412,7 @@ class DeferredRenderer : public BaseRenderer
 
                     pointLightVolShader.SetInt("instanceID", i);
                     pointLightVolShader.SetMat4("modelViewMatrix", rootTransform);
-                    pointLightVolShader.SetVec2("gScreenSize", glm::vec2(viewportWidth, viewportHeight));
+                    pointLightVolShader.SetVec2("gScreenSize", viewportWidth, viewportHeight);
 
                     glDrawElements(GL_TRIANGLES, pointLightVolume->indicesCount, GL_UNSIGNED_INT, 0);
                     glCullFace(GL_BACK);
@@ -399,32 +420,20 @@ class DeferredRenderer : public BaseRenderer
                 glDisable(GL_STENCIL_TEST);
             }
 
-
-            // Directional Light Pass:
+            // Directional Lights:
             directionalLightingPass.UseProgram();
             glBindVertexArray(screenQuadVAO);
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
 
 
+            // Unlit Pass: render objects with different lighting models using same depth buffer:
+            // ----------------------------------------------------------------------------------
 
-            // For additonal draws: Copy the gBuffer depth to default framebuffer's depth buffer
-            // ---------------------------------------------------------------------------------
             glDepthMask(GL_TRUE);
             glEnable(GL_DEPTH_TEST);
             glDisable(GL_BLEND);
 
-            /*
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, gBufferFBO);
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); 
-
-            glBlitFramebuffer(0, 0, viewportWidth, viewportHeight, 0, 0, viewportWidth, viewportHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);*/
-
-
-            // Unlit and Transparent Pass: render objects with different lighting models using same depth buffer:
-            // --------------------------------------------------------------------------------------------------
-            
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
                 Shader activeShader;
@@ -456,16 +465,35 @@ class DeferredRenderer : public BaseRenderer
                 glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
             }); 
 
-            // Render quad for sampling the light accumulation:
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            // Postprocess Pass: apply tonemap to the HDR color buffer
+            // ---------------------------------------------------------
+
+            glBindFramebuffer(GL_FRAMEBUFFER, postProcessFBO);
             glClear(GL_COLOR_BUFFER_BIT);
             glDisable(GL_DEPTH_TEST);
 
             postProcessShader.UseProgram();
             postProcessShader.SetFloat("exposure", tonemapExposure);
             glBindVertexArray(screenQuadVAO);
-            glActiveTexture(GL_TEXTURE0);
+            glActiveTexture(GL_TEXTURE0 + ACCUMULATION_BUFFER_BINDING);
             glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture); 
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+
+            // Final Pass (Antialiasing):
+            // --------------------------
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glDisable(GL_DEPTH_TEST);
+
+            FXAAShader.UseProgram();
+            FXAAShader.SetVec2("pixelSize", 1.0f/(float)viewportWidth, 1.0f/(float)viewportHeight);
+            FXAAShader.SetFloat("contrastThreshold", FXAAContrastThreshold);
+            FXAAShader.SetFloat("brightnessThreshold", FXAABrightnessThreshold);
+            glBindVertexArray(screenQuadVAO);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, postProcessColorBuffer); 
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
         }
@@ -523,9 +551,14 @@ class DeferredRenderer : public BaseRenderer
             pointLightVolShader.SetInt("gPosition", POSITION_BUFFER_BINDING);
 
 
-            postProcessShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemap.frag");
+            postProcessShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemapLum.frag");
             postProcessShader.Build();
+            postProcessShader.UseProgram();
+            postProcessShader.SetInt("screenTexture", ACCUMULATION_BUFFER_BINDING);
 
+
+            FXAAShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadFXAA.frag");
+            FXAAShader.Build();
 
 
             // Setting UBOs to the correct binding points
@@ -645,6 +678,9 @@ class DeferredRenderer : public BaseRenderer
         unsigned int lightAccumulationFBO;
         unsigned int lightAccumulationTexture;
 
+        unsigned int postProcessFBO;
+        unsigned int postProcessColorBuffer;
+
         unsigned int LightBufferSize = 0;
         unsigned int MaterialBufferSize = 0;
 
@@ -675,14 +711,12 @@ class DeferredRenderer : public BaseRenderer
         
 
         Shader lightVolumeStencilPass; 
-
         Shader pointLightVolShader;
         std::shared_ptr<Mesh> pointLightVolume;
         
         
         Shader postProcessShader;
-        
-
+        Shader FXAAShader;
 
 
 

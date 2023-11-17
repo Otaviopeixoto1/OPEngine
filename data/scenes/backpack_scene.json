@@ -12,12 +12,29 @@
 				"filename" : "/data/models/sphere.obj"
 			},
 			{
+				"name" : "plane",
+				"filename" : "/data/models/plane.obj"
+			},
+			{
 				"name" : "cube",
 				"filename" : "/data/models/cube.obj"
 			}
 		],
 		"objects" :
 		[
+			{
+				"mesh" : "plane",
+				"pos" : [0.0, -1.5, -40.0],
+                "scale" : [1, 1, 1],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
 			{
 				"mesh" : "backpack",
 				"pos" : [0.0, 1.4, 0.0],
@@ -57,13 +74,13 @@
                     "type" : "point",
 					"lightColor" : [30.0,0.0,30.0],
 					"constant" : 1,
-					"linear" : 20,
-					"quadratic" : 30
+					"linear" : 10,
+					"quadratic" : 50
                 }
 			},
 			{
 				"mesh" : "sphere",
-				"pos" : [50.0, 0.0, 0.0],
+				"pos" : [50.0, 10.0, 0.0],
 				"scale" : [10, 10, 10],
 				"Material" :
                 {
@@ -79,7 +96,7 @@
 			},
             {
 				"mesh" : "sphere",
-				"pos" : [-50.0, 0.0, 0.0],
+				"pos" : [-50.0, 10.0, 0.0],
 				"scale" : [10, 10, 10],
 				"Material" :
                 {
@@ -95,7 +112,7 @@
 			},
             {
 				"mesh" : "sphere",
-				"pos" : [0.0, 0.0, 50.0],
+				"pos" : [0.0, 10.0, 50.0],
 				"scale" : [10, 10, 10],
 				"Material" :
                 {

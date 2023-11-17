@@ -1,0 +1,92 @@
+{
+	"scene" :
+	{
+		"meshes" :
+		[
+			{
+				"name" : "backpack",
+				"filename" : "/data/models/backpack.obj"
+			},
+			{
+				"name" : "sphere",
+				"filename" : "/data/models/sphere.obj"
+			},
+			{
+				"name" : "plane",
+				"filename" : "/data/models/plane.obj"
+			},
+			{
+				"name" : "cube",
+				"filename" : "/data/models/cube.obj"
+			}
+		],
+		"objects" :
+		[
+			{
+				"mesh" : "plane",
+				"pos" : [0.0, -1.5, -40.0],
+                "scale" : [1, 1, 1],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [0.0, 1.4, 0.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [0.0, 0.0, -0.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [0.6, 1.5, 0.6],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [30.0,0.0,30.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [30.0,0.0,30.0],
+					"constant" : 1,
+					"linear" : 10,
+					"quadratic" : 50
+                }
+			}
+		]
+	},
+	"renderer" :
+	{
+		"ambientLight" : [0.01, 0.01, 0.01], 
+		"ForwardRenderer" :
+		{
+			"downscale" : 1,
+			"interleavedPatternSize" : 4
+		}
+	}
+}

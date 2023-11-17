@@ -35,14 +35,5 @@ void main()
         }
     #endif
      
-    // exposure tonemapping
-    //float exposure = 0.5f;
-    //float gamma = 2.2f;
-    //vec3 mapped = vec3(1.0) - exp(-outFrag.xyz * exposure);
-    
-    // gamma correction 
-    //mapped = pow(mapped, vec3(1.0 / gamma));
-
-    //FragColor = vec4(mapped, 1.0f);
     FragColor = outFrag;
 }  
