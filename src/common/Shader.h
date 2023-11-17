@@ -108,7 +108,7 @@ public:
         }
         else
         {
-            std::cout << "successfully compiled and linked shaders: " << vertexShaderPath << " and " << fragmentShaderPath << std::endl;
+            std::cout << "Successfully Compiled and Linked Shaders: " << vertexShaderPath << " and " << fragmentShaderPath << std::endl;
         }
         
         // delete the shaders as they're linked into the program now and therefore are longer necessary

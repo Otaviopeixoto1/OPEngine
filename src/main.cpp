@@ -138,7 +138,7 @@ int main()
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
 
-    Scene scene = Scene("/data/scenes/backpack_scene.json");
+    Scene scene = Scene("/data/scenes/sponza_scene.json");
 
     ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight);
     DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight);

@@ -1,0 +1,57 @@
+{
+	"scene" :
+	{
+		"meshes" :
+		[
+			{
+				"name" : "sponza",
+				"filename" : "/data/models/reference/sponza/sponza.obj"
+			},
+			{
+				"name" : "sphere",
+				"filename" : "/data/models/sphere.obj"
+			}
+		],
+		"objects" :
+		[
+			{
+				"mesh" : "sponza",
+				"pos" : [0.0, 0.0, 0.0],
+                "scale" : [0.02, 0.02, 0.02],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [50.0, 50.0, 50.0],
+				"scale" : [10, 10, 10],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [1.0,1.0,1.0]
+                },
+				"Light" :
+                {
+                    "type" : "directional",
+                    "direction" : [1.0, 1.0, 1.0],
+					"lightColor" : [1.0,1.0,1.0]
+                }
+			}
+		]
+	},
+	"renderer" :
+	{
+		"ambientLight" : [0.01, 0.01, 0.01], 
+		"ForwardRenderer" :
+		{
+			"downscale" : 1,
+			"interleavedPatternSize" : 4
+		}
+	}
+}
