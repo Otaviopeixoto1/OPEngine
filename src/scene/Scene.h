@@ -71,6 +71,7 @@ class Scene
             {
                 std::cout << "Error: File " << BASE_DIR +  relativePath << ", parsing failed with errors: " << reader.getFormattedErrorMessages() << "\n";
             }
+            ambientLight = glm::vec4(JsonHelpers::GetJsonVec3f(configRoot["renderer"]["ambientLight"]),1);
 
             //construct blueprints from object file or use existing ones
             Json::Value meshArray = configRoot["scene"]["meshes"];
@@ -239,7 +240,7 @@ class Scene
         GlobalLightData GetLightData(glm::mat4 &viewMatrix)
         {
             auto gLightData = GlobalLightData();
-            gLightData.ambientLight = glm::vec4(1.0,1.0,1.0,0.1f);
+            gLightData.ambientLight = ambientLight;
 
 
             // DirectionalLights:
@@ -295,6 +296,7 @@ class Scene
         std::unordered_map<std::string, std::vector<ObjectBlueprint>> objectBlueprints;
         std::vector<std::shared_ptr<Object>> objects;
 
+        glm::vec4 ambientLight = glm::vec4(0);
         std::vector<DirectionalLight> directionalLights;
         std::vector<PointLight> pointLights;
         //std::vector<std::unique_ptr<BaseLight>> sceneLights;

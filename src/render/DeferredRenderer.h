@@ -381,7 +381,7 @@ class DeferredRenderer : public BaseRenderer
                 {
                     // Stencil Pass:
                     lightVolumeStencilPass.UseProgram();
-
+                    glEnable(GL_DEPTH_TEST);
                     glDisable(GL_CULL_FACE);
                     glClear(GL_STENCIL_BUFFER_BIT);
                     // We need the stencil test to be enabled but we want it to succeed always.
@@ -419,7 +419,7 @@ class DeferredRenderer : public BaseRenderer
                 }
                 glDisable(GL_STENCIL_TEST);
             }
-
+            
             // Directional Lights:
             directionalLightingPass.UseProgram();
             glBindVertexArray(screenQuadVAO);

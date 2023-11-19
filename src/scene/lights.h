@@ -73,7 +73,7 @@ namespace LightVolumes
     static inline float GetPointLightVolumeRadius(glm::vec3 color, float constant, float linear, float quadratic)
     {
         float maxC = std::max(color.x, std::max(color.y,color.z));
-        return (-linear + sqrt(linear * linear -4* quadratic * (constant - 128 * maxC) ))/(2 * quadratic);
+        return (-linear + sqrt(linear * linear -4* quadratic * (constant - 1024 * maxC) ))/(2 * quadratic);
     } 
 }
 

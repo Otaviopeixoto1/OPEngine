@@ -97,7 +97,5 @@ vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 specularSt
 
     vec4 diffuse  = light.lightColor * diff;
     vec4 specular = light.lightColor * spec * vec4(specularStrength, 0.0);
-    diffuse  *= attenuation;
-    specular *= attenuation;
-    return (diffuse + specular);
+    return (diffuse + specular) * attenuation;
 } 
