@@ -70,7 +70,6 @@ public:
             glGetShaderInfoLog(vertex, 512, NULL, infoLog);
             std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
             throw ShaderException(vertexShaderPath +  ": vertex Shader compilation failed failed\n");
-            //throw ShaderException(ppVertexCode);
         };
         
         // 2) Fragment shader

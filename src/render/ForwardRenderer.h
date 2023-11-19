@@ -8,11 +8,16 @@
 class ForwardRenderer : public BaseRenderer
 {
     public:
-        
-        
-
         unsigned int MSAASamples = 4; 
         float tonemapExposure = 1.0f;
+
+        const int MAX_DIR_LIGHTS = 5;
+        const int MAX_POINT_LIGHTS = 3;
+
+        std::string PreprocessorDefines[2] = { 
+            "MAX_DIR_LIGHTS 5",
+            "MAX_POINT_LIGHTS 3",
+        };
 
 
         // ***Adopted naming conventions for the global uniform blocks***
@@ -166,8 +171,24 @@ class ForwardRenderer : public BaseRenderer
             
             // Setting LightsUBO:
             glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
-            glBufferSubData(GL_UNIFORM_BUFFER, 0, LightBufferSize, &lights);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);   
+            int offset = 0;
+
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, 4* sizeof(float), glm::value_ptr(lights.ambientLight));
+            offset = 4* sizeof(float);
+
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numDirLights);
+            offset += sizeof(int);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numPointLights);
+            offset += sizeof(int);
+
+            offset += 2 * sizeof(int);
+
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData), lights.directionalLights.data());
+            offset += MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData), lights.pointLights.data());
+            offset += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
+
+            glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
         
 
@@ -297,8 +318,12 @@ class ForwardRenderer : public BaseRenderer
             defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
             postProcessShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemap.frag");
 
+            defaultVertFrag.AddPreProcessorDefines(PreprocessorDefines,2);
             defaultVertFrag.Build();
+
+            defaultVertTexFrag.AddPreProcessorDefines(PreprocessorDefines,2);
             defaultVertTexFrag.Build();
+
             defaultVertUnlitFrag.Build();
             postProcessShader.Build();
 

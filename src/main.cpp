@@ -40,6 +40,7 @@ bool windowResized = false;
 
 //initializing the camera
 Camera mainCamera(glm::vec3(0.0f, 0.0f, 3.0f));
+bool freeCamMode = true;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -239,6 +240,10 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
+    if (!freeCamMode)
+    {
+        return;
+    }
     if (firstMouseMovement) // initially set to true
     {
         lastMouseX = xpos;
@@ -265,6 +270,20 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 
 }
 
+void ToggleCameraMovementMode(GLFWwindow *window)
+{
+    if (freeCamMode)
+    {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        freeCamMode = false;
+    }
+    else
+    {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        freeCamMode = true;
+    }
+}
+
 // Process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow *window)
@@ -287,5 +306,8 @@ void processInput(GLFWwindow *window)
         mainCamera.ProcessKeyboard(GLOBAL_UP_MOVEMENT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         mainCamera.ProcessKeyboard(GLOBAL_DOWN_MOVEMENT, deltaTime);
+
+    if (glfwGetKey(window, GLFW_KEY_KP_ENTER) == GLFW_PRESS)
+        ToggleCameraMovementMode(window);
     
 }

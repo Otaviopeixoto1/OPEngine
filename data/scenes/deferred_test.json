@@ -163,16 +163,746 @@
 					"linear" : 100,
 					"quadratic" : 200
                 }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [-5.0, 1.4, 0.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [-5.0, 0.0, -0.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [-5.6, 1.5, 0.6],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [10.0,10.0,0.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [10.0,10.0,0.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [-10.0, 1.4, 0.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [-10.0, 0.0, -0.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [-10.6, 1.5, 0.6],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [0.0,10.0,10.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [0.0,10.0,10.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [0.0, 1.4, -5.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [0.0, 0.0, -5.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [0.6, 1.5, -4.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [0.0,8.0,2.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [0.0,8.0,2.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [5.0, 1.4, -5.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [5.0, 0.0, -5.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [5.6, 1.5, -4.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [0.0,5.0,5.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [0.0,5.0,5.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [10.0, 1.4, -5.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [10.0, 0.0, -5.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [10.6, 1.5, -4.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [0.0,0.3,0.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [0.0,0.3,0.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [-5.0, 1.4, -5.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [-5.0, 0.0, -5.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [-5.6, 1.5, -4.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [5.0,2.0,0.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [5.0,2.0,0.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [-10.0, 1.4, -5.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [-10.0, 0.0, -5.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [-10.6, 1.5, -4.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [3.0,7.0,3.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [3.0,7.0,3.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [0.0, 1.4, -10.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [0.0, 0.0, -10.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [0.6, 1.5, -9.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [10.0,3.0,3.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [10.0,3.0,3.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [5.0, 1.4, -10.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [5.0, 0.0, -10.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [5.6, 1.5, -9.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [3.0,3.0,8.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [3.0,3.0,8.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [10.0, 1.4, -10.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [10.0, 0.0, -10.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [10.6, 1.5, -9.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [9.0,9.0,9.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [9.0,9.0,9.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [-5.0, 1.4, -10.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [-5.0, 0.0, -10.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [-5.6, 1.5, -9.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [7.0,12.0,8.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [7.0,12.0,8.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [-10.0, 1.4, -10.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [-10.0, 0.0, -10.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [-10.6, 1.5, -9.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [8.0,1.0,1.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [8.0,1.0,1.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [0.0, 1.4, -15.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [0.0, 0.0, -15.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [0.6, 1.5, -14.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [0.2,0.0,3.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [0.2,0.0,3.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [5.0, 1.4, -15.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [5.0, 0.0, -15.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [5.6, 1.5, -14.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [0.2,3.0,8.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [0.2,3.0,8.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [10.0, 1.4, -15.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [10.0, 0.0, -15.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [10.6, 1.5, -14.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [6.0,3.0,0.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [6.0,3.0,0.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [-5.0, 1.4, -15.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [-5.0, 0.0, -15.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [-5.6, 1.5, -14.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [7.0,12.0,0.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [7.0,12.0,0.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
+			},
+			{
+				"mesh" : "backpack",
+				"pos" : [-10.0, 1.4, -15.0],
+                "scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [0.1,0.1,0.1],
+					"specularPower" : 1.0
+                }
+				
+			},
+			{
+				"mesh" : "cube",
+				"pos" : [-10.0, 0.0, -15.5],
+				"scale" : [0.5, 0.5, 0.5],
+				"Material" :
+                {
+                    "type" : "default",
+					"albedoColor" : [1.0,1.0,1.0],
+					"specularStrength" : [1.0,1.0,1.0],
+					"specularPower" : 50.0
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [-10.6, 1.5, -14.4],
+				"scale" : [0.2, 0.2, 0.2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [1.0,0.0,0.0]
+                },
+				"Light" :
+                {
+                    "type" : "point",
+					"lightColor" : [1.0,0.0,0.0],
+					"constant" : 1,
+					"linear" : 100,
+					"quadratic" : 200
+                }
 			}
+			
 		]
 	},
 	"renderer" :
 	{
-		"ambientLight" : [0.01, 0.01, 0.01], 
+		"ambientLight" : [0.005, 0.005, 0.005], 
 		"ForwardRenderer" :
 		{
-			"downscale" : 1,
-			"interleavedPatternSize" : 4
 		}
 	}
 }

@@ -49,6 +49,9 @@ struct ObjectBlueprint
 class Scene
 {
     public:
+        int MAX_DIR_LIGHTS;
+        int MAX_POINT_LIGHTS;
+
         Scene(const std::string &relativePath)
         {
             std::cout << "Loading Scene: " << "\n";
@@ -242,8 +245,7 @@ class Scene
             auto gLightData = GlobalLightData();
             gLightData.ambientLight = ambientLight;
 
-
-            // DirectionalLights:
+            // DirectionalLights:       
             for (std::size_t i = 0; i < MAX_DIR_LIGHTS; i++)
             {
                 if(i >= directionalLights.size())
@@ -252,10 +254,10 @@ class Scene
                 }
                 auto lightData = directionalLights[i].GetLightData();
                 lightData.lightDirection = viewMatrix * lightData.lightDirection;
-                gLightData.directionalLights[i] = lightData;
+                gLightData.directionalLights.push_back(lightData);
             }
 
-            // PointLights:
+            // PointLights:             
             for (std::size_t i = 0; i < MAX_POINT_LIGHTS; i++)
             {
                 if(i >= pointLights.size())
@@ -264,7 +266,7 @@ class Scene
                 }
                 auto lightData = pointLights[i].GetLightData();
                 lightData.position = viewMatrix * lightData.position;
-                gLightData.pointLights[i] = lightData;
+                gLightData.pointLights.push_back(lightData);
             }
             
 
@@ -276,10 +278,7 @@ class Scene
 
         }
 
-
-
-
-        
+     
     private:
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -297,6 +296,8 @@ class Scene
         std::vector<std::shared_ptr<Object>> objects;
 
         glm::vec4 ambientLight = glm::vec4(0);
+        
+
         std::vector<DirectionalLight> directionalLights;
         std::vector<PointLight> pointLights;
         //std::vector<std::unique_ptr<BaseLight>> sceneLights;

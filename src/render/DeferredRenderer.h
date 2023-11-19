@@ -14,6 +14,8 @@ class DeferredRenderer : public BaseRenderer
         float FXAABrightnessThreshold = 0.063f;
         const bool enableLightVolumes = true;
 
+        const int MAX_DIR_LIGHTS = 5;
+        const int MAX_POINT_LIGHTS = 20;
 
         enum GBufferBindings
         {
@@ -25,7 +27,7 @@ class DeferredRenderer : public BaseRenderer
 
         std::string PreprocessorDefines[2] = { 
             "MAX_DIR_LIGHTS 5",
-            "MAX_POINT_LIGHTS 3",
+            "MAX_POINT_LIGHTS 20",
         };
 
         // ***Adopted naming conventions for the global uniform blocks***
@@ -56,7 +58,21 @@ class DeferredRenderer : public BaseRenderer
 
         void RecreateResources(Scene &scene)
         {
-            LoadLightingResources();
+            glGenVertexArrays(1, &screenQuadVAO);
+            glGenBuffers(1, &screenQuadVBO);
+            glBindVertexArray(screenQuadVAO);
+            glBindBuffer(GL_ARRAY_BUFFER, screenQuadVBO);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+            pointLightVolume = MeshData::LoadMeshFromFile(BASE_DIR "/data/models/light_volumes/pointLightVolume.obj");
+
+            scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
+            scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
+
 
             // gBuffer:
             glGenFramebuffers(1, &gBufferFBO);
@@ -207,21 +223,6 @@ class DeferredRenderer : public BaseRenderer
             glBindTexture(GL_TEXTURE_2D, 0);
         }
 
-        void LoadLightingResources()
-        {
-            glGenVertexArrays(1, &screenQuadVAO);
-            glGenBuffers(1, &screenQuadVBO);
-            glBindVertexArray(screenQuadVAO);
-            glBindBuffer(GL_ARRAY_BUFFER, screenQuadVBO);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-            glEnableVertexAttribArray(1);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
-            pointLightVolume = MeshData::LoadMeshFromFile(BASE_DIR "/data/models/light_volumes/pointLightVolume.obj");
-        }
-
 
         void RenderFrame(const Camera &camera, Scene *scene, GLFWwindow *window)
         {
@@ -232,7 +233,6 @@ class DeferredRenderer : public BaseRenderer
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glDepthMask(GL_TRUE);
             glEnable(GL_DEPTH_TEST);
-
 
 
             // Global Uniforms (dont depend on objects/materials)
@@ -361,9 +361,24 @@ class DeferredRenderer : public BaseRenderer
             
             // Setting LightsUBO:
             glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
-            glBufferSubData(GL_UNIFORM_BUFFER, 0, LightBufferSize, &lights);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);   
+            int offset = 0;
 
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, 4* sizeof(float), glm::value_ptr(lights.ambientLight));
+            offset = 4* sizeof(float);
+
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numDirLights);
+            offset += sizeof(int);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numPointLights);
+            offset += sizeof(int);
+
+            offset += 2 * sizeof(int);
+
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData), lights.directionalLights.data());
+            offset += MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData), lights.pointLights.data());
+            offset += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
+
+            glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
             
             // Light Volumes: Render all point light volumes
@@ -525,10 +540,9 @@ class DeferredRenderer : public BaseRenderer
                 std::string pd = "LIGHT_VOLUMES";
                 directionalLightingPass.AddPreProcessorDefines(&pd,1);
             }
-
             directionalLightingPass.Build();
-            directionalLightingPass.UseProgram();
 
+            directionalLightingPass.UseProgram();
             // binding points of the gbuffer textures:
             directionalLightingPass.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
             directionalLightingPass.SetInt("gNormal", NORMAL_BUFFER_BINDING);
@@ -536,12 +550,13 @@ class DeferredRenderer : public BaseRenderer
             directionalLightingPass.BindUniformBlock(NamedBufferBindings[GLOBAL_LIGHTS_BINDING], GLOBAL_LIGHTS_BINDING);
             
 
+
             lightVolumeStencilPass = Shader(BASE_DIR"/data/shaders/deferred/lightVolume.vert", BASE_DIR"/data/shaders/deferred/nullFrag.frag");
             lightVolumeStencilPass.Build();
             lightVolumeStencilPass.BindUniformBlock(NamedBufferBindings[GLOBAL_MATRICES_BINDING],GLOBAL_MATRICES_BINDING);
             
-
             pointLightVolShader = Shader(BASE_DIR"/data/shaders/deferred/lightVolume.vert", BASE_DIR"/data/shaders/deferred/pointVolDeferredLighting.frag");
+            pointLightVolShader.AddPreProcessorDefines(PreprocessorDefines,2);
             pointLightVolShader.Build();
             pointLightVolShader.BindUniformBlock(NamedBufferBindings[GLOBAL_MATRICES_BINDING],GLOBAL_MATRICES_BINDING);
             pointLightVolShader.BindUniformBlock(NamedBufferBindings[GLOBAL_LIGHTS_BINDING],GLOBAL_LIGHTS_BINDING);

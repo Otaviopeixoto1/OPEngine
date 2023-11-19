@@ -6,8 +6,8 @@
 #include <glm/glm.hpp>
 #include <memory>
 
-#define MAX_DIR_LIGHTS 5
-#define MAX_POINT_LIGHTS 3
+//#define MAX_DIR_LIGHTS 5 //REMOVE this is a renderer property
+//#define MAX_POINT_LIGHTS 3 //REMOVE this is a renderer property
 
 
 class DirectionalLight
@@ -138,8 +138,8 @@ struct GlobalLightData
     int numPointLights;
     int pad2;
     int pad3;
-    DirectionalLight::DirectionalLightData directionalLights[MAX_DIR_LIGHTS];
-    PointLight::PointLightData pointLights[MAX_POINT_LIGHTS];
+    std::vector<DirectionalLight::DirectionalLightData> directionalLights;
+    std::vector<PointLight::PointLightData> pointLights;
 };
 #pragma pack(pop)
 
