@@ -52,6 +52,7 @@ class Scene
         int MAX_DIR_LIGHTS;
         int MAX_POINT_LIGHTS;
 
+
         Scene(const std::string &relativePath)
         {
             std::cout << "Loading Scene: " << "\n";
@@ -240,6 +241,7 @@ class Scene
             }
         }
         
+        //Returns the light data in view space
         GlobalLightData GetLightData(glm::mat4 &viewMatrix)
         {
             auto gLightData = GlobalLightData();
@@ -271,11 +273,16 @@ class Scene
             
 
 
-            gLightData.numDirLights = directionalLights.size();
-            gLightData.numPointLights = pointLights.size();
+            gLightData.numDirLights = gLightData.directionalLights.size();
+            gLightData.numPointLights = gLightData.pointLights.size();
 
             return gLightData;
 
+        }
+
+        int GetDirLightCount()
+        {
+            return directionalLights.size();
         }
 
      

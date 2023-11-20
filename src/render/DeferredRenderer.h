@@ -8,14 +8,22 @@
 class DeferredRenderer : public BaseRenderer
 {
     public:
+        const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+        bool enableShadowMap = false;
 
         float tonemapExposure = 1.0f;
         float FXAAContrastThreshold = 0.0312f;
         float FXAABrightnessThreshold = 0.063f;
         const bool enableLightVolumes = true;
+        
 
         const int MAX_DIR_LIGHTS = 5;
         const int MAX_POINT_LIGHTS = 20;
+
+        std::string PreprocessorDefines[2] = { 
+            "MAX_DIR_LIGHTS 5",
+            "MAX_POINT_LIGHTS 20",
+        };
 
         enum GBufferBindings
         {
@@ -25,11 +33,14 @@ class DeferredRenderer : public BaseRenderer
             ACCUMULATION_BUFFER_BINDING = 3,
         };
 
-        std::string PreprocessorDefines[2] = { 
-            "MAX_DIR_LIGHTS 5",
-            "MAX_POINT_LIGHTS 20",
-        };
+        enum DRGlobalBufferBindings
+        {
+            GLOBAL_MATRICES_BINDING = 0,
+            LOCAL_MATRICES_BINDING = 1,
+            MATERIAL_PROPERTIES_BINDING = 2,
+            GLOBAL_LIGHTS_BINDING = 3,
 
+        };
         // ***Adopted naming conventions for the global uniform blocks***
         std::string NamedBufferBindings[4] = { // The indexes have to match values in DRBufferBindings enum
             "GlobalMatrices",
@@ -39,14 +50,7 @@ class DeferredRenderer : public BaseRenderer
 
         };
         
-        enum DRGlobalBufferBindings
-        {
-            GLOBAL_MATRICES_BINDING = 0,
-            LOCAL_MATRICES_BINDING = 1,
-            MATERIAL_PROPERTIES_BINDING = 2,
-            GLOBAL_LIGHTS_BINDING = 3,
-
-        };
+        
 
         
 
@@ -58,6 +62,9 @@ class DeferredRenderer : public BaseRenderer
 
         void RecreateResources(Scene &scene)
         {
+            scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
+            scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
+
             glGenVertexArrays(1, &screenQuadVAO);
             glGenBuffers(1, &screenQuadVBO);
             glBindVertexArray(screenQuadVAO);
@@ -68,12 +75,30 @@ class DeferredRenderer : public BaseRenderer
             glEnableVertexAttribArray(1);
             glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
+
             MeshData PointVolData = MeshData::LoadMeshDataFromFile(BASE_DIR "/data/models/light_volumes/pointLightVolume.obj");
-            
             pointLightVolume = std::make_shared<Mesh>(PointVolData);
 
-            scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
-            scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
+            // Shadow Map:
+            if (scene.GetDirLightCount() > 0)
+            {
+                enableShadowMap = true;
+                
+                glGenFramebuffers(1, &shadowMapFBO);
+                glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
+                glGenTextures(1, &shadowMap);
+                glBindTexture(GL_TEXTURE_2D, shadowMap);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); 
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);  
+
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMap, 0);
+
+                glDrawBuffer(GL_NONE); //we wont draw to any color buffer
+                glReadBuffer(GL_NONE); //we wont read from any color buffer 
+            }
 
 
             // gBuffer:
@@ -228,15 +253,6 @@ class DeferredRenderer : public BaseRenderer
 
         void RenderFrame(const Camera &camera, Scene *scene, GLFWwindow *window)
         {
-            // Rendering to the gBuffer:
-            // -------------------------
-            glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glDepthMask(GL_TRUE);
-            glEnable(GL_DEPTH_TEST);
-
-
             // Global Uniforms (dont depend on objects/materials)
             // --------------------------------------------------
             glm::mat4 viewMatrix = camera.GetViewMatrix();
@@ -247,6 +263,44 @@ class DeferredRenderer : public BaseRenderer
             glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(projectionMatrix));
             glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(viewMatrix));
             glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+
+
+            // Get Light data in view space:
+            GlobalLightData lights = scene->GetLightData(viewMatrix);
+
+            if (enableShadowMap)
+            {
+                auto mainLight = lights.directionalLights[0];
+                shadowMapPass.UseProgram();
+
+                scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
+                {
+                    if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
+                    {
+                        return;
+                    }
+
+
+
+                });    
+
+            }
+
+
+
+
+
+
+            // Rendering to the gBuffer:
+            // -------------------------
+            glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glDepthMask(GL_TRUE);
+            glEnable(GL_DEPTH_TEST);
+
+
+            
         
 
             int shaderCache = -1;
@@ -358,8 +412,7 @@ class DeferredRenderer : public BaseRenderer
             glActiveTexture(GL_TEXTURE0 + POSITION_BUFFER_BINDING);
             glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
 
-            // Get Light data in view space:
-            GlobalLightData lights = scene->GetLightData(viewMatrix);
+            
             
             // Setting LightsUBO:
             glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
@@ -397,7 +450,7 @@ class DeferredRenderer : public BaseRenderer
                 for (size_t i = 0; i < lights.numPointLights; i++)
                 {
                     // Stencil Pass:
-                    lightVolumeStencilPass.UseProgram();
+                    lightVolumeDepthPass.UseProgram();
                     glEnable(GL_DEPTH_TEST);
                     glDisable(GL_CULL_FACE);
                     glClear(GL_STENCIL_BUFFER_BIT);
@@ -413,7 +466,7 @@ class DeferredRenderer : public BaseRenderer
                     rootTransform = glm::translate(rootTransform, glm::vec3(l.position));
                     rootTransform = glm::scale(rootTransform, glm::vec3(l.radius, l.radius, l.radius));
 
-                    lightVolumeStencilPass.SetMat4("modelViewMatrix", rootTransform);
+                    lightVolumeDepthPass.SetMat4("modelViewMatrix", rootTransform);
 
                     glDrawElements(GL_TRIANGLES, pointLightVolume->indicesCount, GL_UNSIGNED_INT, 0);
 
@@ -520,6 +573,10 @@ class DeferredRenderer : public BaseRenderer
 
         void ReloadShaders()
         {
+            shadowMapPass = Shader(BASE_DIR"/data/shaders/deferred/lightVolume.vert", BASE_DIR"/data/shaders/deferred/nullFrag.frag");
+            
+            shadowMapPass.Build();
+
             //Material specific shaders. These should dynamically load depending on available scene materials
             defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferAlbedo.frag");
             defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
@@ -553,10 +610,11 @@ class DeferredRenderer : public BaseRenderer
             
 
 
-            lightVolumeStencilPass = Shader(BASE_DIR"/data/shaders/deferred/lightVolume.vert", BASE_DIR"/data/shaders/deferred/nullFrag.frag");
-            lightVolumeStencilPass.Build();
-            lightVolumeStencilPass.BindUniformBlock(NamedBufferBindings[GLOBAL_MATRICES_BINDING],GLOBAL_MATRICES_BINDING);
+            lightVolumeDepthPass = Shader(BASE_DIR"/data/shaders/deferred/lightVolume.vert", BASE_DIR"/data/shaders/deferred/nullFrag.frag");
+            lightVolumeDepthPass.Build();
+            lightVolumeDepthPass.BindUniformBlock(NamedBufferBindings[GLOBAL_MATRICES_BINDING],GLOBAL_MATRICES_BINDING);
             
+
             pointLightVolShader = Shader(BASE_DIR"/data/shaders/deferred/lightVolume.vert", BASE_DIR"/data/shaders/deferred/pointVolDeferredLighting.frag");
             pointLightVolShader.AddPreProcessorDefines(PreprocessorDefines,2);
             pointLightVolShader.Build();
@@ -688,6 +746,10 @@ class DeferredRenderer : public BaseRenderer
         unsigned int viewportWidth;
         unsigned int viewportHeight;
 
+        unsigned int shadowMapFBO;
+        unsigned int shadowMap;
+        Shader shadowMapPass;
+
         unsigned int gBufferFBO;
         unsigned int gColorBuffer, gNormalBuffer, gPositionBuffer;
         unsigned int depthStencilBuffer;
@@ -727,7 +789,7 @@ class DeferredRenderer : public BaseRenderer
         };
         
 
-        Shader lightVolumeStencilPass; 
+        Shader lightVolumeDepthPass; 
         Shader pointLightVolShader;
         std::shared_ptr<Mesh> pointLightVolume;
         

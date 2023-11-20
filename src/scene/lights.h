@@ -6,9 +6,6 @@
 #include <glm/glm.hpp>
 #include <memory>
 
-//#define MAX_DIR_LIGHTS 5 //REMOVE this is a renderer property
-//#define MAX_POINT_LIGHTS 3 //REMOVE this is a renderer property
-
 
 class DirectionalLight
 {
@@ -28,9 +25,20 @@ class DirectionalLight
             this->lightData = DirectionalLightData();
             this->lightData.lightColor = glm::vec4(color.x,color.y,color.z,1.0f);
             this->lightData.lightDirection = glm::vec4(direction,0.0f);
+
             if (srcObject != nullptr)
             {
-                this->lightData.lightMatrix = srcObject->objToWorld;
+                float near_plane = 1.0f, far_plane = 7.5f;
+                glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane); 
+
+                glm::mat4 lightView = glm::lookAt
+                (
+                    glm::vec3(srcObject->objToWorld[3]), 
+                    -direction, 
+                    glm::vec3( 0.0f, 1.0f,  0.0f)
+                );  
+
+                this->lightData.lightMatrix = lightProjection * lightView;
                 this->object = srcObject;
             }
             else
@@ -107,7 +115,6 @@ class PointLight
             this->lightData.linear = l;
             this->lightData.quadratic = q;
             this->lightData.radius = LightVolumes::GetPointLightVolumeRadius(color, c,l,q);
-            std::cout <<"lightradius:>>>>>>" << lightData.radius << "\n"; 
         }
         
 

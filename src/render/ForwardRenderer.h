@@ -12,11 +12,11 @@ class ForwardRenderer : public BaseRenderer
         float tonemapExposure = 1.0f;
 
         const int MAX_DIR_LIGHTS = 5;
-        const int MAX_POINT_LIGHTS = 3;
+        const int MAX_POINT_LIGHTS = 10;
 
         std::string PreprocessorDefines[2] = { 
             "MAX_DIR_LIGHTS 5",
-            "MAX_POINT_LIGHTS 3",
+            "MAX_POINT_LIGHTS 10",
         };
 
 
@@ -45,6 +45,9 @@ class ForwardRenderer : public BaseRenderer
 
         void RecreateResources(Scene &scene)
         {
+            scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
+            scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
+
             // Setting up screen quad for postprocessing: HDR tonemapping and gamma correction
             glGenVertexArrays(1, &screenQuadVAO);
             glGenBuffers(1, &screenQuadVBO);
@@ -313,8 +316,8 @@ class ForwardRenderer : public BaseRenderer
         void ReloadShaders()
         {
             
-            defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/albedoFrag.frag");
-            defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/texturedFrag.frag");
+            defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/albedoFrag.frag");
+            defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
             defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
             postProcessShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemap.frag");
 
@@ -445,9 +448,6 @@ class ForwardRenderer : public BaseRenderer
 
         unsigned int LightBufferSize = 0;
         unsigned int MaterialBufferSize = 0;
-        //MipBuilder mipBuilder;
-        //BlurBuilder blurBuilder;
-        //DebugRenderer debugRenderer;
 
         unsigned int screenQuadVAO, screenQuadVBO;
         unsigned int screenTexture;
