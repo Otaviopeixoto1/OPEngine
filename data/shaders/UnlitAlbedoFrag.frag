@@ -14,6 +14,5 @@ layout (std140) uniform MaterialProperties
 
 void main()
 {    
-    //FragColor = vec4(albedo,1.0)*lightColor;
     FragColor = albedoColor;
 }

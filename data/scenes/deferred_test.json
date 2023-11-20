@@ -894,6 +894,32 @@
 					"linear" : 100,
 					"quadratic" : 200
                 }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [0.0, -10.0, 0.0],
+				"scale" : [2, 2, 2],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [10.0,10.0,10.0]
+                }
+			},
+			{
+				"mesh" : "sphere",
+				"pos" : [10.0, 10.0, 10.0],
+				"scale" : [10, 10, 10],
+				"Material" :
+                {
+                    "type" : "unlit",
+					"albedoColor" : [1.0,1.0,1.0]
+                },
+				"Light" :
+                {
+                    "type" : "directional",
+                    "direction" : [1.0, 1.0, 1.0],
+					"lightColor" : [0.05,0.05,0.05]
+                }
 			}
 			
 		]
