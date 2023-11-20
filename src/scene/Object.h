@@ -20,10 +20,10 @@ enum MaterialFlags
     OP_MATERIAL_TEXTURED_DIFFUSE = 1 << 0, // 1
     OP_MATERIAL_TEXTURED_SPECULAR = 1 << 1, // 2
     OP_MATERIAL_TEXTURED_NORMAL = 1 << 2, // 4
-    Flag4 = 1 << 3, // 8
-    Flag5 = 1 << 4, // 16
-    Flag6 = 1 << 5, // 32
-    Flag7 = 1 << 6, // 64
+    OP_MATERIAL_Flag4 = 1 << 3, // 8
+    OP_MATERIAL_Flag5 = 1 << 4, // 16
+    OP_MATERIAL_Flag6 = 1 << 5, // 32
+    OP_MATERIAL_Flag7 = 1 << 6, // 64
     OP_MATERIAL_UNLIT = 1 << 7  //128
 };
 

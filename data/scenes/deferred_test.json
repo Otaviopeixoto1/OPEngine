@@ -368,12 +368,12 @@
 				"Material" :
                 {
                     "type" : "unlit",
-					"albedoColor" : [0.0,0.3,0.0]
+					"albedoColor" : [1.0,3,0.0]
                 },
 				"Light" :
                 {
                     "type" : "point",
-					"lightColor" : [0.0,0.3,0.0],
+					"lightColor" : [1.0,3,0.0],
 					"constant" : 1,
 					"linear" : 100,
 					"quadratic" : 200
@@ -454,12 +454,12 @@
 				"Material" :
                 {
                     "type" : "unlit",
-					"albedoColor" : [3.0,7.0,3.0]
+					"albedoColor" : [0.0,7.0,3.0]
                 },
 				"Light" :
                 {
                     "type" : "point",
-					"lightColor" : [3.0,7.0,3.0],
+					"lightColor" : [0.0,7.0,3.0],
 					"constant" : 1,
 					"linear" : 100,
 					"quadratic" : 200
@@ -884,12 +884,12 @@
 				"Material" :
                 {
                     "type" : "unlit",
-					"albedoColor" : [1.0,0.0,0.0]
+					"albedoColor" : [6.0,0.0,0.0]
                 },
 				"Light" :
                 {
                     "type" : "point",
-					"lightColor" : [1.0,0.0,0.0],
+					"lightColor" : [6.0,0.0,0.0],
 					"constant" : 1,
 					"linear" : 100,
 					"quadratic" : 200

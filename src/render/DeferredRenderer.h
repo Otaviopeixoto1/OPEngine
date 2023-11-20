@@ -68,7 +68,9 @@ class DeferredRenderer : public BaseRenderer
             glEnableVertexAttribArray(1);
             glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
-            pointLightVolume = MeshData::LoadMeshFromFile(BASE_DIR "/data/models/light_volumes/pointLightVolume.obj");
+            MeshData PointVolData = MeshData::LoadMeshDataFromFile(BASE_DIR "/data/models/light_volumes/pointLightVolume.obj");
+            
+            pointLightVolume = std::make_shared<Mesh>(PointVolData);
 
             scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
             scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;

@@ -16,6 +16,19 @@
 
 class Mesh;
 
+enum MeshFlags
+{
+    OP_MESH_COORDS = 0, // 0
+    OP_MESH_NORMALS = 1 << 0, // 1
+    OP_MESH_TEXCOORDS = 1 << 1, // 2
+    OP_MESH_Flag4 = 1 << 2, // 4
+    OP_MESH_Flag5 = 1 << 3, // 8
+    OP_MESH_Flag6 = 1 << 4, // 16
+    OP_MESH_Flag7 = 1 << 5, // 32
+    OP_MESH_Flag8 = 1 << 6, // 64
+    OP_MESH_Flag9 = 1 << 7  //128
+};
+
 // Container for mesh data as well as methods to generate useful meshes
 class MeshData
 {
@@ -26,7 +39,7 @@ class MeshData
             glm::vec3 Normal;
             glm::vec2 TexCoords;
         };
-        
+        unsigned int flags = OP_MESH_COORDS;
 
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
@@ -38,9 +51,19 @@ class MeshData
             this->indices = indices;
         }
 
+        void AddFlags(unsigned int flag)
+        {
+            flags = flags | flag;
+        }
+
+        bool HasFlags(unsigned int flag)
+        {
+            return (flags & (int)flag) == (int)flag;
+        }
+
         //static functions for generating meshes based on an input mesh:
         
-        static std::shared_ptr<Mesh> LoadMeshFromFile(const std::string& filePath)
+        static MeshData LoadMeshDataFromFile(const std::string& filePath)
         {
             Assimp::Importer import;
             const aiScene *scene = import.ReadFile(filePath, aiProcess_Triangulate | aiProcess_FlipUVs);	
@@ -87,13 +110,8 @@ class MeshData
                     mIndices.push_back(face.mIndices[j]);
             }  
             
-            return std::make_shared<Mesh>(mVertices, mIndices);
+            return MeshData(mVertices, mIndices);
         }
-
-
-
-
-
 };
 
 
@@ -112,14 +130,17 @@ class Mesh
         {
             this->vertices = meshData.vertices;
             this->indices = meshData.indices;
+            this->flags = meshData.flags;
 
             InitBuffers();
             vertices.clear();
             indices.clear();
         }
 
+        // Generates a default mesh. Expects normals and texcoords to be filled in vertex data
         Mesh(std::vector<MeshData::Vertex> &mVertices, std::vector<unsigned int> &mIndices)
         {
+            this->flags = OP_MESH_COORDS | OP_MESH_NORMALS | OP_MESH_TEXCOORDS;
             this->vertices = mVertices;
             this->indices = mIndices;
 
@@ -128,6 +149,11 @@ class Mesh
             indices.clear();
         }
         
+
+        bool HasFlags(unsigned int flag)
+        {
+            return (flags & (int)flag) == (int)flag;
+        }
         
         void BindBuffers()
         {
@@ -146,6 +172,7 @@ class Mesh
     private:
         //Vertex + Index buffers
         unsigned int VAO, VBO, EBO;
+        unsigned int flags;
 
         void InitBuffers()
         {
@@ -167,16 +194,27 @@ class Mesh
 
 
             // vertex positions
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)0);
-            glEnableVertexAttribArray(0);
+            if(HasFlags(OP_MESH_COORDS))
+            {
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)0);
+                glEnableVertexAttribArray(0);
+            }
+            
 
             // vertex normals
-            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)offsetof(MeshData::Vertex, Normal));
-            glEnableVertexAttribArray(1);
+            if(HasFlags(OP_MESH_NORMALS))
+            {
+                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)offsetof(MeshData::Vertex, Normal));
+                glEnableVertexAttribArray(1);
+            }
 
             // vertex texture coords
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)offsetof(MeshData::Vertex, TexCoords));
-            glEnableVertexAttribArray(2);	
+            if (HasFlags(OP_MESH_TEXCOORDS))
+            {
+                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)offsetof(MeshData::Vertex, TexCoords));
+                glEnableVertexAttribArray(2);	
+            }
+            
 
             glBindVertexArray(0);
             verticesCount = vertices.size();

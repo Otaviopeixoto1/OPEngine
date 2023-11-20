@@ -5,9 +5,6 @@
 
 #include "lights.glsl"
 
-in vec2 TexCoords;
-in vec3 ViewFragPos;
-//in vec3 ViewNormal;
 
 out vec4 FragColor;
 
