@@ -139,11 +139,11 @@ int main()
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
 
-    Scene scene = Scene("/data/scenes/deferred_test.json");
+    Scene scene = Scene("/data/scenes/sponza_scene.json");
 
     ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight);
     DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight);
-    BaseRenderer* renderer = &deferredRenderer;
+    BaseRenderer* renderer = &forwardRenderer;
     
     try
     {
@@ -182,18 +182,7 @@ int main()
         // Rendering
         // ---------
 
-        // clear the data on the depth buffer:
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        // clear the data on the color buffer:
-        //glClear(GL_COLOR_BUFFER_BIT);
-
         renderer->RenderFrame(mainCamera, &scene, window);
-        
-
-
-
-
-
 
 
 

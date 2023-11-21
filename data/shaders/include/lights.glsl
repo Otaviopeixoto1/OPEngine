@@ -9,8 +9,8 @@
 
 struct DirLight 
 {
-    vec4 lightColor; 
-    mat4 lightMatrix;
+    vec4 lightColor;
+    mat4 lightMatrix; 
     vec4 direction; 
 }; 
 
@@ -40,13 +40,45 @@ layout(std140) uniform Lights
 
 uniform sampler2D shadowMap0;
 
-vec4 GetLightShadow(int lightIndex, vec4 pos, vec4 posClipSpace)
+float GetDirLightShadow(int lightIndex, vec4 worldPos, vec3 normal)
 {
     #ifndef DIR_LIGHT_SHADOWS
-        return vec4(1,1,1,1);
+        return 1;
     #endif
+
+    vec4 posClipSpace = dirLights[lightIndex].lightMatrix * vec4(worldPos.xyz, 1);
+
+    // Perspective division is only necessary on perspective projection, but doesnt affect ortographic projection:
+    vec3 ndcPos = posClipSpace.xyz / posClipSpace.w;
+    ndcPos = ndcPos * 0.5 + 0.5; 
+
+    // Depth samples to compare   
+    float currentDepth = ndcPos.z; 
+
     
-    return vec4(1,0,0,1);
+
+    float bias = max(0.05 * (1.0 - dot(normal, dirLights[lightIndex].direction.xyz)), 0.005);  
+
+    // One sample:
+    //float closestDepth = texture(shadowMap0, ndcPos.xy).r;
+    //float shadow = currentDepth - bias > closestDepth  ? 0.0 : 1.0; 
+
+    // Multiple samples:
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(shadowMap0, 0);
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            float pcfDepth = texture(shadowMap0, ndcPos.xy + vec2(x, y) * texelSize).r; 
+            shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0;        
+        }    
+    }
+    shadow /= 9.0;
+
+    
+
+    return (currentDepth > 1.0) ? 1 : shadow;
 }
 
 

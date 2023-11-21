@@ -11,11 +11,13 @@ class DirectionalLight
 {
 
     public:
+        float lightNearPlane = 0.0f, lightFarPlane = 150.0f;
+
         #pragma pack(push, 1)
         struct DirectionalLightData
         {
             glm::vec4 lightColor;
-            glm::mat4 lightViewMatrix;
+            glm::mat4 lightMatrix;
             glm::vec4 lightDirection;
         };
         #pragma pack(pop)
@@ -26,6 +28,8 @@ class DirectionalLight
             this->lightData.lightColor = glm::vec4(color.x,color.y,color.z,1.0f);
             this->lightData.lightDirection = glm::vec4(direction, 0.0f);
 
+            glm::mat4 lightProjection = glm::ortho(-30.0f, 30.0f, -30.0f, 30.0f, lightNearPlane, lightFarPlane); 
+
             if (srcObject != nullptr)
             {
                 glm::mat4 lightView = glm::lookAt(
@@ -34,12 +38,12 @@ class DirectionalLight
                     glm::vec3(0.0f, 1.0f, 0.0f)
                 );  
 
-                this->lightData.lightViewMatrix =  lightView;
+                this->lightData.lightMatrix = lightProjection * lightView;
                 this->object = srcObject;
             }
             else
             {
-                this->lightData.lightViewMatrix = glm::mat4(1.0);
+                this->lightData.lightMatrix = glm::mat4(1.0);
             }
 
         }

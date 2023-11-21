@@ -23,7 +23,7 @@ layout (std140) uniform MaterialProperties
 
 void main()
 {    
-    gPosition = vec4(ViewFragPos,0.0);
+    gPosition = vec4(ViewFragPos,1.0);
     gNormal = vec4(normalize(ViewNormal),0.0);
 
     gAlbedoSpec.rgb = texture(texture_diffuse1, TexCoords).rgb;

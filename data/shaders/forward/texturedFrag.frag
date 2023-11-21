@@ -13,6 +13,14 @@ in vec3 ViewFragPos;
 uniform sampler2D texture_diffuse1;
 uniform sampler2D texture_specular1;
 
+
+layout (std140) uniform GlobalMatrices
+{
+    mat4 projectionMatrix;
+    mat4 viewMatrix;
+    mat4 inverseViewMatrix;
+};
+
 layout (std140) uniform MaterialProperties
 {
     vec4 albedoColor;
@@ -35,7 +43,8 @@ void main()
     for(int i = 0; i < numDirLights; i++)
     {
         vec3 viewDir = -normalize(ViewFragPos);
-        outFrag += albedo * CalcDirLight(i, norm, viewDir, specular.xyz, specular.w);
+        vec4 lighting = albedo * CalcDirLight(i, norm, viewDir, specular.xyz, specular.w);
+        outFrag += lighting * GetDirLightShadow(i, inverseViewMatrix * vec4(ViewFragPos,1.0), norm);
     }
     for(int i = 0; i < numPointLights; i++)
     {

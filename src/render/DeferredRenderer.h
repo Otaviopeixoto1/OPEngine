@@ -11,15 +11,13 @@ class DeferredRenderer : public BaseRenderer
         const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
 
 
-        float lightNearPlane = 0.0f, lightFarPlane = 100.0f;
-        glm::mat4 lightProjectionMatrix;
         bool enableShadowMap = false;
 
         float tonemapExposure = 1.0f;
         float FXAAContrastThreshold = 0.0312f;
         float FXAABrightnessThreshold = 0.063f;
 
-        static constexpr bool enableLightVolumes = true;
+        static constexpr bool enableLightVolumes = false;
         
 
         const int MAX_DIR_LIGHTS = 5;
@@ -89,17 +87,18 @@ class DeferredRenderer : public BaseRenderer
             if (scene.GetDirLightCount() > 0)
             {
                 enableShadowMap = true;
-                lightProjectionMatrix = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, lightNearPlane, lightFarPlane); 
                 
                 glGenFramebuffers(1, &shadowMapFBO);
                 glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
                 glGenTextures(1, &shadowMapBuffer);
                 glBindTexture(GL_TEXTURE_2D, shadowMapBuffer);
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); 
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);  
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+                float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+                glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);    
 
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMapBuffer, 0);
 
@@ -260,9 +259,15 @@ class DeferredRenderer : public BaseRenderer
 
         void RenderFrame(const Camera &camera, Scene *scene, GLFWwindow *window)
         {
+            // Set default rendering settings:
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glDepthMask(GL_TRUE);
+            glEnable(GL_DEPTH_TEST);
+
+
             // Setting GlobalMatricesUBO:
             // --------------------------
-            
+
             glm::mat4 projectionMatrix = camera.GetProjectionMatrix();
             glm::mat4 viewMatrix = camera.GetViewMatrix();
             glm::mat4 inverseViewMatrix = glm::inverse(viewMatrix);
@@ -278,15 +283,15 @@ class DeferredRenderer : public BaseRenderer
             // Rendering shadow maps
             // ---------------------
 
-            // Get Light data in view space:
             GlobalLightData lights = scene->GetLightData(viewMatrix);
 
             if (enableShadowMap)
             {
+                glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
                 glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
-                auto mainLight = lights.directionalLights[0];
+                glClear(GL_DEPTH_BUFFER_BIT);
 
-                glm::mat4 lightViewProjectionMatrix = lightProjectionMatrix * mainLight.lightViewMatrix;
+                auto mainLight = lights.directionalLights[0];
 
                 simpleDepthPass.UseProgram();
                 
@@ -297,7 +302,7 @@ class DeferredRenderer : public BaseRenderer
                         return;
                     }
 
-                    simpleDepthPass.SetMat4("MVPMatrix", lightViewProjectionMatrix * objectToWorld);
+                    simpleDepthPass.SetMat4("MVPMatrix", mainLight.lightMatrix * objectToWorld);
 
                     //bind VAO
                     mesh->BindBuffers();
@@ -305,6 +310,8 @@ class DeferredRenderer : public BaseRenderer
                     //Indexed drawing
                     glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
                 });    
+
+                glViewport(0, 0, viewportWidth, viewportHeight);
             }
 
 
@@ -313,11 +320,9 @@ class DeferredRenderer : public BaseRenderer
 
             // Rendering to the gBuffer:
             // -------------------------
+
             glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glDepthMask(GL_TRUE);
-            glEnable(GL_DEPTH_TEST);
 
             int shaderCache = -1;
 
@@ -629,12 +634,12 @@ class DeferredRenderer : public BaseRenderer
             }
             directionalLightingPass.BuildProgram();
             directionalLightingPass.UseProgram();
-            // binding points of the gbuffer textures:
             directionalLightingPass.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
             directionalLightingPass.SetInt("gNormal", NORMAL_BUFFER_BINDING);
             directionalLightingPass.SetInt("gPosition", POSITION_BUFFER_BINDING);
             directionalLightingPass.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
             directionalLightingPass.BindUniformBlock(NamedBufferBindings[GLOBAL_LIGHTS_BINDING], GLOBAL_LIGHTS_BINDING);
+            directionalLightingPass.BindUniformBlock(NamedBufferBindings[GLOBAL_MATRICES_BINDING], GLOBAL_MATRICES_BINDING);
             
 
 

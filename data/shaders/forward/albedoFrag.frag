@@ -9,6 +9,12 @@ in vec2 TexCoords;
 in vec3 ViewNormal;
 in vec3 ViewFragPos; 
 
+layout (std140) uniform GlobalMatrices
+{
+    mat4 projectionMatrix;
+    mat4 viewMatrix;
+    mat4 inverseViewMatrix;
+};
 
 layout (std140) uniform MaterialProperties
 {
@@ -27,7 +33,8 @@ void main()
     for(int i = 0; i < numDirLights; i++)
     {
         vec3 viewDir = -normalize(ViewFragPos);
-        outFrag += albedoColor * CalcDirLight(i, norm, viewDir, specular.xyz, specular.w);
+        vec4 lighting = albedoColor * CalcDirLight(i, norm, viewDir, specular.xyz, specular.w);
+        outFrag += lighting * GetDirLightShadow(i, inverseViewMatrix * vec4(ViewFragPos,1), norm);
     }
     for(int i = 0; i < numPointLights; i++)
     {

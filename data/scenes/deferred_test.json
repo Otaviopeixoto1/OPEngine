@@ -24,8 +24,8 @@
 		[
 			{
 				"mesh" : "plane",
-				"pos" : [0.0, -1.5, -40.0],
-                "scale" : [1, 1, 1],
+				"pos" : [0.0, -0.5, -20.0],
+                "scale" : [1, 0.1, 1],
 				"Material" :
                 {
                     "type" : "default",
@@ -897,7 +897,7 @@
 			},
 			{
 				"mesh" : "sphere",
-				"pos" : [35.0, 20.0, 5.0],
+				"pos" : [30.0, 20.0, 15.0],
 				"scale" : [10, 10, 10],
 				"Material" :
                 {
@@ -907,7 +907,7 @@
 				"Light" :
                 {
                     "type" : "directional",
-                    "direction" : [1.0, 1.0, 1.0],
+                    "direction" : [6.0, 4.0, 3.0],
 					"lightColor" : [0.01,0.01,0.01]
                 }
 			}

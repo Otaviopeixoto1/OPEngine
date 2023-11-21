@@ -14,6 +14,7 @@ layout (std140) uniform GlobalMatrices
 {
     mat4 projectionMatrix;
     mat4 viewMatrix;
+    mat4 inverseViewMatrix;
 };
 
 
@@ -33,7 +34,7 @@ void main()
     {
         vec3 viewDir = -normalize(ViewFragPos.xyz);
         vec4 lighting = vec4(AlbedoSpec.rgb, 1.0) * CalcDirLight(i, norm, viewDir, vec3(1,1,1), AlbedoSpec.a);
-        outFrag += lighting * GetLightShadow(i, ViewFragPos, projectionMatrix * ViewFragPos);
+        outFrag += lighting * GetDirLightShadow(i, inverseViewMatrix * ViewFragPos, norm);
     }
     
     #ifndef LIGHT_VOLUMES
