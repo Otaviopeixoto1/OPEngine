@@ -9,14 +9,17 @@ class DeferredRenderer : public BaseRenderer
 {
     public:
         const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
-        float lightNearPlane = -80.0f, lightFarPlane = 180.0f;
+
+
+        float lightNearPlane = 0.0f, lightFarPlane = 100.0f;
         glm::mat4 lightProjectionMatrix;
         bool enableShadowMap = false;
 
         float tonemapExposure = 1.0f;
         float FXAAContrastThreshold = 0.0312f;
         float FXAABrightnessThreshold = 0.063f;
-        const bool enableLightVolumes = true;
+
+        static constexpr bool enableLightVolumes = true;
         
 
         const int MAX_DIR_LIGHTS = 5;
@@ -33,6 +36,7 @@ class DeferredRenderer : public BaseRenderer
             NORMAL_BUFFER_BINDING = 1,
             POSITION_BUFFER_BINDING = 2,
             ACCUMULATION_BUFFER_BINDING = 3,
+            SHADOW_MAP_BUFFER0_BINDING = 4,
         };
 
         enum DRGlobalBufferBindings
@@ -85,19 +89,19 @@ class DeferredRenderer : public BaseRenderer
             if (scene.GetDirLightCount() > 0)
             {
                 enableShadowMap = true;
-                lightProjectionMatrix = glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, lightNearPlane, lightFarPlane); 
+                lightProjectionMatrix = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, lightNearPlane, lightFarPlane); 
                 
                 glGenFramebuffers(1, &shadowMapFBO);
                 glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
-                glGenTextures(1, &shadowMap);
-                glBindTexture(GL_TEXTURE_2D, shadowMap);
+                glGenTextures(1, &shadowMapBuffer);
+                glBindTexture(GL_TEXTURE_2D, shadowMapBuffer);
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); 
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);  
 
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMap, 0);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMapBuffer, 0);
 
                 glDrawBuffer(GL_NONE); //we wont draw to any color buffer
                 glReadBuffer(GL_NONE); //we wont read from any color buffer 
@@ -256,10 +260,23 @@ class DeferredRenderer : public BaseRenderer
 
         void RenderFrame(const Camera &camera, Scene *scene, GLFWwindow *window)
         {
+            // Setting GlobalMatricesUBO:
+            // --------------------------
+            
+            glm::mat4 projectionMatrix = camera.GetProjectionMatrix();
+            glm::mat4 viewMatrix = camera.GetViewMatrix();
+            glm::mat4 inverseViewMatrix = glm::inverse(viewMatrix);
+            
+
+            glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
+            glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(projectionMatrix));
+            glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(viewMatrix));
+            glBufferSubData(GL_UNIFORM_BUFFER, 2*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(inverseViewMatrix));
+            glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+            
+
             // Rendering shadow maps
             // ---------------------
-            glm::mat4 viewMatrix = camera.GetViewMatrix();
-            glm::mat4 projectionMatrix = camera.GetProjectionMatrix();
 
             // Get Light data in view space:
             GlobalLightData lights = scene->GetLightData(viewMatrix);
@@ -269,11 +286,7 @@ class DeferredRenderer : public BaseRenderer
                 glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
                 auto mainLight = lights.directionalLights[0];
 
-                // Setting the light matrices:
-                glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
-                glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(lightProjectionMatrix));
-                glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(mainLight.lightViewMatrix));
-                glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+                glm::mat4 lightViewProjectionMatrix = lightProjectionMatrix * mainLight.lightViewMatrix;
 
                 simpleDepthPass.UseProgram();
                 
@@ -284,7 +297,7 @@ class DeferredRenderer : public BaseRenderer
                         return;
                     }
 
-                    simpleDepthPass.SetMat4("modelViewMatrix", mainLight.lightViewMatrix * objectToWorld);
+                    simpleDepthPass.SetMat4("MVPMatrix", lightViewProjectionMatrix * objectToWorld);
 
                     //bind VAO
                     mesh->BindBuffers();
@@ -295,15 +308,7 @@ class DeferredRenderer : public BaseRenderer
             }
 
 
-            // Setting GlobalMatricesUBO:
-            glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
-            glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(projectionMatrix));
-            glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(viewMatrix));
-            glBindBuffer(GL_UNIFORM_BUFFER, 0); 
-
-
-
-
+            
 
 
             // Rendering to the gBuffer:
@@ -314,12 +319,7 @@ class DeferredRenderer : public BaseRenderer
             glDepthMask(GL_TRUE);
             glEnable(GL_DEPTH_TEST);
 
-
-            
-        
-
             int shaderCache = -1;
-
 
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
@@ -347,7 +347,6 @@ class DeferredRenderer : public BaseRenderer
 
                 // Setting object-related properties
                 // ---------------------------------
-
                 glBindBuffer(GL_UNIFORM_BUFFER, MaterialUBO);
                 glBufferSubData(GL_UNIFORM_BUFFER, 0, MaterialBufferSize, &(materialInstance->properties));
                 glBindBuffer(GL_UNIFORM_BUFFER, 0);   
@@ -410,8 +409,8 @@ class DeferredRenderer : public BaseRenderer
 
 
             
-            // Lighting pass: use g-buffer to calculate the scene's lighting
-            // -------------------------------------------------------------
+            // Lighting Accumulation pass: use g-buffer to calculate the scene's lighting
+            // --------------------------------------------------------------------------
 
             glBindFramebuffer(GL_FRAMEBUFFER, lightAccumulationFBO);
             glClear(GL_COLOR_BUFFER_BIT);
@@ -426,6 +425,8 @@ class DeferredRenderer : public BaseRenderer
             glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
             glActiveTexture(GL_TEXTURE0 + POSITION_BUFFER_BINDING);
             glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
+            glActiveTexture(GL_TEXTURE0 + SHADOW_MAP_BUFFER0_BINDING);
+            glBindTexture(GL_TEXTURE_2D, shadowMapBuffer);
 
             
             
@@ -469,26 +470,37 @@ class DeferredRenderer : public BaseRenderer
                     glEnable(GL_DEPTH_TEST);
                     glDisable(GL_CULL_FACE);
                     glClear(GL_STENCIL_BUFFER_BIT);
+
                     // We need the stencil test to be enabled but we want it to succeed always.
                     // Only the depth test matters.
                     glStencilFunc(GL_ALWAYS, 0, 0);
 
+                    // For the back facing polygons, INCREMENT the value in the stencil buffer when the depth test 
+                    // fails but keep it unchanged when either depth test or stencil test succeed.
                     glStencilOpSeparate(GL_BACK, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
+
+                    // For the front facing polygons, DECREMENT the value in the stencil buffer when the depth test
+                    // fails but keep it unchanged when either depth test or stencil test succeed.
                     glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
 
-                    PointLight::PointLightData l = lights.pointLights[i];
-                    glm::mat4 rootTransform = glm::mat4(1);
-                    rootTransform = glm::translate(rootTransform, glm::vec3(l.position));
-                    rootTransform = glm::scale(rootTransform, glm::vec3(l.radius, l.radius, l.radius));
+                    // this will guarantee that the points inside the sphere have stencil of 1,
+                    // points outside the sphere will have stencil of 0
 
-                    simpleDepthPass.SetMat4("modelViewMatrix", rootTransform);
+
+                    PointLight::PointLightData l = lights.pointLights[i];
+                    glm::mat4 viewTransform = glm::mat4(1);
+                    viewTransform = glm::translate(viewTransform, glm::vec3(l.position));
+                    viewTransform = glm::scale(viewTransform, glm::vec3(l.radius, l.radius, l.radius));
+
+                    simpleDepthPass.SetMat4("MVPMatrix", projectionMatrix * viewTransform);
 
                     glDrawElements(GL_TRIANGLES, pointLightVolume->indicesCount, GL_UNSIGNED_INT, 0);
 
 
                     // Lighting calculation pass:
                     glDisable(GL_DEPTH_TEST);
-                    // Discard all pixels that are not equal to zero:
+
+                    // Only run for pixels which have stencil different from zero
                     glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
                     glEnable(GL_CULL_FACE);
                     glCullFace(GL_FRONT);
@@ -496,7 +508,7 @@ class DeferredRenderer : public BaseRenderer
                     pointLightVolShader.UseProgram();
 
                     pointLightVolShader.SetInt("instanceID", i);
-                    pointLightVolShader.SetMat4("modelViewMatrix", rootTransform);
+                    pointLightVolShader.SetMat4("MVPMatrix", projectionMatrix * viewTransform);
                     pointLightVolShader.SetVec2("gScreenSize", viewportWidth, viewportHeight);
 
                     glDrawElements(GL_TRIANGLES, pointLightVolume->indicesCount, GL_UNSIGNED_INT, 0);
@@ -588,18 +600,14 @@ class DeferredRenderer : public BaseRenderer
 
         void ReloadShaders()
         {
-            //shadowMapPass = Shader(BASE_DIR"/data/shaders/deferred/lightVolume.vert", BASE_DIR"/data/shaders/deferred/nullFrag.frag");
-            //
-            //shadowMapPass.Build();
-
             //Material specific shaders. These should dynamically load depending on available scene materials
             defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferAlbedo.frag");
             defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
             defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
 
-            defaultVertFrag.Build();
-            defaultVertTexFrag.Build();
-            defaultVertUnlitFrag.Build();
+            defaultVertFrag.BuildProgram();
+            defaultVertTexFrag.BuildProgram();
+            defaultVertUnlitFrag.BuildProgram();
 
             defaultVertFrag.BindUniformBlocks(NamedBufferBindings,3);
             defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,3);
@@ -611,44 +619,47 @@ class DeferredRenderer : public BaseRenderer
             directionalLightingPass.AddPreProcessorDefines(PreprocessorDefines,2);
             if (enableLightVolumes)
             {
-                std::string pd = "LIGHT_VOLUMES";
-                directionalLightingPass.AddPreProcessorDefines(&pd,1);
+                std::string s = "LIGHT_VOLUMES";
+                directionalLightingPass.AddPreProcessorDefines(&s,1);
             }
-            directionalLightingPass.Build();
-
+            if (enableShadowMap)
+            {
+                std::string s = "DIR_LIGHT_SHADOWS";
+                directionalLightingPass.AddPreProcessorDefines(&s,1);
+            }
+            directionalLightingPass.BuildProgram();
             directionalLightingPass.UseProgram();
             // binding points of the gbuffer textures:
             directionalLightingPass.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
             directionalLightingPass.SetInt("gNormal", NORMAL_BUFFER_BINDING);
             directionalLightingPass.SetInt("gPosition", POSITION_BUFFER_BINDING);
+            directionalLightingPass.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
             directionalLightingPass.BindUniformBlock(NamedBufferBindings[GLOBAL_LIGHTS_BINDING], GLOBAL_LIGHTS_BINDING);
             
 
 
-            simpleDepthPass = Shader(BASE_DIR"/data/shaders/deferred/lightVolume.vert", BASE_DIR"/data/shaders/deferred/nullFrag.frag");
-            simpleDepthPass.Build();
-            simpleDepthPass.BindUniformBlock(NamedBufferBindings[GLOBAL_MATRICES_BINDING],GLOBAL_MATRICES_BINDING);
+            simpleDepthPass = Shader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/deferred/nullFrag.frag");
+            simpleDepthPass.BuildProgram();
             
 
-            pointLightVolShader = Shader(BASE_DIR"/data/shaders/deferred/lightVolume.vert", BASE_DIR"/data/shaders/deferred/pointVolDeferredLighting.frag");
+            pointLightVolShader = Shader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/deferred/pointVolumeLighting.frag");
             pointLightVolShader.AddPreProcessorDefines(PreprocessorDefines,2);
-            pointLightVolShader.Build();
-            pointLightVolShader.BindUniformBlock(NamedBufferBindings[GLOBAL_MATRICES_BINDING],GLOBAL_MATRICES_BINDING);
-            pointLightVolShader.BindUniformBlock(NamedBufferBindings[GLOBAL_LIGHTS_BINDING],GLOBAL_LIGHTS_BINDING);
+            pointLightVolShader.BuildProgram();
             pointLightVolShader.UseProgram();
             pointLightVolShader.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
             pointLightVolShader.SetInt("gNormal", NORMAL_BUFFER_BINDING);
             pointLightVolShader.SetInt("gPosition", POSITION_BUFFER_BINDING);
+            pointLightVolShader.BindUniformBlock(NamedBufferBindings[GLOBAL_LIGHTS_BINDING],GLOBAL_LIGHTS_BINDING);
 
 
             postProcessShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemapLum.frag");
-            postProcessShader.Build();
+            postProcessShader.BuildProgram();
             postProcessShader.UseProgram();
             postProcessShader.SetInt("screenTexture", ACCUMULATION_BUFFER_BINDING);
 
 
             FXAAShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadFXAA.frag");
-            FXAAShader.Build();
+            FXAAShader.BuildProgram();
 
 
             // Setting UBOs to the correct binding points
@@ -663,6 +674,7 @@ class DeferredRenderer : public BaseRenderer
              * {
              *    mat4 projectionMatrix; 
              *    mat4 viewMatrix;       
+             *    mat4 inverseViewMatrix
              * }
              * 
              * LocalMatrices Uniform buffer structure:
@@ -675,14 +687,14 @@ class DeferredRenderer : public BaseRenderer
             // Create the buffer and specify its size:
 
             glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
-            glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
+            glBufferData(GL_UNIFORM_BUFFER, 3 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
             glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
             glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
             glBindBuffer(GL_UNIFORM_BUFFER, 0);
             
             // Bind a certain range of the buffer to the uniform block: this allows to use multiple UBOs 
             // per uniform block
-            glBindBufferRange(GL_UNIFORM_BUFFER, GLOBAL_MATRICES_BINDING, GlobalMatricesUBO, 0, 2 * sizeof(glm::mat4));
+            glBindBufferRange(GL_UNIFORM_BUFFER, GLOBAL_MATRICES_BINDING, GlobalMatricesUBO, 0, 3 * sizeof(glm::mat4));
             glBindBufferRange(GL_UNIFORM_BUFFER, LOCAL_MATRICES_BINDING, LocalMatricesUBO, 0, 2 * sizeof(glm::mat4));
 
 
@@ -762,7 +774,7 @@ class DeferredRenderer : public BaseRenderer
         unsigned int viewportHeight;
 
         unsigned int shadowMapFBO;
-        unsigned int shadowMap;
+        unsigned int shadowMapBuffer;
 
         unsigned int gBufferFBO;
         unsigned int gColorBuffer, gNormalBuffer, gPositionBuffer;

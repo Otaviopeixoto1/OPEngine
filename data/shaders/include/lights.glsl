@@ -38,15 +38,26 @@ layout(std140) uniform Lights
 }; 
 
 
+uniform sampler2D shadowMap0;
 
-
-vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 specularStrength, float specularPower)
+vec4 GetLightShadow(int lightIndex, vec4 pos, vec4 posClipSpace)
 {
+    #ifndef DIR_LIGHT_SHADOWS
+        return vec4(1,1,1,1);
+    #endif
+    
+    return vec4(1,0,0,1);
+}
+
+
+
+vec4 CalcDirLight(int lightIndex, vec3 normal, vec3 viewDir, vec3 specularStrength, float specularPower)
+{
+    DirLight light = dirLights[lightIndex];
     vec3 lightDir = normalize(light.direction.xyz);
     float NdotL = dot(normal,lightDir);
     float diff = max(NdotL, 0.0);
     
-
     //Phong:
     //vec3 reflectDir = reflect(-lightDir, normal);  
     //float spec = pow(max(dot(viewDir, reflectDir), 0.0), specularPower);
@@ -60,6 +71,7 @@ vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 specularStreng
     vec4 diffuse = diff * light.lightColor;                               // max(sign(NdotL-0.001),0.0f)
     vec4 specular = (spec * light.lightColor) * vec4(specularStrength, 0.0) * smoothstep(-0.1,0.1,NdotL);  
 
+
     // if it has specular map:
     //vec4 specular = (0.5 * spec * light.lightColor) * specMap;  
 
@@ -67,8 +79,9 @@ vec4 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 specularStreng
 }
 
 
-vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 specularStrength, float specularPower)
+vec4 CalcPointLight(int lightIndex, vec3 normal, vec3 fragPos, vec3 specularStrength, float specularPower)
 {
+    PointLight light = pointLights[lightIndex];
     vec3 lightPos = light.position.xyz;
     vec3 viewDir  = -normalize(fragPos);
     vec3 lightDir = normalize(lightPos - fragPos);
@@ -99,3 +112,6 @@ vec4 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 specularSt
     vec4 specular = light.lightColor * spec * vec4(specularStrength, 0.0);
     return (diffuse + specular) * attenuation;
 } 
+
+
+

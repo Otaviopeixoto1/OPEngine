@@ -12,6 +12,7 @@ layout (std140) uniform GlobalMatrices
 {
     mat4 projectionMatrix;
     mat4 viewMatrix;
+    mat4 inverseViewMatrix;
 };
 
 layout (std140) uniform LocalMatrices

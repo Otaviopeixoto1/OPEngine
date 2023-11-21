@@ -24,18 +24,14 @@ class DirectionalLight
         {
             this->lightData = DirectionalLightData();
             this->lightData.lightColor = glm::vec4(color.x,color.y,color.z,1.0f);
-            this->lightData.lightDirection = glm::vec4(direction,0.0f);
+            this->lightData.lightDirection = glm::vec4(direction, 0.0f);
 
             if (srcObject != nullptr)
             {
-                float near_plane = -20.0f, far_plane = 10.0f;
-                glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane); 
-
-                glm::mat4 lightView = glm::lookAt
-                (
+                glm::mat4 lightView = glm::lookAt(
                     glm::vec3(srcObject->objToWorld[3]), 
                     -direction + glm::vec3(srcObject->objToWorld[3]), 
-                    glm::vec3( 0.0f, 1.0f,  0.0f)
+                    glm::vec3(0.0f, 1.0f, 0.0f)
                 );  
 
                 this->lightData.lightViewMatrix =  lightView;

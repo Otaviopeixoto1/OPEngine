@@ -35,11 +35,11 @@ void main()
     for(int i = 0; i < numDirLights; i++)
     {
         vec3 viewDir = -normalize(ViewFragPos);
-        outFrag += albedo * CalcDirLight(dirLights[i], norm, viewDir, specular.xyz, specular.w);
+        outFrag += albedo * CalcDirLight(i, norm, viewDir, specular.xyz, specular.w);
     }
     for(int i = 0; i < numPointLights; i++)
     {
-        outFrag +=  albedo * CalcPointLight(pointLights[i], norm, ViewFragPos, specular.xyz, specular.w);
+        outFrag +=  albedo * CalcPointLight(i, norm, ViewFragPos, specular.xyz, specular.w);
     }
 
     FragColor = outFrag;

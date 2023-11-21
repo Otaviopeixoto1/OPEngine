@@ -322,13 +322,13 @@ class ForwardRenderer : public BaseRenderer
             postProcessShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemap.frag");
 
             defaultVertFrag.AddPreProcessorDefines(PreprocessorDefines,2);
-            defaultVertFrag.Build();
+            defaultVertFrag.BuildProgram();
 
             defaultVertTexFrag.AddPreProcessorDefines(PreprocessorDefines,2);
-            defaultVertTexFrag.Build();
+            defaultVertTexFrag.BuildProgram();
 
-            defaultVertUnlitFrag.Build();
-            postProcessShader.Build();
+            defaultVertUnlitFrag.BuildProgram();
+            postProcessShader.BuildProgram();
 
             defaultVertFrag.BindUniformBlocks(NamedBufferBindings,4);
             defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,4);

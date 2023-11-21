@@ -147,8 +147,8 @@ int main()
     
     try
     {
-        renderer->ReloadShaders();
         renderer->RecreateResources(scene);
+        renderer->ReloadShaders();
     }
     catch(const std::exception& e)
     {

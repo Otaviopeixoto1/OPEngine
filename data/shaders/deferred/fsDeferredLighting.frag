@@ -10,10 +10,16 @@ uniform sampler2D gAlbedoSpec;
 uniform sampler2D gNormal;
 uniform sampler2D gPosition;
 
+layout (std140) uniform GlobalMatrices
+{
+    mat4 projectionMatrix;
+    mat4 viewMatrix;
+};
+
 
 void main()
 {             
-    vec3 ViewFragPos = texture(gPosition, TexCoords).rgb;
+    vec4 ViewFragPos = texture(gPosition, TexCoords);
     vec3 ViewNormal = texture(gNormal, TexCoords).rgb;
     vec4 AlbedoSpec = texture(gAlbedoSpec, TexCoords);
     
@@ -22,16 +28,18 @@ void main()
     vec4 outFrag = vec4(AlbedoSpec.rgb,1.0) * vec4(ambientLight.xyz * ambientLight.w, 1.0);
 
     vec3 norm = normalize(ViewNormal);
+
     for(int i = 0; i < numDirLights; i++)
     {
-        vec3 viewDir = -normalize(ViewFragPos);
-        outFrag += vec4(AlbedoSpec.rgb,1.0) * CalcDirLight(dirLights[i], norm, viewDir, vec3(1,1,1), AlbedoSpec.a);
+        vec3 viewDir = -normalize(ViewFragPos.xyz);
+        vec4 lighting = vec4(AlbedoSpec.rgb, 1.0) * CalcDirLight(i, norm, viewDir, vec3(1,1,1), AlbedoSpec.a);
+        outFrag += lighting * GetLightShadow(i, ViewFragPos, projectionMatrix * ViewFragPos);
     }
     
     #ifndef LIGHT_VOLUMES
         for(int i = 0; i < numPointLights; i++)
         {
-            outFrag += vec4(AlbedoSpec.rgb,1.0) * CalcPointLight(pointLights[i], norm, ViewFragPos, vec3(1,1,1), AlbedoSpec.a);
+            outFrag += vec4(AlbedoSpec.rgb,1.0) * CalcPointLight(i, norm, ViewFragPos.xyz, vec3(1,1,1), AlbedoSpec.a);
         }
     #endif
      

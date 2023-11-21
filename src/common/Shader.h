@@ -39,7 +39,7 @@ public:
     }
 
   
-    void Build()
+    void BuildProgram()
     {
         // retrieve the vertex/fragment source code from filePath
         std::string vertexCode = ReadShaderFile(vertexShaderPath);
