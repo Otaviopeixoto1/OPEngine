@@ -8,17 +8,17 @@
 class ForwardRenderer : public BaseRenderer
 {
     public:
+        const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
+        bool enableShadowMap = true;
+
         unsigned int MSAASamples = 4; 
         float tonemapExposure = 1.0f;
 
-        const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
-        bool enableShadowMap = true;
-
-        const int MAX_DIR_LIGHTS = 5;
+        const int MAX_DIR_LIGHTS = 3;
         const int MAX_POINT_LIGHTS = 10;
 
         std::string PreprocessorDefines[2] = { 
-            "MAX_DIR_LIGHTS 5",
+            "MAX_DIR_LIGHTS 3",
             "MAX_POINT_LIGHTS 10",
         };
 
@@ -33,7 +33,9 @@ class ForwardRenderer : public BaseRenderer
         };
         enum ExtraBufferBindings
         {
-            SHADOW_MAP_BUFFER0_BINDING = 5,
+            SHADOW_MAP_BUFFER0_BINDING = 0,
+            SHADOW_MAP_BUFFER1_BINDING = 1,
+            SHADOW_MAP_BUFFER2_BINDING = 2,
         };
         
         enum FRGlobalBufferBindings
@@ -299,8 +301,8 @@ class ForwardRenderer : public BaseRenderer
                 for (unsigned int i = 0; i < materialInstance->numTextures; i++)
                 {
                     Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
-                    // activate proper texture unit before binding
-                    glActiveTexture(GL_TEXTURE0 + 2 + i); 
+                    // activate proper texture unit (all the shadow maps already reserve bindings 0 -> 2)
+                    glActiveTexture(GL_TEXTURE0 + SHADOW_MAP_BUFFER2_BINDING + i); 
 
                     std::string number;
                     TextureType type = texture.type;
@@ -327,7 +329,7 @@ class ForwardRenderer : public BaseRenderer
                             break;
                     }
 
-                    activeShader.SetInt((name + number).c_str(), 2 + i);
+                    activeShader.SetInt((name + number).c_str(), SHADOW_MAP_BUFFER2_BINDING + i);
                     glBindTexture(GL_TEXTURE_2D, texture.id);
                 }
                 

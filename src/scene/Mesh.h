@@ -21,7 +21,7 @@ enum MeshFlags
     OP_MESH_COORDS = 0, // 0
     OP_MESH_NORMALS = 1 << 0, // 1
     OP_MESH_TEXCOORDS = 1 << 1, // 2
-    OP_MESH_Flag4 = 1 << 2, // 4
+    OP_MESH_TANGENT = 1 << 2, // 4
     OP_MESH_Flag5 = 1 << 3, // 8
     OP_MESH_Flag6 = 1 << 4, // 16
     OP_MESH_Flag7 = 1 << 5, // 32

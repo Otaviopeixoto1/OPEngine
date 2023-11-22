@@ -9,15 +9,13 @@ class DeferredRenderer : public BaseRenderer
 {
     public:
         const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
-
-
         bool enableShadowMap = false;
 
         float tonemapExposure = 1.0f;
         float FXAAContrastThreshold = 0.0312f;
         float FXAABrightnessThreshold = 0.063f;
 
-        static constexpr bool enableLightVolumes = false;
+        static constexpr bool enableLightVolumes = true;
         
 
         const int MAX_DIR_LIGHTS = 5;
@@ -137,7 +135,6 @@ class DeferredRenderer : public BaseRenderer
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindTexture(GL_TEXTURE_2D, 0); 
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + POSITION_BUFFER_BINDING, GL_TEXTURE_2D, gPositionBuffer, 0);
-
 
             //setting the depth and stencil attachments
             glGenRenderbuffers(1, &depthStencilBuffer); 
@@ -289,7 +286,6 @@ class DeferredRenderer : public BaseRenderer
             {
                 glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
                 glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
-                //glCullFace(GL_BACK);
                 glClear(GL_DEPTH_BUFFER_BIT);
 
                 auto mainLight = lights.directionalLights[0];
@@ -313,7 +309,6 @@ class DeferredRenderer : public BaseRenderer
                 });    
 
                 glViewport(0, 0, viewportWidth, viewportHeight);
-                //glCullFace(GL_FRONT);
             }
 
 

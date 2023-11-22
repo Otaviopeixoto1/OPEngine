@@ -43,7 +43,11 @@ struct ObjectBlueprint
     unsigned int materialId;
 };
 
-
+enum SceneLoadingFormat
+{
+    OP_OTHER,
+    OP_OBJ,
+};
 
 
 class Scene
@@ -53,9 +57,10 @@ class Scene
         int MAX_POINT_LIGHTS;
 
 
-        Scene(const std::string &relativePath)
+        Scene(const std::string &relativePath, SceneLoadingFormat loadingFormat)
         {
             std::cout << "Loading Scene: " << "\n";
+            this->sceneLoadingFormat = loadingFormat;
 
             Json::Value configRoot;
             Json::Reader reader;
@@ -115,12 +120,19 @@ class Scene
 
                 glm::vec3 albedo = JsonHelpers::GetJsonVec3f(currObject["Material"]["albedoColor"]);
                 glm::vec4 specular = glm::vec4(0.0);
+
+                unsigned int overrideFlags = OP_MATERIAL_DEFAULT;
+
                 if (currObject["Material"]["type"].asString() == "default")
                 {
                     specular = glm::vec4(
                         JsonHelpers::GetJsonVec3f(currObject["Material"]["specularStrength"]), 
                         currObject["Material"]["specularPower"].asFloat()
                     );
+                }
+                else if(currObject["Material"]["type"].asString() == "unlit")
+                {
+                    overrideFlags = OP_MATERIAL_UNLIT;
                 }
                 
 
@@ -137,7 +149,8 @@ class Scene
                     Object* newObject = new Object();
                     newObject->mesh = blueprint.mesh;
                     newObject->materialInstance = std::make_unique<MaterialInstance>(materialTemplates[blueprint.materialId]);
-                    
+                    newObject->materialInstance->AddFlags(overrideFlags);
+
                     //Material properties:
                     newObject->materialInstance->properties.albedoColor = glm::vec4(albedo,1.0);
                     newObject->materialInstance->properties.specular = specular;
@@ -163,10 +176,6 @@ class Scene
 
 
 
-
-
-
-
             std::cout << "Loading Success: " << "\n";
             std::cout << "Materials: " << materialTemplates.size() << std::endl;
 
@@ -175,26 +184,24 @@ class Scene
                 std::cout << "->material: " + std::to_string(i) << ":\n";
                 for (unsigned int j = 0; j < materialTemplates[i].texturePaths.size(); j++)
                 {
-                    std::cout << "--texture[" << std::to_string(loadedTextures[materialTemplates[i].texturePaths[j]].id) << "]\n";
+                    std::cout << "\t-texture[" << std::to_string(loadedTextures[materialTemplates[i].texturePaths[j]].id) << "]\n";
                 }
             }
             
             std::cout << "Mesh Groups: " << objectBlueprints.size() << std::endl;
             std::cout << "Objects: " << objects.size() << std::endl;
-            std::cout << "object materials: [";
 
-            for (unsigned int i = 0; i < objects.size(); i++)
-            {
-                std::cout << std::to_string(objects[i]->materialInstance->TemplateId()) << " ";
-            }
-            std::cout << "]\n";
+            //std::cout << "object material instances: [";
+            //for (unsigned int i = 0; i < objects.size(); i++)
+            //{
+            //    std::cout << std::to_string(objects[i]->materialInstance->TemplateId()) << " ";
+            //}
+            //std::cout << "]\n";
 
             std::cout << "directional lights: " << directionalLights.size() << std::endl;
             std::cout << "point lights: " << pointLights.size() << std::endl;
         }
 
-        //original:
-        //using ObjectCallback = std::function<void(glm::mat4 objectToWorld, glm::vec3 albedoColor, glm::vec3 emissiveColor, vk::Buffer vertexBuffer, vk::Buffer indexBuffer, uint32_t verticesCount, uint32_t indicesCount)>;
         using ObjectCallback = std::function<void(glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)>;
         void IterateObjects(ObjectCallback objectCallback)
         {
@@ -291,11 +298,11 @@ class Scene
         ////////////////////////////////////////////////////////////////////////////////////////////////////
         // ADD A TRANSFORM HIERARCHY
         ////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        //load/instantiation order: textures -> materials -> meshes -> objects
-
+        SceneLoadingFormat sceneLoadingFormat = OP_OBJ;
+        
         //maps texture (file) paths to each texture object
         std::unordered_map<std::string, Texture> loadedTextures;
+
         std::vector<MaterialTemplate> materialTemplates;
         unsigned int materialIdOffset = 0;
         
@@ -420,8 +427,18 @@ class Scene
                 std::vector<std::string> specularMaps = LoadMaterialTextures(mMaterial, 
                                                     aiTextureType_SPECULAR, OP_TEXTURE_SPECULAR, directory);
                 mTextures.insert(mTextures.end(), specularMaps.begin(), specularMaps.end());
-                std::vector<std::string> normalMaps = LoadMaterialTextures(mMaterial,
-                                                    aiTextureType_NORMALS, OP_TEXTURE_NORMAL, directory);
+
+                std::vector<std::string> normalMaps;
+                if (sceneLoadingFormat == OP_OBJ) 
+                {
+                    normalMaps = LoadMaterialTextures(mMaterial, aiTextureType_HEIGHT, OP_TEXTURE_NORMAL, directory);
+                }
+                else
+                {
+                    normalMaps = LoadMaterialTextures(mMaterial, aiTextureType_NORMALS, OP_TEXTURE_NORMAL, directory);
+                }
+                
+                
                 mTextures.insert(mTextures.end(), normalMaps.begin(), normalMaps.end());
                 
                 unsigned int flags = OP_MATERIAL_DEFAULT;

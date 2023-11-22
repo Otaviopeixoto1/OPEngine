@@ -77,6 +77,14 @@ class MaterialInstance
         {
             flags = flags | flag;
         }
+        void AddFlags(unsigned int addedFlags)
+        {
+            flags = flags | addedFlags;
+        }
+        void OverrideFlags(MaterialFlags overrideFlag)
+        {
+
+        }
         unsigned int TemplateId()
         {
             return templateId;
