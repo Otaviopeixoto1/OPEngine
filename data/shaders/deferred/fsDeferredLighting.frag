@@ -29,12 +29,14 @@ void main()
     vec4 outFrag = vec4(AlbedoSpec.rgb,1.0) * vec4(ambientLight.xyz * ambientLight.w, 1.0);
 
     vec3 norm = normalize(ViewNormal);
+    vec3 worldNorm = (inverseViewMatrix * vec4(norm,0.0)).xyz;
+    vec4 worldPos = inverseViewMatrix * ViewFragPos;
 
     for(int i = 0; i < numDirLights; i++)
     {
         vec3 viewDir = -normalize(ViewFragPos.xyz);
         vec4 lighting = vec4(AlbedoSpec.rgb, 1.0) * CalcDirLight(i, norm, viewDir, vec3(1,1,1), AlbedoSpec.a);
-        outFrag += lighting * GetDirLightShadow(i, inverseViewMatrix * ViewFragPos, norm);
+        outFrag += lighting * GetDirLightShadow(i, worldPos, worldNorm);
     }
     
     #ifndef LIGHT_VOLUMES

@@ -8,7 +8,7 @@
 class DeferredRenderer : public BaseRenderer
 {
     public:
-        const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+        const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
 
 
         bool enableShadowMap = false;
@@ -289,6 +289,7 @@ class DeferredRenderer : public BaseRenderer
             {
                 glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
                 glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
+                //glCullFace(GL_BACK);
                 glClear(GL_DEPTH_BUFFER_BIT);
 
                 auto mainLight = lights.directionalLights[0];
@@ -312,6 +313,7 @@ class DeferredRenderer : public BaseRenderer
                 });    
 
                 glViewport(0, 0, viewportWidth, viewportHeight);
+                //glCullFace(GL_FRONT);
             }
 
 

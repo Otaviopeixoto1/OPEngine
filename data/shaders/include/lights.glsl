@@ -40,13 +40,22 @@ layout(std140) uniform Lights
 
 uniform sampler2D shadowMap0;
 
-float GetDirLightShadow(int lightIndex, vec4 worldPos, vec3 normal)
+float GetDirLightShadow(int lightIndex, vec4 worldPos, vec3 worldNormal)
 {
     #ifndef DIR_LIGHT_SHADOWS
         return 1;
     #endif
 
-    vec4 posClipSpace = dirLights[lightIndex].lightMatrix * vec4(worldPos.xyz, 1);
+    //float bias = max(0.05 * (1.0 - dot(worldNormal, dirLights[lightIndex].direction.xyz)), 0.005);
+    float bias = 0.001;
+    vec2 texelSize = 1.0 / textureSize(shadowMap0, 0);  
+
+    vec3 normalBias = worldNormal * max(texelSize.x,texelSize.y) * 1.4142136f * 2;
+
+
+
+
+    vec4 posClipSpace = dirLights[lightIndex].lightMatrix * vec4(worldPos.xyz + normalBias, 1);
 
     // Perspective division is only necessary on perspective projection, but doesnt affect ortographic projection:
     vec3 ndcPos = posClipSpace.xyz / posClipSpace.w;
@@ -57,15 +66,16 @@ float GetDirLightShadow(int lightIndex, vec4 worldPos, vec3 normal)
 
     
 
-    float bias = max(0.05 * (1.0 - dot(normal, dirLights[lightIndex].direction.xyz)), 0.005);  
-
+    
     // One sample:
     //float closestDepth = texture(shadowMap0, ndcPos.xy).r;
     //float shadow = currentDepth - bias > closestDepth  ? 0.0 : 1.0; 
 
+    
+  
+    
     // Multiple samples:
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(shadowMap0, 0);
     for(int x = -1; x <= 1; ++x)
     {
         for(int y = -1; y <= 1; ++y)
@@ -78,7 +88,7 @@ float GetDirLightShadow(int lightIndex, vec4 worldPos, vec3 normal)
 
     
 
-    return (currentDepth > 1.0) ? 1 : shadow;
+    return  shadow;
 }
 
 

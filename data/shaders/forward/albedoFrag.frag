@@ -30,19 +30,20 @@ void main()
     vec4 outFrag = vec4(ambientLight.xyz * ambientLight.w,1.0) * albedoColor;
 
     vec3 norm = normalize(ViewNormal);
+    vec3 worldNorm = (inverseViewMatrix * vec4(norm, 0.0)).xyz;
+    vec4 worldPos = inverseViewMatrix * vec4(ViewFragPos,1);
+
     for(int i = 0; i < numDirLights; i++)
     {
         vec3 viewDir = -normalize(ViewFragPos);
         vec4 lighting = albedoColor * CalcDirLight(i, norm, viewDir, specular.xyz, specular.w);
-        outFrag += lighting * GetDirLightShadow(i, inverseViewMatrix * vec4(ViewFragPos,1), norm);
+        outFrag += lighting * GetDirLightShadow(i, worldPos , worldNorm);
     }
     for(int i = 0; i < numPointLights; i++)
     {
         outFrag +=  albedoColor * CalcPointLight(i, norm, ViewFragPos, specular.xyz, specular.w);
     }
 
-    //Tonemapping:
-    //outFrag = vec4(vec3(1.0) - exp(-outFrag.xyz * 1.0f),1.0);
     FragColor = outFrag;
 
 }
