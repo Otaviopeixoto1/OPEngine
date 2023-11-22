@@ -326,7 +326,7 @@ class Scene
         void AssimpLoadObjects(const std::string &objFile, const std::string & meshName)
         {
             Assimp::Importer import;
-            const aiScene *scene = import.ReadFile(objFile, aiProcess_Triangulate | aiProcess_FlipUVs);	
+            const aiScene *scene = import.ReadFile(objFile, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);	
                 
             if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) 
             {
@@ -357,6 +357,10 @@ class Scene
                     if (mMesh->HasNormals())
                     {
                         vertex.Normal = AssimpHelpers::GetGLMVec3(mMesh->mNormals[i]);
+                    }
+                    if (mMesh->HasTangentsAndBitangents())
+                    {
+                        vertex.Tangent = AssimpHelpers::GetGLMVec3(mMesh->mTangents[i]);
                     }
 
                     //there can be up to 8 texcoords

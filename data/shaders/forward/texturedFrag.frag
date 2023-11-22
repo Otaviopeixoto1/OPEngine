@@ -7,6 +7,7 @@ out vec4 FragColor;
 
 in vec2 TexCoords;
 in vec3 ViewNormal;
+in vec3 ViewTangent;
 in vec3 ViewFragPos; 
 
 
@@ -29,7 +30,20 @@ layout (std140) uniform MaterialProperties
     vec4 specular;
 };
 
-
+vec3 CalcBumpedNormal()
+{
+    vec3 Normal = normalize(ViewNormal);
+    vec3 Tangent = normalize(ViewTangent);
+    Tangent = normalize(Tangent - dot(Tangent, Normal) * Normal);
+    vec3 Bitangent = cross(Tangent, Normal);
+    vec3 BumpMapNormal = texture(texture_normal1, TexCoords).xyz;
+    BumpMapNormal = 2.0 * BumpMapNormal - vec3(1.0, 1.0, 1.0);
+    vec3 NewNormal;
+    mat3 TBN = mat3(Tangent, Bitangent, Normal);
+    NewNormal = TBN * BumpMapNormal;
+    NewNormal = normalize(NewNormal);
+    return NewNormal;
+}
 
 
 void main()
@@ -40,7 +54,10 @@ void main()
 
     vec4 outFrag = vec4(ambientLight.xyz * ambientLight.w,1.0) * albedo;
 
-    vec3 norm = normalize(ViewNormal);
+    vec3 norm = CalcBumpedNormal();
+    //vec3 norm = normalize(ViewNormal);
+    
+
     vec3 worldNorm = (inverseViewMatrix * vec4(norm, 0.0)).xyz;
     vec4 worldPos = inverseViewMatrix * vec4(ViewFragPos,1);
 

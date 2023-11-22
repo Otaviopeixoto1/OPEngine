@@ -69,6 +69,10 @@ class MaterialInstance
             this->flags = matTemp.flags;
             this->templateId = matTemp.id;
         }
+        bool HasFlags(unsigned int tFlags)
+        {
+            return (flags & (int)tFlags) == (int)tFlags;
+        }
         bool HasFlag(MaterialFlags flag)
         {
             return (flags & (int)flag) == (int)flag;

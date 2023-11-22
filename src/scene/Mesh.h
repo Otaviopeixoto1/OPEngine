@@ -20,8 +20,8 @@ enum MeshFlags
 {
     OP_MESH_COORDS = 0, // 0
     OP_MESH_NORMALS = 1 << 0, // 1
-    OP_MESH_TEXCOORDS = 1 << 1, // 2
-    OP_MESH_TANGENT = 1 << 2, // 4
+    OP_MESH_TANGENTS = 1 << 1, // 2
+    OP_MESH_TEXCOORDS = 1 << 2, // 4
     OP_MESH_Flag5 = 1 << 3, // 8
     OP_MESH_Flag6 = 1 << 4, // 16
     OP_MESH_Flag7 = 1 << 5, // 32
@@ -37,6 +37,7 @@ class MeshData
         {
             glm::vec3 Position;
             glm::vec3 Normal;
+            glm::vec3 Tangent;
             glm::vec2 TexCoords;
         };
         unsigned int flags = OP_MESH_COORDS;
@@ -140,7 +141,7 @@ class Mesh
         // Generates a default mesh. Expects normals and texcoords to be filled in vertex data
         Mesh(std::vector<MeshData::Vertex> &mVertices, std::vector<unsigned int> &mIndices)
         {
-            this->flags = OP_MESH_COORDS | OP_MESH_NORMALS | OP_MESH_TEXCOORDS;
+            this->flags = OP_MESH_COORDS | OP_MESH_NORMALS | OP_MESH_TANGENTS | OP_MESH_TEXCOORDS ;
             this->vertices = mVertices;
             this->indices = mIndices;
 
@@ -208,12 +209,21 @@ class Mesh
                 glEnableVertexAttribArray(1);
             }
 
+            // vertex tangent
+            if (HasFlags(OP_MESH_TANGENTS))
+            {
+                glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)offsetof(MeshData::Vertex, Tangent));
+                glEnableVertexAttribArray(2);	
+            }
+
             // vertex texture coords
             if (HasFlags(OP_MESH_TEXCOORDS))
             {
-                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)offsetof(MeshData::Vertex, TexCoords));
-                glEnableVertexAttribArray(2);	
+                glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)offsetof(MeshData::Vertex, TexCoords));
+                glEnableVertexAttribArray(3);	
             }
+
+            
             
 
             glBindVertexArray(0);
