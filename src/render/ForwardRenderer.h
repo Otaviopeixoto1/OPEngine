@@ -414,8 +414,11 @@ class ForwardRenderer : public BaseRenderer
             defaultVertNormalTexFrag.AddPreProcessorDefines(PreprocessorDefines,2);
             if (enableShadowMap)
             {
-                //std::string s[2]  = {"DIR_LIGHT_SHADOWS", "NORMAL_MAPPED"};
                 std::string s = "DIR_LIGHT_SHADOWS";
+                defaultVertNormalTexFrag.AddPreProcessorDefines(&s,1);
+            }
+            {
+                std::string s = "NORMAL_MAPPED";
                 defaultVertNormalTexFrag.AddPreProcessorDefines(&s,1);
             }
             defaultVertNormalTexFrag.BuildProgram();

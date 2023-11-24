@@ -54,9 +54,11 @@ void main()
 
     vec4 outFrag = vec4(ambientLight.xyz * ambientLight.w,1.0) * albedo;
 
-    vec3 norm = CalcBumpedNormal();
-    //vec3 norm = normalize(ViewNormal);
-    
+    #ifdef NORMAL_MAPPED
+        vec3 norm = CalcBumpedNormal();
+    #else
+        vec3 norm = normalize(ViewNormal);
+    #endif
 
     vec3 worldNorm = (inverseViewMatrix * vec4(norm, 0.0)).xyz;
     vec4 worldPos = inverseViewMatrix * vec4(ViewFragPos,1);

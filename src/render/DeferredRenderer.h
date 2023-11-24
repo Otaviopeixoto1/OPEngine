@@ -326,7 +326,12 @@ class DeferredRenderer : public BaseRenderer
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
                 Shader activeShader;
-                if (materialInstance->HasFlag(OP_MATERIAL_TEXTURED_DIFFUSE))
+
+                if (materialInstance->HasFlags(OP_MATERIAL_TEXTURED_DIFFUSE | OP_MATERIAL_TEXTURED_NORMAL))
+                {
+                    activeShader = defaultVertNormalTexFrag;
+                }
+                else if (materialInstance->HasFlag(OP_MATERIAL_TEXTURED_DIFFUSE))
                 {
                     activeShader = defaultVertTexFrag;
                 }
@@ -604,18 +609,26 @@ class DeferredRenderer : public BaseRenderer
         {
             //Material specific shaders. These should dynamically load depending on available scene materials
             defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferAlbedo.frag");
-            defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
-            defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
-
             defaultVertFrag.BuildProgram();
-            defaultVertTexFrag.BuildProgram();
-            defaultVertUnlitFrag.BuildProgram();
-
             defaultVertFrag.BindUniformBlocks(NamedBufferBindings,3);
+            
+            defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
+            defaultVertTexFrag.BuildProgram();
             defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,3);
+
+            defaultVertNormalTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
+            {
+                std::string s = "NORMAL_MAPPED";
+                defaultVertNormalTexFrag.AddPreProcessorDefines(&s,1);
+            }
+            defaultVertNormalTexFrag.BuildProgram();
+            defaultVertNormalTexFrag.BindUniformBlocks(NamedBufferBindings,3);
+            
+
+            defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
+            defaultVertUnlitFrag.BuildProgram();
             defaultVertUnlitFrag.BindUniformBlocks(NamedBufferBindings,3);
-
-
+            
 
             directionalLightingPass = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/deferred/fsDeferredLighting.frag");
             directionalLightingPass.AddPreProcessorDefines(PreprocessorDefines,2);
@@ -798,6 +811,7 @@ class DeferredRenderer : public BaseRenderer
 
         Shader defaultVertFrag;
         Shader defaultVertTexFrag;
+        Shader defaultVertNormalTexFrag;
         Shader defaultVertUnlitFrag;
 
 
