@@ -38,64 +38,56 @@ public:
         this->fragmentShaderPath = fragmentPath;
     }
 
+    void AddShaderStage(const std::string& shaderPath, GLenum shaderType)
+    {
+        switch (shaderType)
+        {
+            case GL_GEOMETRY_SHADER:
+                additionalShaderStages[GL_GEOMETRY_SHADER] = shaderPath;
+                break;
+        }
+    }
+
   
     void BuildProgram()
     {
-        // retrieve the vertex/fragment source code from filePath
-        std::string vertexCode = ReadShaderFile(vertexShaderPath);
-        std::string fragmentCode = ReadShaderFile(fragmentShaderPath);
-        
-        std::string ppVertexCode = PreProcessShader(vertexCode, vertexShaderPath, 0);
-        std::string ppFragmentCode = PreProcessShader(fragmentCode, fragmentShaderPath, 0);
-
-        const char* vShaderCode = ppVertexCode.c_str();
-        const char* fShaderCode = ppFragmentCode.c_str();
-
-
         // compile shaders:
         unsigned int vertex, fragment;
         int success;
         char infoLog[512];
         
+        std::vector<unsigned int> shaderPipeline;
+
         // 1) Vertex shader
         // ----------------
-        vertex = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertex, 1, &vShaderCode, NULL);
-        glCompileShader(vertex);
-
-        // print compile errors if any
-        glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
-        if(!success)
-        {
-            glGetShaderInfoLog(vertex, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-            throw ShaderException(vertexShaderPath +  ": vertex Shader compilation failed failed\n");
-        };
+        vertex = CompileShader(vertexShaderPath, GL_VERTEX_SHADER);
+        shaderPipeline.push_back(vertex);
         
         // 2) Fragment shader
         // ------------------
-        fragment = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragment, 1, &fShaderCode, NULL);
-        glCompileShader(fragment);
-
-        // print compile errors if any
-        glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
-        if(!success)
-        {
-            glGetShaderInfoLog(fragment, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-            throw ShaderException(fragmentShaderPath +  ": fragment Shader compilation failed failed\n");
-        };
-
-
-
+        fragment = CompileShader(fragmentShaderPath, GL_FRAGMENT_SHADER);
+        shaderPipeline.push_back(fragment);
+        // 3) Additional Shaders
+        // ---------------------
         
+        if (additionalShaderStages.find(GL_GEOMETRY_SHADER) != additionalShaderStages.end())
+        {
+
+            unsigned int geometry = CompileShader(additionalShaderStages[GL_GEOMETRY_SHADER], GL_GEOMETRY_SHADER);
+            shaderPipeline.push_back(geometry);
+        }
+
+
         // Linking the final program
         // -------------------------
         ID = glCreateProgram();
-        glAttachShader(ID, vertex);
-        glAttachShader(ID, fragment);
+
+        for (size_t i = 0; i < shaderPipeline.size(); i++)
+        {
+            glAttachShader(ID, shaderPipeline[i]);
+        }
         glLinkProgram(ID);
+
         // print linking errors if any
         glGetProgramiv(ID, GL_LINK_STATUS, &success);
         if(!success)
@@ -104,15 +96,17 @@ public:
             std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
             throw ShaderException("Shader linking failed\n");
             
-        }
+        }/*
         else
         {
             std::cout << "Successfully Compiled and Linked Shaders: " << vertexShaderPath << " and " << fragmentShaderPath << std::endl;
-        }
+        }*/
         
         // delete the shaders as they're linked into the program now and therefore are longer necessary
-        glDeleteShader(vertex);
-        glDeleteShader(fragment);
+        for (size_t i = 0; i < shaderPipeline.size(); i++)
+        {
+            glDeleteShader(shaderPipeline[i]);
+        }
 
         isReady = true;
     }
@@ -127,7 +121,7 @@ public:
     }
     
 
-    std::string PreProcessShader(std::string &source, std::string &filePath, unsigned int level, bool versionMatch = false)
+    std::string PreProcessShader(std::string &source, const std::string &filePath, unsigned int level, bool versionMatch = false)
     {
         if(level > 32)
             throw ShaderException("the" + filePath + "header inclusion reached depth limit (32), might be caused by cyclic header inclusion");
@@ -287,6 +281,55 @@ private:
     std::string fragmentShaderPath;
     bool isReady = false;
     std::vector<std::string> preDefines;
+
+    std::unordered_map<GLenum, std::string> additionalShaderStages;
+
+    
+    unsigned int CompileShader(const std::string& srcPath, GLenum ShaderType)
+    {
+        std::string srcCode = ReadShaderFile(srcPath);
+        std::string ppSrcCode = PreProcessShader(srcCode, srcPath, 0);
+
+        const char* shaderCode = ppSrcCode.c_str();
+
+        unsigned int shaderObject;
+        int success;
+        char infoLog[512];
+        
+        shaderObject = glCreateShader(ShaderType);
+        glShaderSource(shaderObject, 1, &shaderCode, NULL);
+        glCompileShader(shaderObject);
+
+        // print compile errors if any
+        glGetShaderiv(shaderObject, GL_COMPILE_STATUS, &success);
+        if(!success)
+        {
+            glGetShaderInfoLog(shaderObject, 512, NULL, infoLog);
+
+            switch (ShaderType)
+            {
+                case GL_VERTEX_SHADER:
+                    std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+                    throw ShaderException(vertexShaderPath +  ": vertex Shader compilation failed failed\n");
+                    return 0;
+                case GL_GEOMETRY_SHADER:
+                    std::cout << "ERROR::SHADER::GEOMETRY::COMPILATION_FAILED\n" << infoLog << std::endl;
+                    throw ShaderException(vertexShaderPath +  ": geometry Shader compilation failed failed\n");
+                    return 0;
+                case GL_FRAGMENT_SHADER:
+                    std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+                    throw ShaderException(vertexShaderPath +  ": fragment Shader compilation failed failed\n");
+                    return 0;
+                
+                default:
+                    std::cout << "ERROR::SHADER::UNKNOWN::COMPILATION_FAILED\n" << infoLog << std::endl;
+                    throw ShaderException(vertexShaderPath +  ": unknown Shader failed to compile\n");
+                    return 0;
+            }
+            
+        };
+        return shaderObject;
+    }
 
     std::string ReadShaderFile(std::string path)
     {

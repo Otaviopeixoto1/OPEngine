@@ -59,8 +59,8 @@ int main()
     } 
 
     // makes sure the glfw is the right version and using core profile:
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 #ifdef __APPLE__
@@ -122,7 +122,8 @@ int main()
 
 
     // flip all stbi loaded images vertically for compatibility with openGL
-    stbi_set_flip_vertically_on_load(true); 
+    // CURRENTLY THIS HAS TO BE DEACTIVATED ON SPONZA SCENE:
+    //stbi_set_flip_vertically_on_load(true); 
     
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -143,7 +144,7 @@ int main()
 
     ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight);
     DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight);
-    BaseRenderer* renderer = &deferredRenderer;
+    BaseRenderer* renderer = &forwardRenderer;
     
     try
     {

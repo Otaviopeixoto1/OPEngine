@@ -195,6 +195,27 @@ class ForwardRenderer : public BaseRenderer
                 glClear(GL_DEPTH_BUFFER_BIT);
 
                 auto mainLight = lights.directionalLights[0];
+                
+
+                auto frustrumCorners = Camera::GetFrustumCornersWorldSpace(projectionMatrix, viewMatrix);
+
+                glm::vec3 center = glm::vec3(0, 0, 0);
+                for (const auto& v : frustrumCorners)
+                {
+                    center += glm::vec3(v);
+                }
+                center /= frustrumCorners.size();
+
+                glm::vec3 lightDir = glm::normalize(glm::vec3(mainLight.lightDirection));
+                
+                const auto lightView = glm::lookAt(
+                    center + lightDir,
+                    center,
+                    glm::vec3(0.0f, 1.0f, 0.0f)
+                );
+
+
+
 
                 simpleDepthPass.UseProgram();
                 
@@ -377,7 +398,7 @@ class ForwardRenderer : public BaseRenderer
 
         void ReloadShaders()
         {
-            simpleDepthPass = Shader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/deferred/nullFrag.frag");
+            simpleDepthPass = Shader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
             simpleDepthPass.BuildProgram();
 
 

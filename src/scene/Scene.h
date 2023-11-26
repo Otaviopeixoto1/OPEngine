@@ -30,7 +30,7 @@
 
 // Observations:
 // -avoid creating openGl objects in class constructors, if that object is copied (by vector.push_back for example)
-// they will generate new objects and possibly mess with the indices
+// they will generate entirely new opengl objects and possibly mess with the indices
 // If that is necessary, try to allocate object in heap (so that it doesnt get destroyed when out of scope) and use 
 // hte object pointer
 
@@ -45,8 +45,8 @@ struct ObjectBlueprint
 
 enum SceneLoadingFormat
 {
-    OP_OTHER,
     OP_OBJ,
+    OP_OTHER,
 };
 
 
