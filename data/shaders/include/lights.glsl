@@ -54,29 +54,35 @@ layout(std140) uniform Shadows
     float numShadowCasters;
     float spad3;
     mat4 lightSpaceMatrices[SHADOW_CASCADE_COUNT];
-    //float frustrumDistances[SHADOW_CASCADE_COUNT + 1];
+    vec4 frustrumDistances0; //this only allows for 4 cascades. To add more, a second vec4 of frustrum distances 
+                             //must be added into this buffer
 }; 
 
 //uniform sampler2D shadowMap0;
 
 uniform sampler2DArray shadowMap0;
 
-float GetDirLightShadow(int lightIndex, vec4 worldPos, vec3 worldNormal)
+float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldNormal)
 {
     #ifndef DIR_LIGHT_SHADOWS
         return 1;
     #else
 
+        float fragDepth = abs(viewPos.z);
 
-        int currentLayer = 0;
+        vec4 res = step(frustrumDistances0, vec4(fragDepth,fragDepth,fragDepth,fragDepth));
+
+        // the w component is not useful and could cause invalid indexing
+        int currentLayer = int(res.x + res.y + res.z); //returns a value between 0 and 3
+
 
         //float bias = max(0.05 * (1.0 - dot(worldNormal, dirLights[lightIndex].direction.xyz)), 0.005);
         float bias = 0.000;
         vec2 texelSize = 1.0 / textureSize(shadowMap0, 0).xy;  
 
-        vec3 normalBias = worldNormal * max(texelSize.x,texelSize.y) * 1.4142136f * 2;
+        vec3 normalBias = worldNormal * max(texelSize.x, texelSize.y) * 1.4142136f;
 
-        vec4 posClipSpace = lightSpaceMatrices[0] * vec4(worldPos.xyz + normalBias, 1);
+        vec4 posClipSpace = lightSpaceMatrices[currentLayer] * vec4(worldPos.xyz + normalBias, 1);
 
         // Perspective division is only necessary on perspective projection, but doesnt affect ortographic projection:
         vec3 ndcPos = posClipSpace.xyz / posClipSpace.w;

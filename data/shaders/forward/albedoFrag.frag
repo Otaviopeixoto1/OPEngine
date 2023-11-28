@@ -37,7 +37,7 @@ void main()
     {
         vec3 viewDir = -normalize(ViewFragPos);
         vec4 lighting = albedoColor * CalcDirLight(i, norm, viewDir, specular.xyz, specular.w);
-        outFrag += lighting * GetDirLightShadow(i, worldPos , worldNorm);
+        outFrag += lighting * GetDirLightShadow(i, ViewFragPos.xyz, worldPos.xyz , worldNorm);
     }
     for(int i = 0; i < numPointLights; i++)
     {

@@ -12,8 +12,8 @@ class ForwardRenderer : public BaseRenderer
         const float cameraFar = 100.0f;
 
         static constexpr unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
-        static constexpr unsigned int SHADOW_CASCADE_COUNT = 1;
-        float frustrumCuts[SHADOW_CASCADE_COUNT + 1];
+        static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
+        float frustrumCuts[5]; // 4 (max cascade count) + 1 (near plane distance)
         bool enableShadowMap = true;
 
         unsigned int MSAASamples = 4; 
@@ -26,10 +26,10 @@ class ForwardRenderer : public BaseRenderer
         std::string PreprocessorDefines[3] = { 
             "MAX_DIR_LIGHTS 3",
             "MAX_POINT_LIGHTS 10",
-            "SHADOW_CASCADE_COUNT 1"
+            "SHADOW_CASCADE_COUNT 3"
         };
 
-        enum ExtraBufferBindings
+        enum MainPassBufferBindings
         {
             SHADOW_MAP_BUFFER0_BINDING = 0,
             SHADOW_MAP_BUFFER1_BINDING = 1,
@@ -82,7 +82,7 @@ class ForwardRenderer : public BaseRenderer
                 glTexImage3D(
                     GL_TEXTURE_2D_ARRAY,
                     0,
-                    GL_DEPTH_COMPONENT,
+                    GL_DEPTH_COMPONENT, // GL_DEPTH_COMPONENT32F
                     SHADOW_WIDTH,
                     SHADOW_HEIGHT,
                     SHADOW_CASCADE_COUNT,
@@ -109,9 +109,21 @@ class ForwardRenderer : public BaseRenderer
                     throw RendererException("ERROR::FRAMEBUFFER:: shadowMap Framebuffer is incomplete");
                 }
                 
-                for (size_t i = 0; i <= SHADOW_CASCADE_COUNT; i++)
+                // MAX CASCADE COUNT = 4 
+                for (size_t i = 0; i <= 4; i++)
                 {
-                    frustrumCuts[i] = cameraNear * pow(cameraFar/cameraNear, i/(float)SHADOW_CASCADE_COUNT);
+                    
+                    if (i < SHADOW_CASCADE_COUNT + 1)
+                    {
+                        frustrumCuts[i] = cameraNear * pow(cameraFar/cameraNear, i/(float)SHADOW_CASCADE_COUNT);
+                    }
+                    else 
+                    {
+                        // if we have less than 4 cascades, the other frustrum cuts should be outsizde the range of
+                        // the camera (this is for shader calculations)
+                        frustrumCuts[i] = cameraFar * 1.1f;
+                    }
+                    
                     std::cout << frustrumCuts[i] << "\n";
                 }
                 
@@ -323,7 +335,7 @@ class ForwardRenderer : public BaseRenderer
                 }
 
                 // 
-                glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(frustrumCuts), &frustrumCuts);
+                glBufferSubData(GL_UNIFORM_BUFFER, offset, 4 * sizeof(float), &frustrumCuts[1]);
                 glBindBuffer(GL_UNIFORM_BUFFER, 0); 
 
                 shadowDepthPass.UseProgram();

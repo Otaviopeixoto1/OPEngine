@@ -36,7 +36,7 @@ void main()
     {
         vec3 viewDir = -normalize(ViewFragPos.xyz);
         vec4 lighting = vec4(AlbedoSpec.rgb, 1.0) * CalcDirLight(i, norm, viewDir, vec3(1,1,1), AlbedoSpec.a);
-        outFrag += lighting * GetDirLightShadow(i, worldPos, worldNorm);
+        outFrag += lighting * GetDirLightShadow(i, ViewFragPos.xyz, worldPos.xyz, worldNorm);
     }
     
     #ifndef LIGHT_VOLUMES
