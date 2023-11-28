@@ -8,7 +8,12 @@
 class ForwardRenderer : public BaseRenderer
 {
     public:
-        const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
+        const float cameraNear = 0.1f;
+        const float cameraFar = 100.0f;
+
+        static constexpr unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
+        static constexpr unsigned int SHADOW_CASCADE_COUNT = 1;
+        float frustrumCuts[SHADOW_CASCADE_COUNT + 1];
         bool enableShadowMap = true;
 
         unsigned int MSAASamples = 4; 
@@ -17,33 +22,39 @@ class ForwardRenderer : public BaseRenderer
         const int MAX_DIR_LIGHTS = 3;
         const int MAX_POINT_LIGHTS = 10;
 
-        std::string PreprocessorDefines[2] = { 
+        // USE AN UNORDERED MAP INSTEAD AND ADD NUMBERS AS ELEMENTS WITH STRINGS AS KEYS
+        std::string PreprocessorDefines[3] = { 
             "MAX_DIR_LIGHTS 3",
             "MAX_POINT_LIGHTS 10",
+            "SHADOW_CASCADE_COUNT 1"
         };
 
-
-        // ***Adopted naming conventions for the global uniform blocks***
-
-        std::string NamedBufferBindings[4] = {
-            "GlobalMatrices",
-            "LocalMatrices",
-            "Lights",
-            "MaterialProperties"
-        };
         enum ExtraBufferBindings
         {
             SHADOW_MAP_BUFFER0_BINDING = 0,
             SHADOW_MAP_BUFFER1_BINDING = 1,
             SHADOW_MAP_BUFFER2_BINDING = 2,
         };
+
+
+        // ***Adopted naming conventions for the global uniform blocks***
+        std::string NamedBufferBindings[5] = {
+            "GlobalMatrices",
+            "LocalMatrices",
+            "MaterialProperties",
+            "Lights",
+            "Shadows",
+            
+        };
         
         enum FRGlobalBufferBindings
         {
             GLOBAL_MATRICES_BINDING = 0,
             LOCAL_MATRICES_BINDING = 1,
-            GLOBAL_LIGHTS_BINDING = 2,
-            MATERIAL_PROPERTIES_BINDING = 3
+            MATERIAL_PROPERTIES_BINDING = 2,
+            GLOBAL_LIGHTS_BINDING = 3,
+            GLOBAL_SHADOWS_BINDING = 4,
+            
         };
 
         ForwardRenderer(unsigned int vpWidth, unsigned int vpHeight)
@@ -65,19 +76,46 @@ class ForwardRenderer : public BaseRenderer
                 glGenFramebuffers(1, &shadowMapFBO);
                 glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
                 glGenTextures(1, &shadowMapBuffer);
-                glBindTexture(GL_TEXTURE_2D, shadowMapBuffer);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+                glBindTexture(GL_TEXTURE_2D_ARRAY, shadowMapBuffer);
+                //glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+                
+                glTexImage3D(
+                    GL_TEXTURE_2D_ARRAY,
+                    0,
+                    GL_DEPTH_COMPONENT,
+                    SHADOW_WIDTH,
+                    SHADOW_HEIGHT,
+                    SHADOW_CASCADE_COUNT,
+                    0,
+                    GL_DEPTH_COMPONENT,
+                    GL_FLOAT,
+                    nullptr
+                );
+                
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
                 float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-                glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);    
+                glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, borderColor);    
 
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMapBuffer, 0);
+                glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowMapBuffer, 0);
 
                 glDrawBuffer(GL_NONE); //we wont draw to any color buffer
-                glReadBuffer(GL_NONE); //we wont read from any color buffer 
+                glReadBuffer(GL_NONE); //we wont read from any color buffer
+
+                if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+                {
+                    throw RendererException("ERROR::FRAMEBUFFER:: shadowMap Framebuffer is incomplete");
+                }
+                
+                for (size_t i = 0; i <= SHADOW_CASCADE_COUNT; i++)
+                {
+                    frustrumCuts[i] = cameraNear * pow(cameraFar/cameraNear, i/(float)SHADOW_CASCADE_COUNT);
+                    std::cout << frustrumCuts[i] << "\n";
+                }
+                
+
             }
 
 
@@ -176,7 +214,7 @@ class ForwardRenderer : public BaseRenderer
             // Global Uniforms (dont depend on objects/materials)
             // --------------------------------------------------
             glm::mat4 viewMatrix = camera.GetViewMatrix();
-            glm::mat4 projectionMatrix = camera.GetProjectionMatrix();
+            glm::mat4 projectionMatrix = camera.GetProjectionMatrix(cameraNear, cameraFar);
             glm::mat4 inverseViewMatrix = glm::inverse(viewMatrix);
 
             // Setting GlobalMatricesUBO:
@@ -188,6 +226,12 @@ class ForwardRenderer : public BaseRenderer
 
             // Get Light data in view space:
             GlobalLightData lights = scene->GetLightData(viewMatrix);
+
+
+            // THE LIGHT ITSELF WILL ONLY SET AND STORE ITS DIRECTION
+            // THE LIGHT MATRIX HAS TO BE SET IN THE LOOP INSTEAD OF BEING SET ON THE LIGHT ITSELF
+            // (use a different UBO for this or just set an array uniform in the shader)
+
             if (enableShadowMap)
             {
                 glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
@@ -195,29 +239,94 @@ class ForwardRenderer : public BaseRenderer
                 glClear(GL_DEPTH_BUFFER_BIT);
 
                 auto mainLight = lights.directionalLights[0];
+                glm::vec3 lightDir = glm::normalize(glm::vec3(inverseViewMatrix * mainLight.lightDirection));
+
+///////////////////////////////////////////////// SHADOW MAPPING RENDER FEATURE//////////////////////////////////////////////////////////
                 
+                // THIS HAS TO BE ITERATED PER FRUSTRUM SUBDIVISION
+                // THE PROJECTION MATRIX HAS TO BE A SMALLER VERSION OF THE ACTUAL CAMERA PROJECTION MATRIX
 
-                auto frustrumCorners = Camera::GetFrustumCornersWorldSpace(projectionMatrix, viewMatrix);
+                // subdivide the frustrum using far plane and near plane parameters of the proj matrix:
+                // use near and far values to represent each frustrum cut
+                //glm::mat4 projectionMatrix = camera.GetProjectionMatrix(near, far);
 
-                glm::vec3 center = glm::vec3(0, 0, 0);
-                for (const auto& v : frustrumCorners)
+                // Setting Shadow propeties:
+                glBindBuffer(GL_UNIFORM_BUFFER, ShadowsUBO); 
+                float shadowParams[4] = {0.1,1.0,2.0,12.0};
+                glBufferSubData(GL_UNIFORM_BUFFER, 0, 4 * sizeof(float), &shadowParams);
+
+                int offset = 0;
+                offset += 4 * sizeof(float);
+                
+                for (size_t i = 0; i < SHADOW_CASCADE_COUNT; i++)
                 {
-                    center += glm::vec3(v);
+                    glm::mat4 subProj = camera.GetProjectionMatrix(frustrumCuts[i], frustrumCuts[i+1]);
+                    auto frustrumCorners = Camera::GetFrustumCornersWorldSpace(subProj, viewMatrix);
+
+                    glm::vec3 center = glm::vec3(0, 0, 0);
+                    for (size_t j = 0; j < frustrumCorners.size(); j++)
+                    {
+                        center += glm::vec3(frustrumCorners[j]);
+                    }
+                    center /= frustrumCorners.size();
+                    
+                    const auto lightView = glm::lookAt(
+                        center + lightDir,
+                        center,
+                        glm::vec3(0.0f, 1.0f, 0.0f)
+                    );
+
+                    float minX = std::numeric_limits<float>::max();
+                    float maxX = std::numeric_limits<float>::lowest();
+                    float minY = std::numeric_limits<float>::max();
+                    float maxY = std::numeric_limits<float>::lowest();
+                    float minZ = std::numeric_limits<float>::max();
+                    float maxZ = std::numeric_limits<float>::lowest();
+
+                    for (const auto& v : frustrumCorners)
+                    {
+                        const auto trf = lightView * v;
+                        minX = std::min(minX, trf.x);
+                        maxX = std::max(maxX, trf.x);
+                        minY = std::min(minY, trf.y);
+                        maxY = std::max(maxY, trf.y);
+                        minZ = std::min(minZ, trf.z);
+                        maxZ = std::max(maxZ, trf.z);
+                    }
+
+                    // Tune this parameter according to the scene
+                    constexpr float zMult = 12.0f;
+                    if (minZ < 0)
+                    {
+                        minZ *= zMult;
+                    }
+                    else
+                    {
+                        minZ /= zMult;
+                    }
+                    if (maxZ < 0)
+                    {
+                        maxZ /= zMult;
+                    }
+                    else
+                    {
+                        maxZ *= zMult;
+                    }
+                    
+                    glm::mat4 lightProjection = glm::ortho(minX, maxX, minY, maxY, minZ, maxZ);
+
+                    glm::mat4 lightMatrix = lightProjection * lightView;
+
+                               
+                    glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(glm::mat4), glm::value_ptr(lightMatrix));
+                    offset += sizeof(glm::mat4);
                 }
-                center /= frustrumCorners.size();
 
-                glm::vec3 lightDir = glm::normalize(glm::vec3(mainLight.lightDirection));
-                
-                const auto lightView = glm::lookAt(
-                    center + lightDir,
-                    center,
-                    glm::vec3(0.0f, 1.0f, 0.0f)
-                );
+                // 
+                glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(frustrumCuts), &frustrumCuts);
+                glBindBuffer(GL_UNIFORM_BUFFER, 0); 
 
-
-
-
-                simpleDepthPass.UseProgram();
+                shadowDepthPass.UseProgram();
                 
                 scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
                 {
@@ -226,7 +335,7 @@ class ForwardRenderer : public BaseRenderer
                         return;
                     }
 
-                    simpleDepthPass.SetMat4("MVPMatrix", mainLight.lightMatrix * objectToWorld);
+                    shadowDepthPass.SetMat4("modelMatrix", objectToWorld);
 
                     //bind VAO
                     mesh->BindBuffers();
@@ -238,16 +347,22 @@ class ForwardRenderer : public BaseRenderer
                 glViewport(0, 0, viewportWidth, viewportHeight);
             }
 
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
             // Setting the MSAA buffer:
             glBindFramebuffer(GL_FRAMEBUFFER, multisampledFBO);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            // Setting up the shadow maps:
+
+            // Setting up the shadow maps: 
+
+            //////////////////////////////////////////////////////////////////////////////
+            // THIS BINDING MUST BE ADDED AFTER ALREADY SETTING THE OTHER TEXTURE BINDINGS
+            //////////////////////////////////////////////////////////////////////////////
             glActiveTexture(GL_TEXTURE0 + SHADOW_MAP_BUFFER0_BINDING);
-            glBindTexture(GL_TEXTURE_2D, shadowMapBuffer); 
+            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowMapBuffer); 
+
 
             
             // Setting LightsUBO:
@@ -398,13 +513,20 @@ class ForwardRenderer : public BaseRenderer
 
         void ReloadShaders()
         {
+            shadowDepthPass = Shader(BASE_DIR"/data/shaders/shadow_mapping/layeredVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
+            shadowDepthPass.AddPreProcessorDefines(PreprocessorDefines,3);
+            shadowDepthPass.AddShaderStage(BASE_DIR"/data/shaders/shadow_mapping/layeredGeom.geom",GL_GEOMETRY_SHADER);
+            shadowDepthPass.BuildProgram();
+            shadowDepthPass.BindUniformBlocks(NamedBufferBindings,5);
+            
+            
             simpleDepthPass = Shader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
             simpleDepthPass.BuildProgram();
 
 
 
             defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/albedoFrag.frag");
-            defaultVertFrag.AddPreProcessorDefines(PreprocessorDefines,2);
+            defaultVertFrag.AddPreProcessorDefines(PreprocessorDefines,3);
             if (enableShadowMap)
             {
                 std::string s = "DIR_LIGHT_SHADOWS";
@@ -413,12 +535,12 @@ class ForwardRenderer : public BaseRenderer
             defaultVertFrag.BuildProgram();
             defaultVertFrag.UseProgram();
             defaultVertFrag.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
-            defaultVertFrag.BindUniformBlocks(NamedBufferBindings,4);
+            defaultVertFrag.BindUniformBlocks(NamedBufferBindings,5);
 
 
             // For textured materials with an albedo texture
             defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
-            defaultVertTexFrag.AddPreProcessorDefines(PreprocessorDefines,2);
+            defaultVertTexFrag.AddPreProcessorDefines(PreprocessorDefines,3);
             if (enableShadowMap)
             {
                 std::string s = "DIR_LIGHT_SHADOWS";
@@ -427,12 +549,12 @@ class ForwardRenderer : public BaseRenderer
             defaultVertTexFrag.BuildProgram();
             defaultVertTexFrag.UseProgram();
             defaultVertTexFrag.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
-            defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,4);
+            defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,5);
 
 
             // For textured materials with an normal map and albedo textures
             defaultVertNormalTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
-            defaultVertNormalTexFrag.AddPreProcessorDefines(PreprocessorDefines,2);
+            defaultVertNormalTexFrag.AddPreProcessorDefines(PreprocessorDefines,3);
             if (enableShadowMap)
             {
                 std::string s = "DIR_LIGHT_SHADOWS";
@@ -445,11 +567,13 @@ class ForwardRenderer : public BaseRenderer
             defaultVertNormalTexFrag.BuildProgram();
             defaultVertNormalTexFrag.UseProgram();
             defaultVertNormalTexFrag.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
-            defaultVertNormalTexFrag.BindUniformBlocks(NamedBufferBindings,4);
+            defaultVertNormalTexFrag.BindUniformBlocks(NamedBufferBindings,5);
+
+
 
             defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
             defaultVertUnlitFrag.BuildProgram();
-            defaultVertUnlitFrag.BindUniformBlocks(NamedBufferBindings,4);
+            defaultVertUnlitFrag.BindUniformBlocks(NamedBufferBindings,3);
 
 
 
@@ -548,10 +672,44 @@ class ForwardRenderer : public BaseRenderer
 
 
 
+
+            glGenBuffers(1, &ShadowsUBO);
+
+            // Shadows buffer setup
+            // --------------------
+            /* Shadows Uniform buffer structure:
+             *layout(std140) uniform Shadows
+             *{
+             *    float shadowBias;
+             *    float shadowSamples;
+             *    float numShadowCasters;
+             *    float spad3;
+             *    float frustrumDistances[SHADOW_CASCADE_COUNT + 1];
+             *    mat4 lightSpaceMatrices[SHADOW_CASCADE_COUNT];
+             *    
+             *}; 
+             */
+            ShadowBufferSize = 0;
+            {
+                ShadowBufferSize += 4 * sizeof(float);
+                ShadowBufferSize += SHADOW_CASCADE_COUNT * sizeof(glm::mat4);
+                ShadowBufferSize += sizeof(frustrumCuts);
+            }
+
+            glBindBuffer(GL_UNIFORM_BUFFER, ShadowsUBO);
+            glBufferData(GL_UNIFORM_BUFFER, ShadowBufferSize, NULL, GL_DYNAMIC_DRAW);
+            glBindBuffer(GL_UNIFORM_BUFFER, 0);
+            
+            glBindBufferRange(GL_UNIFORM_BUFFER, GLOBAL_SHADOWS_BINDING, ShadowsUBO, 0, ShadowBufferSize);
+
+
+
+
+
             glGenBuffers(1, &MaterialUBO);
 
             // Material buffer setup
-            // -------------------
+            // ---------------------
             /* MaterialProperties Uniform buffer structure:
              * {
              *    vec4 albedoColor; 
@@ -559,6 +717,7 @@ class ForwardRenderer : public BaseRenderer
              *    vec4 specular;      
              * }
              */
+
             MaterialBufferSize = 0;
             {
                 MaterialBufferSize += 3 * sizeof(glm::vec4);
@@ -570,7 +729,6 @@ class ForwardRenderer : public BaseRenderer
 
             glBindBufferRange(GL_UNIFORM_BUFFER, MATERIAL_PROPERTIES_BINDING, MaterialUBO, 0, MaterialBufferSize);
 
-
         }
 
     private:
@@ -581,6 +739,7 @@ class ForwardRenderer : public BaseRenderer
         unsigned int shadowMapBuffer;
 
         unsigned int LightBufferSize = 0;
+        unsigned int ShadowBufferSize = 0;
         unsigned int MaterialBufferSize = 0;
 
         unsigned int screenQuadVAO, screenQuadVBO;
@@ -592,9 +751,11 @@ class ForwardRenderer : public BaseRenderer
 
         unsigned int GlobalMatricesUBO;
         unsigned int LocalMatricesUBO;
-        unsigned int LightsUBO;
         unsigned int MaterialUBO;
+        unsigned int LightsUBO;
+        unsigned int ShadowsUBO;
 
+        Shader shadowDepthPass;
         Shader simpleDepthPass;
 
         Shader defaultVertFrag;

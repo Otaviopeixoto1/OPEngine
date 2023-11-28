@@ -31,64 +31,81 @@ layout(std140) uniform Lights
     vec4 ambientLight; //(vec3 color, float intensity)
     int numDirLights;
     int numPointLights;
-    int pad2;
-    int pad3;
+    int lpad2;
+    int lpad3;
     DirLight dirLights[MAX_DIR_LIGHTS]; 
     PointLight pointLights[MAX_POINT_LIGHTS];
 }; 
 
 
-uniform sampler2D shadowMap0;
+
+#ifndef SHADOW_CASCADE_COUNT
+    #define SHADOW_CASCADE_COUNT 3
+#endif
+
+#ifndef SHADOW_MAP_COUNT
+    #define SHADOW_MAP_COUNT 1
+#endif
+
+layout(std140) uniform Shadows
+{
+    float shadowBias;
+    float shadowSamples;
+    float numShadowCasters;
+    float spad3;
+    mat4 lightSpaceMatrices[SHADOW_CASCADE_COUNT];
+    //float frustrumDistances[SHADOW_CASCADE_COUNT + 1];
+}; 
+
+//uniform sampler2D shadowMap0;
+
+uniform sampler2DArray shadowMap0;
 
 float GetDirLightShadow(int lightIndex, vec4 worldPos, vec3 worldNormal)
 {
     #ifndef DIR_LIGHT_SHADOWS
         return 1;
+    #else
+
+
+        int currentLayer = 0;
+
+        //float bias = max(0.05 * (1.0 - dot(worldNormal, dirLights[lightIndex].direction.xyz)), 0.005);
+        float bias = 0.000;
+        vec2 texelSize = 1.0 / textureSize(shadowMap0, 0).xy;  
+
+        vec3 normalBias = worldNormal * max(texelSize.x,texelSize.y) * 1.4142136f * 2;
+
+        vec4 posClipSpace = lightSpaceMatrices[0] * vec4(worldPos.xyz + normalBias, 1);
+
+        // Perspective division is only necessary on perspective projection, but doesnt affect ortographic projection:
+        vec3 ndcPos = posClipSpace.xyz / posClipSpace.w;
+        ndcPos = ndcPos * 0.5 + 0.5; 
+
+        // Depth samples to compare   
+        float currentDepth = ndcPos.z; 
+
+        
+        // One sample:
+        //float closestDepth = texture(shadowMap0, ndcPos.xy).r;
+        //float shadow = currentDepth - bias > closestDepth  ? 0.0 : 1.0; 
+
+        // Multiple samples:
+        float shadow = 0.0;
+        for(int x = -1; x <= 1; ++x)
+        {
+            for(int y = -1; y <= 1; ++y)
+            {
+                float pcfDepth = texture(shadowMap0, vec3(ndcPos.xy + vec2(x, y) * texelSize, currentLayer) ).r; 
+                shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0;        
+            }    
+        }
+        shadow /= 9.0;
+        return  shadow;
+
+
     #endif
 
-    //float bias = max(0.05 * (1.0 - dot(worldNormal, dirLights[lightIndex].direction.xyz)), 0.005);
-    float bias = 0.001;
-    vec2 texelSize = 1.0 / textureSize(shadowMap0, 0);  
-
-    vec3 normalBias = worldNormal * max(texelSize.x,texelSize.y) * 1.4142136f * 2;
-
-
-
-
-    vec4 posClipSpace = dirLights[lightIndex].lightMatrix * vec4(worldPos.xyz + normalBias, 1);
-
-    // Perspective division is only necessary on perspective projection, but doesnt affect ortographic projection:
-    vec3 ndcPos = posClipSpace.xyz / posClipSpace.w;
-    ndcPos = ndcPos * 0.5 + 0.5; 
-
-    // Depth samples to compare   
-    float currentDepth = ndcPos.z; 
-
-    
-
-    
-    // One sample:
-    //float closestDepth = texture(shadowMap0, ndcPos.xy).r;
-    //float shadow = currentDepth - bias > closestDepth  ? 0.0 : 1.0; 
-
-    
-  
-    
-    // Multiple samples:
-    float shadow = 0.0;
-    for(int x = -1; x <= 1; ++x)
-    {
-        for(int y = -1; y <= 1; ++y)
-        {
-            float pcfDepth = texture(shadowMap0, ndcPos.xy + vec2(x, y) * texelSize).r; 
-            shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0;        
-        }    
-    }
-    shadow /= 9.0;
-
-    
-
-    return  shadow;
 }
 
 

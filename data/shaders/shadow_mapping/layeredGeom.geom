@@ -1,13 +1,10 @@
 #version 440 core
-    
-// Using 5 cascades:
-layout(triangles, invocations = 5) in;
+
+#include "lights.glsl"
+
+layout(triangles, invocations = SHADOW_CASCADE_COUNT) in;
 layout(triangle_strip, max_vertices = 3) out;
-    
-layout (std140) uniform LightSpaceMatrices
-{
-    mat4 lightSpaceMatrices[16];
-};
+
     
 void main()
 {          

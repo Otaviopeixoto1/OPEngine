@@ -29,7 +29,7 @@ public:
     
 
     // constructor with vectors
-    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = -90.0f, float pitch = 0.0f) : Aspect(800.0f/600.0f), Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(2.5f), MouseSensitivity(0.1f), Zoom(60.0f)
+    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = -90.0f, float pitch = 0.0f) : Aspect(800.0f/600.0f), Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(5.0f), MouseSensitivity(0.1f), Zoom(60.0f)
     {
         Position = position;
         WorldUp = up;
@@ -38,7 +38,7 @@ public:
         updateCameraVectors();
     }
     // constructor with scalar values
-    Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch) : Aspect(800.0f/600.0f), Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(2.5f), MouseSensitivity(0.1f), Zoom(60.0f)
+    Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch) : Aspect(800.0f/600.0f), Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(5.0f), MouseSensitivity(0.1f), Zoom(60.0f)
     {
         Position = glm::vec3(posX, posY, posZ);
         WorldUp = glm::vec3(upX, upY, upZ);
@@ -52,9 +52,9 @@ public:
     {
         return glm::lookAt(Position, Position + Front, Up);
     }
-    glm::mat4 GetProjectionMatrix() const
+    glm::mat4 GetProjectionMatrix(float near = 0.1f, float far = 100.0f) const
     {
-        return glm::perspective(glm::radians(Zoom), Aspect, 0.1f, 100.0f);
+        return glm::perspective(glm::radians(Zoom), Aspect, near, far);
     }
     void SetProjectionAspect(float aspect)
     {

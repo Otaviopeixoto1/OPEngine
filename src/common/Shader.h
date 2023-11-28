@@ -67,12 +67,11 @@ public:
         // ------------------
         fragment = CompileShader(fragmentShaderPath, GL_FRAGMENT_SHADER);
         shaderPipeline.push_back(fragment);
+
         // 3) Additional Shaders
         // ---------------------
-        
         if (additionalShaderStages.find(GL_GEOMETRY_SHADER) != additionalShaderStages.end())
         {
-
             unsigned int geometry = CompileShader(additionalShaderStages[GL_GEOMETRY_SHADER], GL_GEOMETRY_SHADER);
             shaderPipeline.push_back(geometry);
         }
