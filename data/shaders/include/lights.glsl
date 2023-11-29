@@ -82,6 +82,24 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
 
         vec3 normalBias = worldNormal * max(texelSize.x, texelSize.y) * 1.4142136f;
 
+
+        /*
+        // calculate bias (based on depth map resolution and slope)
+        vec3 normal = normalize(fs_in.Normal);
+        float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
+        if (layer == cascadeCount)
+        {
+            bias *= 1 / (farPlane * 0.5f);
+        }
+        else
+        {
+            bias *= 1 / (cascadePlaneDistances[layer] * 0.5f);
+        }
+        */
+
+
+
+
         vec4 posClipSpace = lightSpaceMatrices[currentLayer] * vec4(worldPos.xyz + normalBias, 1);
 
         // Perspective division is only necessary on perspective projection, but doesnt affect ortographic projection:

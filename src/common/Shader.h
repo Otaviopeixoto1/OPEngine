@@ -118,6 +118,15 @@ public:
         }
         
     }
+
+    void AddPreProcessorDefines(std::unordered_map<std::string, unsigned int> definesMap)
+    {
+        for (auto define : definesMap) 
+        {
+            preDefines.push_back(define.first + " " + std::to_string(define.second));
+        }
+        
+    }
     
 
     std::string PreProcessShader(std::string &source, const std::string &filePath, unsigned int level, bool versionMatch = false)

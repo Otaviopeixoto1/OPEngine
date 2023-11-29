@@ -19,12 +19,45 @@ class BaseRenderer
 
         //Original:
         //virtual void RenderFrame(const legit::InFlightQueue::FrameInfo &frameInfo, const Camera &camera, const Camera &light, Scene *scene, GLFWwindow *window){}
-        virtual void RenderFrame(const Camera &camera, Scene *scene, GLFWwindow *window){}
+        virtual void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window){}
         virtual void ReloadShaders(){}
         virtual void ChangeView(){}
 
         //callback used when there are viewport resizes
         virtual void ViewportUpdate(int vpWidth, int vpHeight){}
+
+
+        struct FrameResources
+        {
+            unsigned int viewportWidth;
+            unsigned int viewportHeight;
+
+            Scene *scene;
+            Camera *camera;
+            GlobalLightData *lightData;
+
+            glm::mat4 projectionMatrix;
+            glm::mat4 viewMatrix;
+            glm::mat4 inverseViewMatrix;
+
+
+        }; 
+
+        
+
+        class RendererException: public std::exception
+        {
+            std::string message;
+            public:
+                RendererException(const std::string &message)
+                {
+                    this->message = message;
+                }
+                virtual const char* what() const throw()
+                {
+                    return message.c_str();
+                }
+        };
 };
 
 

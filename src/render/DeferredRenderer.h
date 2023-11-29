@@ -9,6 +9,7 @@ class DeferredRenderer : public BaseRenderer
 {
     public:
         const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
+        static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
         bool enableShadowMap = false;
 
         float tonemapExposure = 1.0f;
@@ -21,9 +22,12 @@ class DeferredRenderer : public BaseRenderer
         const int MAX_DIR_LIGHTS = 5;
         const int MAX_POINT_LIGHTS = 20;
 
-        std::string PreprocessorDefines[2] = { 
-            "MAX_DIR_LIGHTS 5",
-            "MAX_POINT_LIGHTS 20",
+        // USE AN UNORDERED MAP INSTEAD AND ADD NUMBERS AS ELEMENTS WITH STRINGS AS KEYS:
+        std::unordered_map<std::string, unsigned int> preprocessorDefines =
+        {
+            {"MAX_DIR_LIGHTS", MAX_DIR_LIGHTS},
+            {"MAX_POINT_LIGHTS", MAX_POINT_LIGHTS},
+            {"SHADOW_CASCADE_COUNT", SHADOW_CASCADE_COUNT}
         };
 
         enum GBufferBindings
@@ -254,7 +258,7 @@ class DeferredRenderer : public BaseRenderer
         }
 
 
-        void RenderFrame(const Camera &camera, Scene *scene, GLFWwindow *window)
+        void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window)
         {
             // Set default rendering settings:
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -649,7 +653,7 @@ class DeferredRenderer : public BaseRenderer
             
 
             directionalLightingPass = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/deferred/fsDeferredLighting.frag");
-            directionalLightingPass.AddPreProcessorDefines(PreprocessorDefines,2);
+            directionalLightingPass.AddPreProcessorDefines(preprocessorDefines);
             if (enableLightVolumes)
             {
                 std::string s = "LIGHT_VOLUMES";
@@ -676,7 +680,7 @@ class DeferredRenderer : public BaseRenderer
             
 
             pointLightVolShader = Shader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/deferred/pointVolumeLighting.frag");
-            pointLightVolShader.AddPreProcessorDefines(PreprocessorDefines,2);
+            pointLightVolShader.AddPreProcessorDefines(preprocessorDefines);
             pointLightVolShader.BuildProgram();
             pointLightVolShader.UseProgram();
             pointLightVolShader.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
@@ -857,23 +861,6 @@ class DeferredRenderer : public BaseRenderer
         
         Shader postProcessShader;
         Shader FXAAShader;
-
-
-
-        class RendererException: public std::exception
-        {
-            std::string message;
-            public:
-                RendererException(const std::string &message)
-                {
-                    this->message = message;
-                }
-                virtual const char* what() const throw()
-                {
-                    return message.c_str();
-                }
-        };
-
 };
 
 #endif

@@ -1,0 +1,259 @@
+#include "RenderFeature.h"
+
+class ShadowRenderer : public RenderFeature
+{
+    public:
+        float cameraNear = 0.1f;
+        float cameraFar = 100.0f;
+
+        ShadowRenderer(){}
+
+        ShadowRenderer(unsigned int shadowBufferBinding, unsigned int cascadeCount, unsigned int ShadowWidth, unsigned int ShadowHeight)
+        {
+            this->GLOBAL_SHADOWS_BINDING = shadowBufferBinding;
+
+            // MAX CASCADE COUNT = 4 
+            this->SHADOW_CASCADE_COUNT = std::min(cascadeCount, 4u);
+            this->SHADOW_WIDTH = ShadowWidth;
+            this->SHADOW_HEIGHT = ShadowHeight;
+        }
+        
+        void RecreateResources()
+        {
+            glGenFramebuffers(1, &shadowMapFBO);
+            glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
+            glGenTextures(1, &shadowMapBuffer0);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowMapBuffer0);
+
+            glTexImage3D(
+                GL_TEXTURE_2D_ARRAY,
+                0,
+                GL_DEPTH_COMPONENT, // GL_DEPTH_COMPONENT32F
+                SHADOW_WIDTH,
+                SHADOW_HEIGHT,
+                SHADOW_CASCADE_COUNT,
+                0,
+                GL_DEPTH_COMPONENT,
+                GL_FLOAT,
+                nullptr
+            );
+            
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+            float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+            glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, borderColor);    
+
+            glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowMapBuffer0, 0);
+
+            glDrawBuffer(GL_NONE); //we wont draw to any color buffer
+            glReadBuffer(GL_NONE); //we wont read from any color buffer
+
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            {
+                throw BaseRenderer::RendererException("ERROR::FRAMEBUFFER:: shadowMap Framebuffer is incomplete");
+            }
+
+            
+            // Currently only one of the lights can generate an output target
+            shadowMaps.push_back(shadowMapBuffer0);
+            
+
+
+
+            for (size_t i = 0; i <= 4; i++)
+            {
+                
+                if (i < SHADOW_CASCADE_COUNT + 1)
+                {
+                    frustrumCuts[i] = cameraNear * pow(cameraFar/cameraNear, i/(float)SHADOW_CASCADE_COUNT);
+                }
+                else 
+                {
+                    // if we have less than 4 cascades, the other frustrum cuts should be outsizde the range of
+                    // the camera (this is for shader calculations)
+                    frustrumCuts[i] = cameraFar * 1.1f;
+                }
+                
+                //std::cout << frustrumCuts[i] << "\n";
+            }
+
+
+
+
+            glGenBuffers(1, &ShadowsUBO);
+
+            // Shadows buffer setup
+            // --------------------
+            /* Shadows Uniform buffer structure:
+             *layout(std140) uniform Shadows
+             *{
+             *    float shadowBias;
+             *    float shadowSamples;
+             *    float numShadowCasters;
+             *    float spad3;
+             *    float frustrumDistances[SHADOW_CASCADE_COUNT + 1];
+             *    mat4 lightSpaceMatrices[SHADOW_CASCADE_COUNT];
+             *    
+             *}; 
+             */
+            ShadowBufferSize = 0;
+            {
+                ShadowBufferSize += 4 * sizeof(float);
+                ShadowBufferSize += cascadeCount * sizeof(glm::mat4);
+                ShadowBufferSize += sizeof(frustrumCuts);
+            }
+
+            glBindBuffer(GL_UNIFORM_BUFFER, ShadowsUBO);
+            glBufferData(GL_UNIFORM_BUFFER, ShadowBufferSize, NULL, GL_DYNAMIC_DRAW);
+            glBindBuffer(GL_UNIFORM_BUFFER, 0);
+            
+            glBindBufferRange(GL_UNIFORM_BUFFER, GLOBAL_SHADOWS_BINDING, ShadowsUBO, 0, ShadowBufferSize);
+
+            //Shadow map generation shader:
+            shadowDepthPass = Shader(BASE_DIR"/data/shaders/shadow_mapping/layeredVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
+            {
+                std::string s = "SHADOW_CASCADE_COUNT " + std::to_string(SHADOW_CASCADE_COUNT);
+                shadowDepthPass.AddPreProcessorDefines(&s,1);
+            }
+            shadowDepthPass.AddShaderStage(BASE_DIR"/data/shaders/shadow_mapping/layeredGeom.geom",GL_GEOMETRY_SHADER);
+            shadowDepthPass.BuildProgram();
+            shadowDepthPass.BindUniformBlock("Shadows", GLOBAL_SHADOWS_BINDING);
+
+        }
+        
+        // Add a frameResources as as struct for input!!. ADD the scene reference. viewport reference. Matrices reference
+        //Returns a set of output textures
+        std::vector<unsigned int> Render(BaseRenderer::FrameResources& frameResources)
+        {
+            glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+            glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
+            glClear(GL_DEPTH_BUFFER_BIT);
+
+            auto mainLight = frameResources.lightData->directionalLights[0];
+            glm::vec3 lightDir = glm::normalize(glm::vec3(frameResources.inverseViewMatrix * mainLight.lightDirection));
+
+            // Setting Shadow propeties:
+            glBindBuffer(GL_UNIFORM_BUFFER, ShadowsUBO); 
+            float shadowParams[4] = {0.1,1.0,2.0,12.0};
+            glBufferSubData(GL_UNIFORM_BUFFER, 0, 4 * sizeof(float), &shadowParams);
+
+            int offset = 0;
+            offset += 4 * sizeof(float);
+            
+            for (size_t i = 0; i < SHADOW_CASCADE_COUNT; i++)
+            {
+                glm::mat4 subProj = frameResources.camera->GetProjectionMatrix(frustrumCuts[i], frustrumCuts[i+1]);
+                auto frustrumCorners = Camera::GetFrustumCornersWorldSpace(subProj, frameResources.viewMatrix);
+
+                glm::vec3 center = glm::vec3(0, 0, 0);
+                for (size_t j = 0; j < frustrumCorners.size(); j++)
+                {
+                    center += glm::vec3(frustrumCorners[j]);
+                }
+                center /= frustrumCorners.size();
+                
+                const auto lightView = glm::lookAt(
+                    center + lightDir,
+                    center,
+                    glm::vec3(0.0f, 1.0f, 0.0f)
+                );
+
+                float minX = std::numeric_limits<float>::max();
+                float maxX = std::numeric_limits<float>::lowest();
+                float minY = std::numeric_limits<float>::max();
+                float maxY = std::numeric_limits<float>::lowest();
+                float minZ = std::numeric_limits<float>::max();
+                float maxZ = std::numeric_limits<float>::lowest();
+
+                for (const auto& v : frustrumCorners)
+                {
+                    const auto trf = lightView * v;
+                    minX = std::min(minX, trf.x);
+                    maxX = std::max(maxX, trf.x);
+                    minY = std::min(minY, trf.y);
+                    maxY = std::max(maxY, trf.y);
+                    minZ = std::min(minZ, trf.z);
+                    maxZ = std::max(maxZ, trf.z);
+                }
+
+                // Tune this parameter according to the scene
+                constexpr float zMult = 8.0f;
+                if (minZ < 0)
+                {
+                    minZ *= zMult;
+                }
+                else
+                {
+                    minZ /= zMult;
+                }
+                if (maxZ < 0)
+                {
+                    maxZ /= zMult;
+                }
+                else
+                {
+                    maxZ *= zMult;
+                }
+                
+                glm::mat4 lightProjection = glm::ortho(minX, maxX, minY, maxY, minZ, maxZ);
+
+                // multiply by the inverse projection matrix
+                glm::mat4 lightMatrix = lightProjection * lightView;
+
+                            
+                glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(glm::mat4), glm::value_ptr(lightMatrix));
+                offset += sizeof(glm::mat4);
+            }
+
+            // 
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, 4 * sizeof(float), &frustrumCuts[1]);
+            glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+
+            shadowDepthPass.UseProgram();
+            
+            frameResources.scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
+            {
+                if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
+                {
+                    return;
+                }
+
+                shadowDepthPass.SetMat4("modelMatrix", objectToWorld);
+
+                //bind VAO
+                mesh->BindBuffers();
+
+                //Indexed drawing
+                glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
+            });    
+
+            glViewport(0, 0, frameResources.viewportWidth, frameResources.viewportHeight);
+            
+
+            return shadowMaps;
+        }
+
+
+        //callback used when there are viewport resizes
+        void ViewportUpdate(int vpWidth, int vpHeight)
+        {
+            
+        }
+
+    private:
+        unsigned int SHADOW_WIDTH, SHADOW_HEIGHT;
+        unsigned int SHADOW_CASCADE_COUNT;
+        unsigned int shadowMapFBO;
+        unsigned int shadowMapBuffer0;
+
+        std::vector<unsigned int> shadowMaps;
+
+        unsigned int GLOBAL_SHADOWS_BINDING = 4;
+        unsigned int ShadowsUBO;
+        unsigned int ShadowBufferSize;
+        unsigned int cascadeCount;
+        float frustrumCuts[5];
+        Shader shadowDepthPass;
+};
