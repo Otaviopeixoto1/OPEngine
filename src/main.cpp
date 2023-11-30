@@ -144,7 +144,7 @@ int main()
 
     ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight);
     DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight);
-    BaseRenderer* renderer = &forwardRenderer;
+    BaseRenderer* renderer = &deferredRenderer;
     
     try
     {

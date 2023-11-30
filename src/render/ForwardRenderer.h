@@ -14,8 +14,8 @@ class ForwardRenderer : public BaseRenderer
 
         static constexpr unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
         static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
-        float frustrumCuts[5]; // 4 (max cascade count) + 1 (near plane distance)
-        bool enableShadowMap = true;
+        
+        static constexpr bool enableShadowMapping = true;
 
         unsigned int MSAASamples = 4; 
         float tonemapExposure = 1.0f;
@@ -71,13 +71,17 @@ class ForwardRenderer : public BaseRenderer
             scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
             scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
 
-            this->shadowRenderer = ShadowRenderer(
-                GLOBAL_SHADOWS_BINDING, 
-                SHADOW_CASCADE_COUNT,
-                SHADOW_WIDTH,
-                SHADOW_HEIGHT
-            );
-            this->shadowRenderer.RecreateResources();
+            if (enableShadowMapping)
+            {
+                this->shadowRenderer = ShadowRenderer(
+                    GLOBAL_SHADOWS_BINDING, 
+                    SHADOW_CASCADE_COUNT,
+                    SHADOW_WIDTH,
+                    SHADOW_HEIGHT
+                );
+                this->shadowRenderer.RecreateResources();
+            }
+            
 
 
             // Setting up screen quad for postprocessing: HDR tonemapping and gamma correction
@@ -172,8 +176,8 @@ class ForwardRenderer : public BaseRenderer
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             glEnable(GL_DEPTH_TEST);
 
-            glm::mat4 viewMatrix = camera.GetViewMatrix();
             glm::mat4 projectionMatrix = camera.GetProjectionMatrix(cameraNear, cameraFar);
+            glm::mat4 viewMatrix = camera.GetViewMatrix();
             glm::mat4 inverseViewMatrix = glm::inverse(viewMatrix);
 
             // Get light data in view space:
@@ -195,7 +199,12 @@ class ForwardRenderer : public BaseRenderer
             // Shadow Map Rendering Pass:
             // --------------------------
 
-            auto shadowMapBuffers = shadowRenderer.Render(frameResources);
+            std::vector<unsigned int> shadowMapBuffers = {0};
+            if (enableShadowMapping)
+            {
+                shadowMapBuffers = shadowRenderer.Render(frameResources);
+            }
+                
 
 
 
@@ -236,7 +245,7 @@ class ForwardRenderer : public BaseRenderer
             offset += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
 
             glBindBuffer(GL_UNIFORM_BUFFER, 0);
-            
+
 
 
             // -Shadows:
@@ -378,7 +387,7 @@ class ForwardRenderer : public BaseRenderer
 
             defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/albedoFrag.frag");
             defaultVertFrag.AddPreProcessorDefines(preprocessorDefines);
-            if (enableShadowMap)
+            if (enableShadowMapping)
             {
                 std::string s = "DIR_LIGHT_SHADOWS";
                 defaultVertFrag.AddPreProcessorDefines(&s,1);
@@ -392,7 +401,7 @@ class ForwardRenderer : public BaseRenderer
             // For textured materials with an albedo texture
             defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
             defaultVertTexFrag.AddPreProcessorDefines(preprocessorDefines);
-            if (enableShadowMap)
+            if (enableShadowMapping)
             {
                 std::string s = "DIR_LIGHT_SHADOWS";
                 defaultVertTexFrag.AddPreProcessorDefines(&s,1);
@@ -406,7 +415,7 @@ class ForwardRenderer : public BaseRenderer
             // For textured materials with an normal map and albedo textures
             defaultVertNormalTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
             defaultVertNormalTexFrag.AddPreProcessorDefines(preprocessorDefines);
-            if (enableShadowMap)
+            if (enableShadowMapping)
             {
                 std::string s = "DIR_LIGHT_SHADOWS";
                 defaultVertNormalTexFrag.AddPreProcessorDefines(&s,1);

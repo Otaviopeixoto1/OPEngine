@@ -1,3 +1,6 @@
+#ifndef RENDER_FEATURE_H
+#define RENDER_FEATURE_H
+
 #include "RenderFeature.h"
 
 class ShadowRenderer : public RenderFeature
@@ -127,6 +130,11 @@ class ShadowRenderer : public RenderFeature
         //Returns a set of output textures
         std::vector<unsigned int> Render(BaseRenderer::FrameResources& frameResources)
         {
+            if (frameResources.lightData->numDirLights == 0)
+            {
+                return std::vector<unsigned int>(1, 0);
+            }
+
             glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
             glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
             glClear(GL_DEPTH_BUFFER_BIT);
@@ -257,3 +265,5 @@ class ShadowRenderer : public RenderFeature
         float frustrumCuts[5];
         Shader shadowDepthPass;
 };
+
+#endif
