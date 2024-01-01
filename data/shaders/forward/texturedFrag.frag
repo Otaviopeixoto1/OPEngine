@@ -30,14 +30,15 @@ layout (std140) uniform MaterialProperties
     vec4 specular;
 };
 
+//calculate TBN on vertex shader
 vec3 CalcBumpedNormal()
 {
     vec3 Normal = normalize(ViewNormal);
     vec3 Tangent = normalize(ViewTangent);
     Tangent = normalize(Tangent - dot(Tangent, Normal) * Normal);
-    vec3 Bitangent = cross(Tangent, Normal);
+    vec3 Bitangent = normalize(cross(Tangent, Normal));
     vec3 BumpMapNormal = texture(texture_normal1, TexCoords).xyz;
-    BumpMapNormal = 2.0 * BumpMapNormal - vec3(1.0, 1.0, 1.0);
+    BumpMapNormal = 2.0 * BumpMapNormal - 1.0;
     vec3 NewNormal;
     mat3 TBN = mat3(Tangent, Bitangent, Normal);
     NewNormal = TBN * BumpMapNormal;
@@ -60,6 +61,7 @@ void main()
         vec3 norm = normalize(ViewNormal);
     #endif
 
+    //calculate world norm and world pos in vertex shader as well ???
     vec3 worldNorm = (inverseViewMatrix * vec4(norm, 0.0)).xyz;
     vec4 worldPos = inverseViewMatrix * vec4(ViewFragPos,1);
 
@@ -75,5 +77,5 @@ void main()
     }
 
     FragColor = outFrag;
-
+    //FragColor = vec4(normalize(ViewTangent),1.0);
 }

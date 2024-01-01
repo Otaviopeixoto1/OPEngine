@@ -58,8 +58,6 @@ layout(std140) uniform Shadows
                              //must be added into this buffer
 }; 
 
-//uniform sampler2D shadowMap0;
-
 uniform sampler2DArray shadowMap0;
 
 float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldNormal)

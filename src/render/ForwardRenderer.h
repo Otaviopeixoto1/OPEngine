@@ -16,6 +16,7 @@ class ForwardRenderer : public BaseRenderer
         static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
         
         static constexpr bool enableShadowMapping = true;
+        static constexpr bool enableNormalMaps = false;
 
         unsigned int MSAASamples = 4; 
         float tonemapExposure = 1.0f;
@@ -420,6 +421,7 @@ class ForwardRenderer : public BaseRenderer
                 std::string s = "DIR_LIGHT_SHADOWS";
                 defaultVertNormalTexFrag.AddPreProcessorDefines(&s,1);
             }
+            if (enableNormalMaps)
             {
                 std::string s = "NORMAL_MAPPED";
                 defaultVertNormalTexFrag.AddPreProcessorDefines(&s,1);

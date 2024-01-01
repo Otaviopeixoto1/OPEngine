@@ -15,6 +15,8 @@ class DeferredRenderer : public BaseRenderer
         static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
         static constexpr bool enableShadowMapping = true;
 
+        static constexpr bool enableNormalMaps = false;
+
         float tonemapExposure = 1.0f;
         float FXAAContrastThreshold = 0.0312f;
         float FXAABrightnessThreshold = 0.063f;
@@ -611,6 +613,7 @@ class DeferredRenderer : public BaseRenderer
 
 
             defaultVertNormalTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
+            if (enableNormalMaps)
             {
                 std::string s = "NORMAL_MAPPED";
                 defaultVertNormalTexFrag.AddPreProcessorDefines(&s,1);
