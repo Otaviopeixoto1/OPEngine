@@ -109,20 +109,20 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
 
         
         // One sample:
-        //float closestDepth = texture(shadowMap0, ndcPos.xy).r;
-        //float shadow = currentDepth - bias > closestDepth  ? 0.0 : 1.0; 
+        float closestDepth = texture(shadowMap0, vec3(ndcPos.xy, currentLayer)).r;
+        float shadow = currentDepth - bias > closestDepth  ? 0.0 : 1.0; 
 
         // Multiple samples:
-        float shadow = 0.0;
-        for(int x = -1; x <= 1; ++x)
-        {
-            for(int y = -1; y <= 1; ++y)
-            {
-                float pcfDepth = texture(shadowMap0, vec3(ndcPos.xy + vec2(x, y) * texelSize, currentLayer) ).r; 
-                shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0;        
-            }    
-        }
-        shadow /= 9.0;
+        //float shadow = 0.0;
+        //for(int x = -1; x <= 1; ++x)
+        //{
+        //    for(int y = -1; y <= 1; ++y)
+        //    {
+        //        float pcfDepth = texture(shadowMap0, vec3(ndcPos.xy + vec2(x, y) * texelSize, currentLayer) ).r; 
+        //        shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0;        
+        //    }    
+        //}
+        //shadow /= 9.0;
         return  shadow;
 
 

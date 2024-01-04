@@ -35,7 +35,7 @@ class DeferredRenderer : public BaseRenderer
             {"SHADOW_CASCADE_COUNT", SHADOW_CASCADE_COUNT}
         };
 
-        enum GBufferBindings
+        enum LightingPassBufferBindings
         {
             COLOR_SPEC_BUFFER_BINDING = 0,
             NORMAL_BUFFER_BINDING = 1,
@@ -45,7 +45,7 @@ class DeferredRenderer : public BaseRenderer
         };
 
         // ***Adopted naming conventions for the global uniform blocks***
-        std::string NamedBufferBindings[5] = { // The indexes have to match values in DRBufferBindings enum
+        std::string NamedBufferBindings[5] = { // The indexes have to match values in the enum
             "GlobalMatrices",
             "LocalMatrices",
             "MaterialProperties",
@@ -66,9 +66,6 @@ class DeferredRenderer : public BaseRenderer
         
         
         
-
-        
-
         DeferredRenderer(unsigned int vpWidth, unsigned int vpHeight)
         {
             this->viewportWidth = vpWidth;
@@ -92,10 +89,6 @@ class DeferredRenderer : public BaseRenderer
                 );
                 this->shadowRenderer.RecreateResources();
             }
-
-
-
-
 
             glGenVertexArrays(1, &screenQuadVAO);
             glGenBuffers(1, &screenQuadVBO);
@@ -288,8 +281,8 @@ class DeferredRenderer : public BaseRenderer
             frameResources.lightData = &lights;
             
 
-            // Shadow Map Rendering Pass:
-            // --------------------------
+            // 1) Shadow Map Rendering Pass:
+            // -----------------------------
 
             std::vector<unsigned int> shadowMapBuffers = {0};
             if (enableShadowMapping)
@@ -299,8 +292,8 @@ class DeferredRenderer : public BaseRenderer
 
 
 
-            // gBuffer Pass:
-            // -------------
+            // 2) gBuffer Pass:
+            // ----------------
 
             glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -408,8 +401,8 @@ class DeferredRenderer : public BaseRenderer
 
 
             
-            // Lighting Accumulation pass: use g-buffer to calculate the scene's lighting
-            // --------------------------------------------------------------------------
+            // 3) Lighting Accumulation pass: use g-buffer to calculate the scene's lighting
+            // -----------------------------------------------------------------------------
 
             glBindFramebuffer(GL_FRAMEBUFFER, lightAccumulationFBO);
             glClear(GL_COLOR_BUFFER_BIT);
@@ -523,8 +516,8 @@ class DeferredRenderer : public BaseRenderer
 
 
 
-            // Unlit Pass (render objects with different lighting models using same depth buffer):
-            // -----------------------------------------------------------------------------------
+            // 4) Unlit Pass (render objects with different lighting models using same depth buffer):
+            // --------------------------------------------------------------------------------------
 
             glDepthMask(GL_TRUE);
             glEnable(GL_DEPTH_TEST);
@@ -561,8 +554,8 @@ class DeferredRenderer : public BaseRenderer
                 glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
             }); 
 
-            // Postprocess Pass: apply tonemap to the HDR color buffer
-            // ---------------------------------------------------------
+            // 5) Postprocess Pass: apply tonemap to the HDR color buffer
+            // ----------------------------------------------------------
 
             glBindFramebuffer(GL_FRAMEBUFFER, postProcessFBO);
             glClear(GL_COLOR_BUFFER_BIT);
@@ -576,8 +569,8 @@ class DeferredRenderer : public BaseRenderer
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
 
-            // Final Pass (Antialiasing):
-            // --------------------------
+            // 6) Final Pass (Antialiasing):
+            // -----------------------------
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glClear(GL_COLOR_BUFFER_BIT);

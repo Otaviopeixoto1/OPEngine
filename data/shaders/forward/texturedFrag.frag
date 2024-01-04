@@ -77,5 +77,5 @@ void main()
     }
 
     FragColor = outFrag;
-    //FragColor = vec4(normalize(ViewTangent),1.0);
+    //FragColor = vec4(norm,1.0);
 }

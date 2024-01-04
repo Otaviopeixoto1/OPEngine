@@ -3,11 +3,17 @@
 
 #include "RenderFeature.h"
 
+//Based on: https://developer.download.nvidia.com/SDK/10.5/opengl/src/cascaded_shadow_maps/doc/cascaded_shadow_maps.pdf
+
 class ShadowRenderer : public RenderFeature
 {
     public:
         float cameraNear = 0.1f;
         float cameraFar = 100.0f;
+        float seamCorrection = 0.3f;
+        
+        // This parameter multiplies the size of each frustrum in the CSM
+        float zMult = 8.0f;
 
         ShadowRenderer(){}
 
@@ -70,7 +76,8 @@ class ShadowRenderer : public RenderFeature
                 
                 if (i < SHADOW_CASCADE_COUNT + 1)
                 {
-                    frustrumCuts[i] = cameraNear * pow(cameraFar/cameraNear, i/(float)SHADOW_CASCADE_COUNT);
+                    frustrumCuts[i] = (1-seamCorrection)*cameraNear * pow(cameraFar/cameraNear, i/(float)SHADOW_CASCADE_COUNT)
+                                        + seamCorrection*(cameraNear + (i/(float)SHADOW_CASCADE_COUNT) * (cameraFar - cameraNear));
                 }
                 else 
                 {
@@ -186,8 +193,7 @@ class ShadowRenderer : public RenderFeature
                     maxZ = std::max(maxZ, trf.z);
                 }
 
-                // Tune this parameter according to the scene
-                constexpr float zMult = 8.0f;
+
                 if (minZ < 0)
                 {
                     minZ *= zMult;

@@ -197,8 +197,8 @@ class ForwardRenderer : public BaseRenderer
 
 
 
-            // Shadow Map Rendering Pass:
-            // --------------------------
+            // 1) Shadow Map Rendering Pass:
+            // -----------------------------
 
             std::vector<unsigned int> shadowMapBuffers = {0};
             if (enableShadowMapping)
@@ -207,11 +207,8 @@ class ForwardRenderer : public BaseRenderer
             }
                 
 
-
-
-
-            // Main Rendering pass:
-            // --------------------
+            // 2) Main Rendering pass:
+            // -----------------------
 
             glBindFramebuffer(GL_FRAMEBUFFER, multisampledFBO);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -345,13 +342,6 @@ class ForwardRenderer : public BaseRenderer
             });  
 
 
-            // Blit the MSAA buffer to the screen directly:
-            // 
-            //glBindFramebuffer(GL_READ_FRAMEBUFFER, multisampledFBO);
-            //glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-            //glBlitFramebuffer(0, 0, viewportWidth, viewportHeight, 0, 0, viewportWidth, viewportHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST); 
-
-
             // Blit the MSAA buffer to an intermediate framebuffer for postprocessing:
             glBindFramebuffer(GL_READ_FRAMEBUFFER, multisampledFBO);
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, intermediateFBO);
@@ -361,8 +351,8 @@ class ForwardRenderer : public BaseRenderer
 
 
 
-            // Final Pass (Postprocessing):
-            // ----------------------------
+            // 3) Final Pass (Postprocessing):
+            // -------------------------------
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glClear(GL_COLOR_BUFFER_BIT);
