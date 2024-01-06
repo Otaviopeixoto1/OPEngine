@@ -3,14 +3,17 @@
 
 #include "RenderFeature.h"
 
-//Based on: https://developer.download.nvidia.com/SDK/10.5/opengl/src/cascaded_shadow_maps/doc/cascaded_shadow_maps.pdf
+// Cascade partitioning scheme was Based on: https://developer.download.nvidia.com/SDK/10.5/opengl/src/cascaded_shadow_maps/doc/cascaded_shadow_maps.pdf
+
+
+//Add enum containing all shadow mapping techniques to select from
 
 class ShadowRenderer : public RenderFeature
 {
     public:
         float cameraNear = 0.1f;
         float cameraFar = 100.0f;
-        float seamCorrection = 0.3f;
+        float seamCorrection = 0.4f;
         
         // This parameter multiplies the size of each frustrum in the CSM
         float zMult = 8.0f;
@@ -37,7 +40,7 @@ class ShadowRenderer : public RenderFeature
             glTexImage3D(
                 GL_TEXTURE_2D_ARRAY,
                 0,
-                GL_DEPTH_COMPONENT, // GL_DEPTH_COMPONENT32F
+                GL_DEPTH_COMPONENT32, // GL_DEPTH_COMPONENT32F
                 SHADOW_WIDTH,
                 SHADOW_HEIGHT,
                 SHADOW_CASCADE_COUNT,
@@ -49,6 +52,9 @@ class ShadowRenderer : public RenderFeature
             
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            //Setting for PCF comparissons
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
             float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };

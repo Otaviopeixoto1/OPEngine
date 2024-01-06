@@ -15,7 +15,7 @@ class RenderFeature
         virtual ~RenderFeature() {}
         virtual void RecreateResources(){}
 
-        //Returns a set of output textures
+        //Executes the Feature and returns a set of output textures
         virtual std::vector<unsigned int> Render(BaseRenderer::FrameResources& frameResources){}
 
 

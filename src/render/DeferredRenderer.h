@@ -27,7 +27,6 @@ class DeferredRenderer : public BaseRenderer
         const int MAX_DIR_LIGHTS = 5;
         const int MAX_POINT_LIGHTS = 20;
 
-        // USE AN UNORDERED MAP INSTEAD AND ADD NUMBERS AS ELEMENTS WITH STRINGS AS KEYS:
         std::unordered_map<std::string, unsigned int> preprocessorDefines =
         {
             {"MAX_DIR_LIGHTS", MAX_DIR_LIGHTS},
@@ -44,7 +43,7 @@ class DeferredRenderer : public BaseRenderer
             SHADOW_MAP_BUFFER0_BINDING = 4,
         };
 
-        // ***Adopted naming conventions for the global uniform blocks***
+        // Adopted naming conventions for the global uniform blocks
         std::string NamedBufferBindings[5] = { // The indexes have to match values in the enum
             "GlobalMatrices",
             "LocalMatrices",
@@ -54,7 +53,8 @@ class DeferredRenderer : public BaseRenderer
 
         };
 
-        enum DRGlobalBufferBindings
+        //ADD UNIFORM AS PREFIX TO MAKE CLEAR THAT THESE ARE NOT TEXTURE BINDINGS BUT UNIFORM BUFFER BINDINGS
+        enum DRUniformBufferBindings
         {
             GLOBAL_MATRICES_BINDING = 0,
             LOCAL_MATRICES_BINDING = 1,

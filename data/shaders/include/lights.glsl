@@ -56,9 +56,9 @@ layout(std140) uniform Shadows
     mat4 lightSpaceMatrices[SHADOW_CASCADE_COUNT];
     vec4 frustrumDistances0; //this only allows for 4 cascades. To add more, a second vec4 of frustrum distances 
                              //must be added into this buffer
-}; 
-
-uniform sampler2DArray shadowMap0;
+};
+        //sampler2DArrayShadow
+uniform sampler2DArrayShadow shadowMap0;
 
 float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldNormal)
 {
@@ -74,8 +74,8 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
         int currentLayer = int(res.x + res.y + res.z); //returns a value between 0 and 3
 
 
-        //float bias = max(0.05 * (1.0 - dot(worldNormal, dirLights[lightIndex].direction.xyz)), 0.005);
-        float bias = 0.000;
+        //float bias = max(0.05 * (1.0 - dot(worldNormal, dirLights[lightIndex].direction.xyz)), 0.000005);
+        float bias = 0.0000;
         vec2 texelSize = 1.0 / textureSize(shadowMap0, 0).xy;  
 
         vec3 normalBias = worldNormal * max(texelSize.x, texelSize.y) * 1.4142136f;
@@ -109,20 +109,25 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
 
         
         // One sample:
-        float closestDepth = texture(shadowMap0, vec3(ndcPos.xy, currentLayer)).r;
-        float shadow = currentDepth - bias > closestDepth  ? 0.0 : 1.0; 
+        //float closestDepth = texture(shadowMap0, vec3(ndcPos.xy, currentLayer)).r;
+        //float shadow = currentDepth - bias > closestDepth  ? 0.0 : 1.0;
+
+
 
         // Multiple samples:
-        //float shadow = 0.0;
-        //for(int x = -1; x <= 1; ++x)
-        //{
-        //    for(int y = -1; y <= 1; ++y)
-        //    {
-        //        float pcfDepth = texture(shadowMap0, vec3(ndcPos.xy + vec2(x, y) * texelSize, currentLayer) ).r; 
-        //        shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0;        
-        //    }    
-        //}
-        //shadow /= 9.0;
+        float shadow = 0.0;
+        for(int x = -1; x <= 1; ++x)
+        {
+            for(int y = -1; y <= 1; ++y)
+            {
+                //float pcfDepth = texture(shadowMap0, vec3(ndcPos.xy + vec2(x, y) * texelSize, currentLayer) ).r; 
+                //shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0; 
+                
+                //for hardware pcf       
+                shadow += texture(shadowMap0, vec4(ndcPos.xy + vec2(x, y) * texelSize, currentLayer, currentDepth + bias));
+            }    
+        }
+        shadow /= 9.0;
         return  shadow;
 
 
