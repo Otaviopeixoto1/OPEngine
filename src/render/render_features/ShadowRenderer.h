@@ -16,7 +16,7 @@ class ShadowRenderer : public RenderFeature
         float seamCorrection = 0.4f;
         
         // This parameter multiplies the size of each frustrum in the CSM
-        float zMult = 8.0f;
+        float zMult = 4.0f;
 
         ShadowRenderer(){}
 
@@ -52,9 +52,11 @@ class ShadowRenderer : public RenderFeature
             
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            //Setting for PCF comparissons
+
+            //Settings for PCF comparissons
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
             float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -158,6 +160,8 @@ class ShadowRenderer : public RenderFeature
             // Setting Shadow propeties:
             glBindBuffer(GL_UNIFORM_BUFFER, ShadowsUBO); 
             float shadowParams[4] = {0.1,1.0,2.0,12.0};
+
+            //these dont have to be set every frame
             glBufferSubData(GL_UNIFORM_BUFFER, 0, 4 * sizeof(float), &shadowParams);
 
             int offset = 0;
@@ -227,9 +231,14 @@ class ShadowRenderer : public RenderFeature
                 offset += sizeof(glm::mat4);
             }
 
-            // 
+            // these dont have to be set every frame
             glBufferSubData(GL_UNIFORM_BUFFER, offset, 4 * sizeof(float), &frustrumCuts[1]);
             glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+
+
+            // Rendering objects to shadow map:
+            
+            //glCullFace(GL_FRONT); //(Front face culling avoids self shadowing/Acne)
 
             shadowDepthPass.UseProgram();
             
@@ -250,7 +259,7 @@ class ShadowRenderer : public RenderFeature
             });    
 
             glViewport(0, 0, frameResources.viewportWidth, frameResources.viewportHeight);
-            
+            //glCullFace(GL_BACK);
 
             return shadowMaps;
         }

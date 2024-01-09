@@ -73,12 +73,12 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
         // the w component is not useful and could cause invalid indexing
         int currentLayer = int(res.x + res.y + res.z); //returns a value between 0 and 3
 
-
-        //float bias = max(0.05 * (1.0 - dot(worldNormal, dirLights[lightIndex].direction.xyz)), 0.000005);
-        float bias = 0.0000;
+        //use view normal instead of world normal
+        //float bias = max(0.005 * (1.0 - dot(worldNormal, dirLights[lightIndex].direction.xyz)), 0.0005);
+        float bias = 0.00050;
         vec2 texelSize = 1.0 / textureSize(shadowMap0, 0).xy;  
 
-        vec3 normalBias = worldNormal * max(texelSize.x, texelSize.y) * 1.4142136f;
+        vec3 normalBias = worldNormal * max(texelSize.x, texelSize.y) * 1.4142136f * 100;
 
 
         /*
@@ -100,7 +100,8 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
 
         vec4 posClipSpace = lightSpaceMatrices[currentLayer] * vec4(worldPos.xyz + normalBias, 1);
 
-        // Perspective division is only necessary on perspective projection, but doesnt affect ortographic projection:
+        // Perspective division is only realy necessary with perspective projection, 
+        // it wont affect ortographic projection be we do it anyway:
         vec3 ndcPos = posClipSpace.xyz / posClipSpace.w;
         ndcPos = ndcPos * 0.5 + 0.5; 
 
@@ -114,20 +115,20 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
 
 
 
-        // Multiple samples:
-        float shadow = 0.0;
-        for(int x = -1; x <= 1; ++x)
+        // Multiple samples (4x4 kernel):
+        float shadow = 0.0f;
+        for(float x = -1.5; x <= 1.5; ++x)
         {
-            for(int y = -1; y <= 1; ++y)
+            for(float y = -1.5; y <= 1.5; ++y)
             {
                 //float pcfDepth = texture(shadowMap0, vec3(ndcPos.xy + vec2(x, y) * texelSize, currentLayer) ).r; 
                 //shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0; 
                 
                 //for hardware pcf       
-                shadow += texture(shadowMap0, vec4(ndcPos.xy + vec2(x, y) * texelSize, currentLayer, currentDepth + bias));
+                shadow += texture(shadowMap0, vec4(ndcPos.xy + vec2(x, y) * texelSize, currentLayer, currentDepth - bias));
             }    
         }
-        shadow /= 9.0;
+        shadow /= 9.0f;
         return  shadow;
 
 
@@ -155,7 +156,7 @@ vec4 CalcDirLight(int lightIndex, vec3 normal, vec3 viewDir, vec3 specularStreng
 
 
     vec4 diffuse = diff * light.lightColor;                               // max(sign(NdotL-0.001),0.0f)
-    vec4 specular = (spec * light.lightColor) * vec4(specularStrength, 0.0) * smoothstep(-0.1,0.1,NdotL);  
+    vec4 specular = (spec * light.lightColor) * vec4(specularStrength, 0.0) * smoothstep(-0.1,0.1, NdotL);  
 
 
     // if it has specular map:

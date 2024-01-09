@@ -12,7 +12,7 @@ class ForwardRenderer : public BaseRenderer
         const float cameraNear = 0.1f;
         const float cameraFar = 100.0f;
 
-        static constexpr unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+        static constexpr unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
         static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
         
         static constexpr bool enableShadowMapping = true;
