@@ -7,6 +7,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
+
 #include "env.h"
 #include "common/Shader.h"
 
@@ -84,7 +89,6 @@ int main()
         return -1;
     }
 
-
     // GLFW: initial viewport configuration and callbacks
     // --------------------------------------------------
 
@@ -112,9 +116,19 @@ int main()
     // We register the callback functions after we've created the window and before the render loop is initiated. 
 
 
-    //we call glClear and clear the color buffer, the entire color buffer will be filled with the color as configured 
-    //by glClearColor:
-    //glClearColor(0.25f, 0.5f,0.75f,1.0f);
+
+    // imgui: for rendering ui elements:
+    // ---------------------------------
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+    ImGui_ImplOpenGL3_Init();
 
 
 
@@ -164,10 +178,30 @@ int main()
     // -----------
     while(!glfwWindowShouldClose(window))
     {
+        // GLFW: poll IO events (keys pressed/released, mouse moved etc.)
+        // --------------------------------------------------------------
+
+        // PollEvents: checks if any events are triggered (like keyboard input or mouse movement events), updates the 
+        // window state and calls the corresponding functions (which we can register via callback methods):
+        glfwPollEvents();
+
+
+        // Start Rendering UI
+        // ------------------
+
+        ImGui_ImplOpenGL3_NewFrame();// Start the Dear ImGui frame
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::ShowDemoWindow(); // Show demo window! :)
+
+
         // calculating the frame time
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame; 
+
+
+        
 
 
         // Input Handling
@@ -179,11 +213,22 @@ int main()
             renderer->ViewportUpdate(windowWidth, windowHeight);
             windowResized = false;
         }
+        
+        
 
-        // Rendering
-        // ---------
+
+        // Rendering the scene
+        // -------------------
 
         renderer->RenderFrame(mainCamera, &scene, window);
+
+
+
+        // Finish Rendering UI
+        // -------------------
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 
 
 
@@ -197,15 +242,12 @@ int main()
         // as all the rendering commands are finished we swap the back buffer to the front buffer:
         glfwSwapBuffers(window);
 
-
-        // GLFW: poll IO events (keys pressed/released, mouse moved etc.)
-        // --------------------------------------------------------------
-
-        // PollEvents: checks if any events are triggered (like keyboard input or mouse movement events), updates the 
-        // window state and calls the corresponding functions (which we can register via callback methods):
-        glfwPollEvents();
     }
 
+    // imgui: clearing all resources alocated:
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     // GLFW: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------

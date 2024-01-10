@@ -33,7 +33,7 @@ target_include_directories(OP_Renderer PUBLIC "${PROJECT_BINARY_DIR}")
 
 
 #add the external libraries
-foreach (sub "lib/glad/" "lib/utils/" "lib/glm/" "lib/jsoncpp/" )
+foreach (sub "lib/glad/" "lib/utils/" "lib/glm/" "lib/jsoncpp/" "lib/imgui/" )
     add_subdirectory("${sub}")
 endforeach ()
 
@@ -69,6 +69,7 @@ target_link_libraries(OP_Renderer PRIVATE
     utils
     glm
     jsoncpp
+    imgui
     assimp
     boost_regex
 )
