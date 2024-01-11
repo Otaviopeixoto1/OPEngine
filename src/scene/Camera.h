@@ -144,6 +144,11 @@ public:
         return frustumCorners;
     }
 
+    glm::vec3 GetPosition()
+    {
+        return Position;
+    }
+
 private:
     // camera Attributes
     glm::vec3 Position;

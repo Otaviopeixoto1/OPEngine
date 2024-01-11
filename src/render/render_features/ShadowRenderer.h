@@ -1,5 +1,5 @@
-#ifndef RENDER_FEATURE_H
-#define RENDER_FEATURE_H
+#ifndef SHADOW_RENDER_FEATURE_H
+#define SHADOW_RENDER_FEATURE_H
 
 #include "RenderFeature.h"
 

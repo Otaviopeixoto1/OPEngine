@@ -50,6 +50,7 @@ bool freeCamMode = true;
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void toggle_camera_rotation_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void processInput(GLFWwindow *window);
 
 int main()
@@ -112,6 +113,9 @@ int main()
 
     //this callback is used every time the mouse wheel is used:
     glfwSetScrollCallback(window, scroll_callback); 
+
+    //this callback is used for enabling/disabling camera rotation
+    glfwSetKeyCallback(window, toggle_camera_rotation_callback);
 
     // We register the callback functions after we've created the window and before the render loop is initiated. 
 
@@ -302,6 +306,26 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 
 }
 
+
+void toggle_camera_rotation_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_KP_ENTER && action == GLFW_PRESS)
+    {
+        if (freeCamMode)
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            freeCamMode = false;
+        }
+        else
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            freeCamMode = true;
+        }
+    }
+}
+
+
+
 void ToggleCameraMovementMode(GLFWwindow *window)
 {
     if (freeCamMode)
@@ -338,8 +362,5 @@ void processInput(GLFWwindow *window)
         mainCamera.ProcessKeyboard(GLOBAL_UP_MOVEMENT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         mainCamera.ProcessKeyboard(GLOBAL_DOWN_MOVEMENT, deltaTime);
-
-    if (glfwGetKey(window, GLFW_KEY_KP_ENTER) == GLFW_PRESS)
-        ToggleCameraMovementMode(window);
     
 }

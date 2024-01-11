@@ -1,3 +1,7 @@
+
+#ifndef RENDER_FEATURE_H
+#define RENDER_FEATURE_H
+
 #include <memory>
 #include "../../scene/Scene.h"
 #include "../../scene/Camera.h"
@@ -22,3 +26,5 @@ class RenderFeature
         //callback used when there are viewport resizes
         virtual void ViewportUpdate(int vpWidth, int vpHeight){}
 };
+
+#endif
