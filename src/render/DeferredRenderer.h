@@ -3,6 +3,7 @@
 
 #include "BaseRenderer.h"
 #include "render_features/ShadowRenderer.h"
+#include "render_features/SkyRenderer.h"
 
 
 class DeferredRenderer : public BaseRenderer
@@ -70,6 +71,18 @@ class DeferredRenderer : public BaseRenderer
         {
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
+
+            // Shadow maps:
+            if (enableShadowMapping)
+            {
+                this->shadowRenderer = ShadowRenderer(
+                    UNIFORM_GLOBAL_SHADOWS_BINDING, 
+                    SHADOW_CASCADE_COUNT,
+                    SHADOW_WIDTH,
+                    SHADOW_HEIGHT
+                );
+            }
+            this->skyRenderer = SkyRenderer();
         }
 
         void RecreateResources(Scene &scene)
@@ -81,14 +94,11 @@ class DeferredRenderer : public BaseRenderer
             // Shadow maps:
             if (enableShadowMapping)
             {
-                this->shadowRenderer = ShadowRenderer(
-                    UNIFORM_GLOBAL_SHADOWS_BINDING, 
-                    SHADOW_CASCADE_COUNT,
-                    SHADOW_WIDTH,
-                    SHADOW_HEIGHT
-                );
                 this->shadowRenderer.RecreateResources();
             }
+            this->skyRenderer.RecreateResources();
+
+
 
             glGenVertexArrays(1, &screenQuadVAO);
             glGenBuffers(1, &screenQuadVBO);
@@ -554,6 +564,8 @@ class DeferredRenderer : public BaseRenderer
                 glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
             }); 
 
+            this->skyRenderer.Render(frameResources);
+
             // 5) Postprocess Pass: apply tonemap to the HDR color buffer
             // ----------------------------------------------------------
 
@@ -782,6 +794,7 @@ class DeferredRenderer : public BaseRenderer
 
     private:
         ShadowRenderer shadowRenderer;
+        SkyRenderer skyRenderer;
 
         unsigned int viewportWidth;
         unsigned int viewportHeight;

@@ -126,6 +126,7 @@ class SkyRenderer : public RenderFeature
                 {
                     std::cout << "Cubemap tex failed to load at path: " << faces[i] << std::endl;
                     stbi_image_free(data);
+                    return 0;
                 }
             }
             glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
