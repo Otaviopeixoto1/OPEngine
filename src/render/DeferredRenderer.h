@@ -56,11 +56,11 @@ class DeferredRenderer : public BaseRenderer
         //ADD UNIFORM AS PREFIX TO MAKE CLEAR THAT THESE ARE NOT TEXTURE BINDINGS BUT UNIFORM BUFFER BINDINGS
         enum DRUniformBufferBindings
         {
-            GLOBAL_MATRICES_BINDING = 0,
-            LOCAL_MATRICES_BINDING = 1,
-            MATERIAL_PROPERTIES_BINDING = 2,
-            GLOBAL_LIGHTS_BINDING = 3,
-            GLOBAL_SHADOWS_BINDING = 4,
+            UNIFORM_GLOBAL_MATRICES_BINDING = 0,
+            UNIFORM_LOCAL_MATRICES_BINDING = 1,
+            UNIFORM_MATERIAL_PROPERTIES_BINDING = 2,
+            UNIFORM_GLOBAL_LIGHTS_BINDING = 3,
+            UNIFORM_GLOBAL_SHADOWS_BINDING = 4,
 
         };
         
@@ -82,7 +82,7 @@ class DeferredRenderer : public BaseRenderer
             if (enableShadowMapping)
             {
                 this->shadowRenderer = ShadowRenderer(
-                    GLOBAL_SHADOWS_BINDING, 
+                    UNIFORM_GLOBAL_SHADOWS_BINDING, 
                     SHADOW_CASCADE_COUNT,
                     SHADOW_WIDTH,
                     SHADOW_HEIGHT
@@ -640,9 +640,9 @@ class DeferredRenderer : public BaseRenderer
             directionalLightingPass.SetInt("gNormal", NORMAL_BUFFER_BINDING);
             directionalLightingPass.SetInt("gPosition", POSITION_BUFFER_BINDING);
             directionalLightingPass.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
-            directionalLightingPass.BindUniformBlock(NamedBufferBindings[GLOBAL_MATRICES_BINDING], GLOBAL_MATRICES_BINDING);
-            directionalLightingPass.BindUniformBlock(NamedBufferBindings[GLOBAL_LIGHTS_BINDING], GLOBAL_LIGHTS_BINDING);
-            directionalLightingPass.BindUniformBlock(NamedBufferBindings[GLOBAL_SHADOWS_BINDING], GLOBAL_SHADOWS_BINDING);
+            directionalLightingPass.BindUniformBlock(NamedBufferBindings[UNIFORM_GLOBAL_MATRICES_BINDING], UNIFORM_GLOBAL_MATRICES_BINDING);
+            directionalLightingPass.BindUniformBlock(NamedBufferBindings[UNIFORM_GLOBAL_LIGHTS_BINDING], UNIFORM_GLOBAL_LIGHTS_BINDING);
+            directionalLightingPass.BindUniformBlock(NamedBufferBindings[UNIFORM_GLOBAL_SHADOWS_BINDING], UNIFORM_GLOBAL_SHADOWS_BINDING);
 
 
 
@@ -658,7 +658,7 @@ class DeferredRenderer : public BaseRenderer
             pointLightVolShader.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
             pointLightVolShader.SetInt("gNormal", NORMAL_BUFFER_BINDING);
             pointLightVolShader.SetInt("gPosition", POSITION_BUFFER_BINDING);
-            pointLightVolShader.BindUniformBlock(NamedBufferBindings[GLOBAL_LIGHTS_BINDING],GLOBAL_LIGHTS_BINDING);
+            pointLightVolShader.BindUniformBlock(NamedBufferBindings[UNIFORM_GLOBAL_LIGHTS_BINDING],UNIFORM_GLOBAL_LIGHTS_BINDING);
 
 
 
@@ -705,8 +705,8 @@ class DeferredRenderer : public BaseRenderer
             
             // Bind a certain range of the buffer to the uniform block: this allows to use multiple UBOs 
             // per uniform block
-            glBindBufferRange(GL_UNIFORM_BUFFER, GLOBAL_MATRICES_BINDING, GlobalMatricesUBO, 0, 3 * sizeof(glm::mat4));
-            glBindBufferRange(GL_UNIFORM_BUFFER, LOCAL_MATRICES_BINDING, LocalMatricesUBO, 0, 2 * sizeof(glm::mat4));
+            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_GLOBAL_MATRICES_BINDING, GlobalMatricesUBO, 0, 3 * sizeof(glm::mat4));
+            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_LOCAL_MATRICES_BINDING, LocalMatricesUBO, 0, 2 * sizeof(glm::mat4));
 
 
 
@@ -750,7 +750,7 @@ class DeferredRenderer : public BaseRenderer
             glBufferData(GL_UNIFORM_BUFFER, LightBufferSize, NULL, GL_DYNAMIC_DRAW);
             glBindBuffer(GL_UNIFORM_BUFFER, 0);
             
-            glBindBufferRange(GL_UNIFORM_BUFFER, GLOBAL_LIGHTS_BINDING, LightsUBO, 0, LightBufferSize);
+            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_GLOBAL_LIGHTS_BINDING, LightsUBO, 0, LightBufferSize);
 
 
 
@@ -775,7 +775,7 @@ class DeferredRenderer : public BaseRenderer
             glBufferData(GL_UNIFORM_BUFFER, MaterialBufferSize, NULL, GL_DYNAMIC_DRAW);
             glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-            glBindBufferRange(GL_UNIFORM_BUFFER, MATERIAL_PROPERTIES_BINDING, MaterialUBO, 0, MaterialBufferSize);
+            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_MATERIAL_PROPERTIES_BINDING, MaterialUBO, 0, MaterialBufferSize);
 
 
         }

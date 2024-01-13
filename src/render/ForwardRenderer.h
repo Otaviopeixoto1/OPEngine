@@ -3,6 +3,7 @@
 
 #include "BaseRenderer.h"
 #include "render_features/ShadowRenderer.h"
+#include "render_features/SkyRenderer.h"
 #include <exception>
 
 
@@ -66,12 +67,6 @@ class ForwardRenderer : public BaseRenderer
         {
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
-        }
-
-        void RecreateResources(Scene &scene)
-        {
-            scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
-            scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
 
             if (enableShadowMapping)
             {
@@ -81,8 +76,21 @@ class ForwardRenderer : public BaseRenderer
                     SHADOW_WIDTH,
                     SHADOW_HEIGHT
                 );
+            }
+            this->skyRenderer = SkyRenderer();
+        }
+
+        void RecreateResources(Scene &scene)
+        {
+            scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
+            scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
+
+            if (enableShadowMapping)
+            {
                 this->shadowRenderer.RecreateResources();
             }
+
+            this->skyRenderer.RecreateResources();
             
 
 
@@ -342,6 +350,8 @@ class ForwardRenderer : public BaseRenderer
                 glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
             });  
 
+            // Rendering skybox
+            this->skyRenderer.Render(frameResources);
 
             // Blit the MSAA buffer to an intermediate framebuffer for postprocessing:
             glBindFramebuffer(GL_READ_FRAMEBUFFER, multisampledFBO);
@@ -552,6 +562,7 @@ class ForwardRenderer : public BaseRenderer
 
     private:
         ShadowRenderer shadowRenderer;
+        SkyRenderer skyRenderer;
 
         unsigned int viewportWidth;
         unsigned int viewportHeight;

@@ -143,7 +143,7 @@ class ShadowRenderer : public RenderFeature
         
         // Add a frameResources as as struct for input!!. ADD the scene reference. viewport reference. Matrices reference
         //Returns a set of output textures
-        std::vector<unsigned int> Render(BaseRenderer::FrameResources& frameResources)
+        std::vector<unsigned int> Render(const BaseRenderer::FrameResources& frameResources)
         {
             if (frameResources.lightData->numDirLights == 0)
             {

@@ -20,7 +20,7 @@ class RenderFeature
         virtual void RecreateResources(){}
 
         //Executes the Feature and returns a set of output textures
-        virtual std::vector<unsigned int> Render(BaseRenderer::FrameResources& frameResources){}
+        virtual std::vector<unsigned int> Render(const BaseRenderer::FrameResources& frameResources){}
 
 
         //callback used when there are viewport resizes

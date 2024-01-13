@@ -196,7 +196,7 @@ int main()
         ImGui_ImplOpenGL3_NewFrame();// Start the Dear ImGui frame
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        ImGui::ShowDemoWindow(); // Show demo window! :)
+        //ImGui::ShowDemoWindow(); // Show demo window! :)
 
 
         // calculating the frame time
