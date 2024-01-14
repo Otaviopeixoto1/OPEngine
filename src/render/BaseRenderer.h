@@ -15,7 +15,7 @@ class BaseRenderer
     public:
         BaseRenderer(){}
         virtual ~BaseRenderer() {}
-        virtual void RecreateResources(Scene &scene){}
+        virtual void RecreateResources(Scene &scene, Camera &camera){}
 
         //Original:
         //virtual void RenderFrame(const legit::InFlightQueue::FrameInfo &frameInfo, const Camera &camera, const Camera &light, Scene *scene, GLFWwindow *window){}

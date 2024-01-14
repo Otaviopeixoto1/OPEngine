@@ -9,9 +9,6 @@
 class DeferredRenderer : public BaseRenderer
 {
     public:
-        const float cameraNear = 0.1f;
-        const float cameraFar = 100.0f;
-
         const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
         static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
         static constexpr bool enableShadowMapping = true;
@@ -71,21 +68,9 @@ class DeferredRenderer : public BaseRenderer
         {
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
-
-            // Shadow maps:
-            if (enableShadowMapping)
-            {
-                this->shadowRenderer = ShadowRenderer(
-                    UNIFORM_GLOBAL_SHADOWS_BINDING, 
-                    SHADOW_CASCADE_COUNT,
-                    SHADOW_WIDTH,
-                    SHADOW_HEIGHT
-                );
-            }
-            this->skyRenderer = SkyRenderer();
         }
 
-        void RecreateResources(Scene &scene)
+        void RecreateResources(Scene &scene, Camera &camera)
         {
             scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
             scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
@@ -94,8 +79,18 @@ class DeferredRenderer : public BaseRenderer
             // Shadow maps:
             if (enableShadowMapping)
             {
+                this->shadowRenderer = ShadowRenderer(
+                    camera.Near,
+                    camera.Far,
+                    UNIFORM_GLOBAL_SHADOWS_BINDING, 
+                    SHADOW_CASCADE_COUNT,
+                    SHADOW_WIDTH,
+                    SHADOW_HEIGHT
+                );
                 this->shadowRenderer.RecreateResources();
             }
+
+            this->skyRenderer = SkyRenderer();
             this->skyRenderer.RecreateResources();
 
 
@@ -272,7 +267,7 @@ class DeferredRenderer : public BaseRenderer
             glEnable(GL_DEPTH_TEST);
 
 
-            glm::mat4 projectionMatrix = camera.GetProjectionMatrix(cameraNear, cameraFar);
+            glm::mat4 projectionMatrix = camera.GetProjectionMatrix();
             glm::mat4 viewMatrix = camera.GetViewMatrix();
             glm::mat4 inverseViewMatrix = glm::inverse(viewMatrix);
 

@@ -11,8 +11,6 @@
 class ShadowRenderer : public RenderFeature
 {
     public:
-        float cameraNear = 0.1f;
-        float cameraFar = 100.0f;
         float seamCorrection = 0.4f;
         
         // This parameter multiplies the size of each frustrum in the CSM
@@ -20,8 +18,11 @@ class ShadowRenderer : public RenderFeature
 
         ShadowRenderer(){}
 
-        ShadowRenderer(unsigned int shadowBufferBinding, unsigned int cascadeCount, unsigned int ShadowWidth, unsigned int ShadowHeight)
+        ShadowRenderer(float camNear, float camFar, unsigned int shadowBufferBinding, unsigned int cascadeCount, unsigned int ShadowWidth, unsigned int ShadowHeight)
         {
+            this->cameraNear = camNear;
+            this->cameraFar = camFar;
+
             this->GLOBAL_SHADOWS_BINDING = shadowBufferBinding;
 
             // MAX CASCADE COUNT = 4 
@@ -159,6 +160,12 @@ class ShadowRenderer : public RenderFeature
 
             // Setting Shadow propeties:
             glBindBuffer(GL_UNIFORM_BUFFER, ShadowsUBO); 
+
+            // Shadow parameters:
+            // 0 -> float shadowBias;
+            // 1 -> float shadowSamples;
+            // 2 -> float numShadowCasters;
+            // 3 -> float spad3;
             float shadowParams[4] = {0.1,1.0,2.0,12.0};
 
             //these dont have to be set every frame
@@ -169,8 +176,7 @@ class ShadowRenderer : public RenderFeature
             
             for (size_t i = 0; i < SHADOW_CASCADE_COUNT; i++)
             {
-                glm::mat4 subProj = frameResources.camera->GetProjectionMatrix(frustrumCuts[i], frustrumCuts[i+1]);
-                auto frustrumCorners = Camera::GetFrustumCornersWorldSpace(subProj, frameResources.viewMatrix);
+                auto frustrumCorners = frameResources.camera->GetFrustumCornersWorldSpace(frustrumCuts[i], frustrumCuts[i+1], frameResources.viewMatrix);
 
                 glm::vec3 center = glm::vec3(0, 0, 0);
                 for (size_t j = 0; j < frustrumCorners.size(); j++)
@@ -272,6 +278,9 @@ class ShadowRenderer : public RenderFeature
         }
 
     private:
+        float cameraNear;
+        float cameraFar;
+
         unsigned int SHADOW_WIDTH, SHADOW_HEIGHT;
         unsigned int SHADOW_CASCADE_COUNT;
         unsigned int shadowMapFBO;

@@ -25,25 +25,31 @@ enum CameraMovement {
 class Camera
 {
 public:
-    
-    
+    float Near;
+    float Far;
 
     // constructor with vectors
-    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = -90.0f, float pitch = 0.0f) : Aspect(800.0f/600.0f), Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(5.0f), MouseSensitivity(0.1f), Zoom(60.0f)
+    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = -90.0f, float pitch = 0.0f, float near = 0.1f, float far = 100.0f) 
+        : Aspect(800.0f/600.0f), Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(5.0f), MouseSensitivity(0.1f), Zoom(60.0f)
     {
         Position = position;
         WorldUp = up;
         Yaw = yaw;
         Pitch = pitch;
+        Near = near;
+        Far = far;
         updateCameraVectors();
     }
     // constructor with scalar values
-    Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch) : Aspect(800.0f/600.0f), Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(5.0f), MouseSensitivity(0.1f), Zoom(60.0f)
+    Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch, float near = 0.1f, float far = 100.0f) 
+        : Aspect(800.0f/600.0f), Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(5.0f), MouseSensitivity(0.1f), Zoom(60.0f)
     {
         Position = glm::vec3(posX, posY, posZ);
         WorldUp = glm::vec3(upX, upY, upZ);
         Yaw = yaw;
         Pitch = pitch;
+        Near = near;
+        Far = far;
         updateCameraVectors();
     }
 
@@ -52,10 +58,12 @@ public:
     {
         return glm::lookAt(Position, Position + Front, Up);
     }
-    glm::mat4 GetProjectionMatrix(float near = 0.1f, float far = 100.0f) const
+
+    glm::mat4 GetProjectionMatrix() const
     {
-        return glm::perspective(glm::radians(Zoom), Aspect, near, far);
+        return glm::perspective(glm::radians(Zoom), Aspect, Near, Far);
     }
+
     void SetProjectionAspect(float aspect)
     {
         this->Aspect = aspect;
@@ -119,8 +127,10 @@ public:
             Zoom = 45.0f;
     }
 
-    static inline std::vector<glm::vec4> GetFrustumCornersWorldSpace(const glm::mat4& proj, const glm::mat4& view)
+    inline std::vector<glm::vec4> GetFrustumCornersWorldSpace(float nearPlane, float farPlane, const glm::mat4& view) const
     {
+        glm::mat4 proj = glm::perspective(glm::radians(Zoom), Aspect, nearPlane, farPlane);
+
         const auto inv = glm::inverse(proj * view);
         
         std::vector<glm::vec4> frustumCorners;
@@ -166,7 +176,7 @@ private:
     float MouseSensitivity;
     float Zoom;
     float Aspect;
-
+    
 
     // update Front, Right and Up Vectors using the updated Euler angles
     void updateCameraVectors()

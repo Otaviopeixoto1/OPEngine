@@ -162,11 +162,11 @@ int main()
 
     ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight);
     DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight);
-    BaseRenderer* renderer = &deferredRenderer;
+    BaseRenderer* renderer = &forwardRenderer;
     
     try
     {
-        renderer->RecreateResources(scene);
+        renderer->RecreateResources(scene, mainCamera);
         renderer->ReloadShaders();
     }
     catch(const std::exception& e)
