@@ -14,7 +14,7 @@ class ForwardRenderer : public BaseRenderer
         static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
         
         static constexpr bool enableShadowMapping = true;
-        static constexpr bool enableNormalMaps = false;
+        static constexpr bool enableNormalMaps = true;
 
         unsigned int MSAASamples = 4; 
         float tonemapExposure = 1.0f;
@@ -262,6 +262,7 @@ class ForwardRenderer : public BaseRenderer
             {    
                 Shader activeShader;
                 
+                /**/
                 if (materialInstance->HasFlags(OP_MATERIAL_TEXTURED_DIFFUSE | OP_MATERIAL_TEXTURED_NORMAL))
                 {
                     activeShader = defaultVertNormalTexFrag;

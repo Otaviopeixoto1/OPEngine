@@ -326,7 +326,18 @@ class Scene
         void AssimpLoadObjects(const std::string &objFile, const std::string & meshName)
         {
             Assimp::Importer import;
-            const aiScene *scene = import.ReadFile(objFile, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);	
+            const aiScene *scene = import.ReadFile(objFile, 
+                aiProcess_Triangulate | 
+                aiProcess_FlipUVs | 
+                aiProcess_TransformUVCoords |
+                aiProcess_CalcTangentSpace | 
+                aiProcess_JoinIdenticalVertices |
+                aiProcess_SplitLargeMeshes |
+                aiProcess_OptimizeMeshes |
+                aiProcess_GenNormals |
+                aiProcess_SortByPType 
+            
+            );	
                 
             if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) 
             {
@@ -433,6 +444,9 @@ class Scene
                 mTextures.insert(mTextures.end(), specularMaps.begin(), specularMaps.end());
 
                 std::vector<std::string> normalMaps;
+                
+                normalMaps = LoadMaterialTextures(mMaterial, aiTextureType_NORMALS, OP_TEXTURE_NORMAL, directory);
+                /*
                 if (sceneLoadingFormat == OP_OBJ) 
                 {
                     normalMaps = LoadMaterialTextures(mMaterial, aiTextureType_HEIGHT, OP_TEXTURE_NORMAL, directory);
@@ -440,7 +454,7 @@ class Scene
                 else
                 {
                     normalMaps = LoadMaterialTextures(mMaterial, aiTextureType_NORMALS, OP_TEXTURE_NORMAL, directory);
-                }
+                }*/
                 
                 
                 mTextures.insert(mTextures.end(), normalMaps.begin(), normalMaps.end());
@@ -527,7 +541,7 @@ class Scene
             }
             else
             {
-                std::cout << "Texture failed to load at path: " << path << std::endl;
+                std::cout << "Texture failed to load at path: " << filename << std::endl;
                 stbi_image_free(data);
             }
 

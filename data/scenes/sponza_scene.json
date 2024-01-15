@@ -5,7 +5,7 @@
 		[
 			{
 				"name" : "sponza",
-				"filename" : "/data/models/reference/sponza/sponza.obj"
+				"filename" : "/data/models/reference/sponza_normalMaps/sponza.obj"
 			},
 			{
 				"name" : "sphere",

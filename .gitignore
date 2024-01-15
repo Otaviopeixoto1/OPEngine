@@ -5,3 +5,4 @@ lib/boost_regex-build
 lib/boost_regex-src
 lib/boost_regex-subbuild
 build
+data/models/reference/sponza_normalMaps/textures

@@ -31,6 +31,7 @@ void main()
     TexCoords = aTexCoords;    
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(aPos, 1.0);
     ViewNormal = vec3(normalMatrix * vec4(aNormal,0.0));  
-    ViewTangent = vec3(viewMatrix * modelMatrix * vec4(aTangent,0.0));  
+    ViewTangent = vec3(normalMatrix * vec4(aTangent,0.0));  
+
     ViewFragPos = vec3(viewMatrix * modelMatrix * vec4(aPos, 1.0));
 }
