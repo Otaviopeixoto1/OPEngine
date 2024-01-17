@@ -11,9 +11,9 @@ class DeferredRenderer : public BaseRenderer
     public:
         const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
         static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
-        static constexpr bool enableShadowMapping = true;
 
-        static constexpr bool enableNormalMaps = false;
+        static constexpr bool enableShadowMapping = true;
+        static constexpr bool enableNormalMaps = true;
 
         float tonemapExposure = 1.0f;
         float FXAAContrastThreshold = 0.0312f;

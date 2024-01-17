@@ -50,8 +50,14 @@
 		"ambientLight" : [0.01, 0.01, 0.01], 
 		"ForwardRenderer" :
 		{
-			"downscale" : 1,
-			"interleavedPatternSize" : 4
-		}
+			"aaaa" : 1
+		},
+		"Camera" : 
+		{
+			"Position" : [0.0,0.0,3.0],
+			"Up" : [0.0,1.0,0.0]
+
+		},
+		"isCameraLocked" : false
 	}
 }

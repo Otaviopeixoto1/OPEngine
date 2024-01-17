@@ -19,6 +19,7 @@ namespace JsonHelpers
     {
         return glm::uvec3(vectorValue[0].asUInt(), vectorValue[1].asUInt(), vectorValue[2].asUInt());
     }
+
 }
 
 

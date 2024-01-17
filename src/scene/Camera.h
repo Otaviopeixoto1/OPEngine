@@ -20,6 +20,9 @@ enum CameraMovement {
 };
 
 
+
+
+
 // An abstract camera class that processes input and calculates the corresponding Euler Angles, Vectors and Matrices 
 // for use in OpenGL
 class Camera
@@ -157,6 +160,10 @@ public:
     glm::vec3 GetPosition()
     {
         return Position;
+    }
+    void SetPosition(glm::vec3 newPosition)
+    {
+        this->Position = newPosition;
     }
 
 private:

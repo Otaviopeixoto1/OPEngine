@@ -16,7 +16,8 @@
 #include "common/Shader.h"
 
 #include "scene/Camera.h"
-#include "scene/Scene.h"
+//#include "scene/Scene.h"
+#include "scene/SceneParser.h"
 #include "render/renderers.h"
 
 
@@ -157,8 +158,10 @@ int main()
     // hide the cursor and only show again when the window is out of focus or minimized:
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
-
-    Scene scene = Scene("/data/scenes/sponza_scene.json", OP_OBJ);
+    auto sceneParser = JsonHelpers::SceneParser();
+    Scene scene = Scene();
+    sceneParser.Parse(scene, "/data/scenes/sponza_scene.json", OP_OBJ);
+    
 
     ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight);
     DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight);
@@ -197,7 +200,7 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         //ImGui::ShowDemoWindow(); // Show demo window! :)
-
+        //ImGui::SeparatorText("General");
 
         // calculating the frame time
         float currentFrame = glfwGetTime();
@@ -228,8 +231,30 @@ int main()
 
 
 
+
+
+        glm::vec3 camPos = mainCamera.GetPosition();
         // Finish Rendering UI
         // -------------------
+
+        ImGui::Begin("Camera");
+        //ImGui::Button("Hello!");
+        
+        if (ImGui::InputFloat3("Position", (float*)&camPos))
+        {
+            mainCamera.SetPosition(camPos);
+        }
+        ImGui::End();
+
+        ImGui::Begin("Scene");
+        ImGui::Text("Scene");
+        ImGui::End();
+
+        ImGui::Begin("Profiler");
+        ImGui::Text("Profiler");
+        ImGui::End();
+
+
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -247,6 +272,11 @@ int main()
         glfwSwapBuffers(window);
 
     }
+
+
+
+
+
 
     // imgui: clearing all resources alocated:
     ImGui_ImplOpenGL3_Shutdown();
