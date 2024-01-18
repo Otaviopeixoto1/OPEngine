@@ -160,7 +160,7 @@ int main()
     
     auto sceneParser = JsonHelpers::SceneParser();
     Scene scene = Scene();
-    sceneParser.Parse(scene, "/data/scenes/sponza_scene.json", OP_OBJ);
+    sceneParser.Parse(scene, &mainCamera, "/data/scenes/sponza_scene.json", OP_OBJ);
     
 
     ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight);
@@ -272,8 +272,9 @@ int main()
         glfwSwapBuffers(window);
 
     }
-
-
+    
+    CameraData cameraData = mainCamera.GetCameraData();
+    sceneParser.SerializeToJson(cameraData);
 
 
 

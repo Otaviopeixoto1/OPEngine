@@ -19,7 +19,7 @@
 
 
 #include "Scene.h"
-
+#include "Camera.h"
 
 //ObjectBlueprint contains data used to build objects
 struct ObjectBlueprint
@@ -43,12 +43,12 @@ namespace JsonHelpers
     {
         public:
             SceneParser(){}
-            void Parse(Scene &scene, const std::string &relativePath, SceneLoadingFormat loadingFormat)
+            void Parse(Scene &scene, Camera *camera, const std::string &relativePath, SceneLoadingFormat loadingFormat)
             {
+                sceneFilePath = relativePath;
                 std::cout << "Loading Scene: \n";
                 this->sceneLoadingFormat = loadingFormat;
 
-                Json::Value configRoot;
                 Json::Reader reader;
 
 
@@ -57,19 +57,53 @@ namespace JsonHelpers
                 if (!fileStream.is_open())
                     std::cout << "Can't open scene file";
 
-                bool result = reader.parse(fileStream, configRoot);
+                bool result = reader.parse(fileStream, sceneFileRoot);
+
                 if (result)
                 {
                     std::cout << "File " << BASE_DIR +  relativePath << ", parsing successful\n";
+                    
+                    //Backup the scene file
+                    Json::StreamWriterBuilder builder;
+                    builder["commentStyle"] = "None";
+                    builder["indentation"] = "   ";
+                    
+                    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+                    std::ofstream outputFileStream(BASE_DIR + sceneFilePath + ".OP"); 
+                    writer -> write(sceneFileRoot, &outputFileStream);
+                    outputFileStream.close();
                 }
                 else
                 {
                     std::cout << "Error: File " << BASE_DIR +  relativePath << ", parsing failed with errors: " << reader.getFormattedErrorMessages() << "\n";
                 }
-                scene.AddLight(glm::vec4(JsonHelpers::GetJsonVec3f(configRoot["renderer"]["ambientLight"]),1.0));
+
+
+                // Loading Camera data:
+                if (!sceneFileRoot["renderer"]["Camera"].empty())
+                {
+                    auto cameraData = CameraData();
+                    cameraData.position = JsonHelpers::GetJsonVec3f(sceneFileRoot["renderer"]["Camera"]["Position"]);
+                    cameraData.up = JsonHelpers::GetJsonVec3f(sceneFileRoot["renderer"]["Camera"]["Up"]);
+                    cameraData.front = JsonHelpers::GetJsonVec3f(sceneFileRoot["renderer"]["Camera"]["Front"]);
+                    cameraData.yaw = sceneFileRoot["renderer"]["Camera"]["Yaw"].asFloat();
+                    cameraData.pitch = sceneFileRoot["renderer"]["Camera"]["Pitch"].asFloat();
+                    cameraData.near = sceneFileRoot["renderer"]["Camera"]["Near"].asFloat();
+                    cameraData.far = sceneFileRoot["renderer"]["Camera"]["Far"].asFloat();
+                    cameraData.aspect = sceneFileRoot["renderer"]["Camera"]["Aspect"].asFloat();
+                    cameraData.movementSpeed = sceneFileRoot["renderer"]["Camera"]["MovementSpeed"].asFloat();
+                    cameraData.mouseSensitivity = sceneFileRoot["renderer"]["Camera"]["MouseSensitivity"].asFloat();
+                    cameraData.zoom = sceneFileRoot["renderer"]["Camera"]["Zoom"].asFloat();
+
+                    *camera = Camera(cameraData);
+                }
+
+
+
+                scene.AddLight(glm::vec4(JsonHelpers::GetJsonVec3f(sceneFileRoot["renderer"]["ambientLight"]), 1.0));
 
                 //construct blueprints from object file or use existing ones
-                Json::Value meshArray = configRoot["scene"]["meshes"];
+                Json::Value meshArray = sceneFileRoot["scene"]["meshes"];
 
                 for (Json::ArrayIndex meshIndex = 0; meshIndex < meshArray.size(); meshIndex++)
                 {
@@ -89,7 +123,7 @@ namespace JsonHelpers
                 
 
                 //use the blueprints to build the objects
-                Json::Value objectArray = configRoot["scene"]["objects"];
+                Json::Value objectArray = sceneFileRoot["scene"]["objects"];
                 
 
                 for (Json::ArrayIndex objectIndex = 0; objectIndex < objectArray.size(); objectIndex++)
@@ -196,7 +230,28 @@ namespace JsonHelpers
                 std::cout << "point lights: " << pointLights.size() << "\n";*/
             }
 
+            void SerializeToJson(CameraData &camdata)
+            {
+                sceneFileRoot["renderer"]["Camera"] = camdata.SerializeToJson();
+                //std::cout << sceneFileRoot << std::endl;
+
+                Json::StreamWriterBuilder builder;
+                builder["commentStyle"] = "None";
+                builder["indentation"] = "   ";
+                
+
+                std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+                std::ofstream outputFileStream(BASE_DIR + sceneFilePath); 
+                writer -> write(sceneFileRoot, &outputFileStream);
+                outputFileStream.close();
+
+            }
+
         private:
+            std::string sceneFilePath;
+            Json::Value sceneFileRoot;
+
+
             SceneLoadingFormat sceneLoadingFormat = OP_OBJ;
 
             // maps the mesh name to an object blueprint
