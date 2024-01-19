@@ -34,6 +34,7 @@ struct CameraData
     float movementSpeed;
     float mouseSensitivity;
     float zoom;
+    bool rotationLocked;
 
     Json::Value SerializeToJson()
     {
@@ -64,6 +65,7 @@ struct CameraData
         camData["MovementSpeed"] = movementSpeed;
         camData["MouseSensitivity"] = mouseSensitivity;
         camData["Zoom"] = zoom;
+        camData["RotationLocked"] = rotationLocked;
         
         return camData;
     }
@@ -115,7 +117,8 @@ class Camera
             Aspect = data.aspect;
             MovementSpeed = data.movementSpeed;
             MouseSensitivity = data.mouseSensitivity;
-            Zoom = data.zoom;            
+            Zoom = data.zoom;    
+            locked = data.rotationLocked;        
         }
 
         // returns the view matrix calculated using Euler Angles and the LookAt Matrix
@@ -166,6 +169,8 @@ class Camera
         // processes input received from a mouse input system. Expects the offset value in both the x and y direction.
         void ProcessMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch = true)
         {
+            if (locked && !firstMouseMovement) return;
+
             Yaw   += xoffset;
             Pitch += yoffset;
 
@@ -177,9 +182,10 @@ class Camera
                 if (Pitch < -89.0f)
                     Pitch = -89.0f;
             }
-
             
             updateCameraVectors();
+         
+            firstMouseMovement = false;
         }
 
         // processes input received from a mouse scroll-wheel event. Only requires input on the vertical wheel-axis
@@ -234,6 +240,7 @@ class Camera
                 data.movementSpeed = MovementSpeed;
                 data.mouseSensitivity = MouseSensitivity;
                 data.zoom = Zoom;
+                data.rotationLocked = locked;
             }
             return data;
         }
@@ -245,6 +252,16 @@ class Camera
         void SetPosition(glm::vec3 newPosition)
         {
             this->Position = newPosition;
+        }
+
+        bool ToggleRotation()
+        {
+            locked = !locked;
+            return locked;
+        }
+        bool isLocked()
+        {
+            return locked;
         }
 
     private:
@@ -264,7 +281,10 @@ class Camera
         float MouseSensitivity;
         float Zoom;
         float Aspect;
-        
+
+        bool locked = false;
+        //the first mouse movement should always be processed so that the mouse is at the screen center at the start
+        bool firstMouseMovement = true; 
 
         // update Front, Right and Up Vectors using the updated Euler angles
         void updateCameraVectors()

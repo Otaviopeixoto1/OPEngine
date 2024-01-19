@@ -94,6 +94,7 @@ namespace JsonHelpers
                     cameraData.movementSpeed = sceneFileRoot["renderer"]["Camera"]["MovementSpeed"].asFloat();
                     cameraData.mouseSensitivity = sceneFileRoot["renderer"]["Camera"]["MouseSensitivity"].asFloat();
                     cameraData.zoom = sceneFileRoot["renderer"]["Camera"]["Zoom"].asFloat();
+                    cameraData.rotationLocked = sceneFileRoot["renderer"]["Camera"]["RotationLocked"].asBool();
 
                     *camera = Camera(cameraData);
                 }

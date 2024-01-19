@@ -46,7 +46,6 @@ bool windowResized = false;
 
 //initializing the camera
 Camera mainCamera(glm::vec3(0.0f, 0.0f, 3.0f));
-bool freeCamMode = true;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -155,8 +154,7 @@ int main()
     glCullFace(GL_BACK); 
     glFrontFace(GL_CCW);
 
-    // hide the cursor and only show again when the window is out of focus or minimized:
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    
     
     auto sceneParser = JsonHelpers::SceneParser();
     Scene scene = Scene();
@@ -179,7 +177,16 @@ int main()
     }
     
     
-
+    // hide the cursor and only show again when the window is out of focus or minimized:
+    if (!mainCamera.isLocked())
+    {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
+    else
+    {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
+        
 
     // Render Loop
     // -----------
@@ -307,10 +314,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
-    if (!freeCamMode)
-    {
-        return;
-    }
     if (firstMouseMovement) // initially set to true
     {
         lastMouseX = xpos;
@@ -342,34 +345,19 @@ void toggle_camera_rotation_callback(GLFWwindow* window, int key, int scancode, 
 {
     if (key == GLFW_KEY_KP_ENTER && action == GLFW_PRESS)
     {
-        if (freeCamMode)
+        bool locked = mainCamera.ToggleRotation();
+        if (!locked)
         {
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-            freeCamMode = false;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         }
         else
         {
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-            freeCamMode = true;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
     }
 }
 
 
-
-void ToggleCameraMovementMode(GLFWwindow *window)
-{
-    if (freeCamMode)
-    {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        freeCamMode = false;
-    }
-    else
-    {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        freeCamMode = true;
-    }
-}
 
 // Process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
