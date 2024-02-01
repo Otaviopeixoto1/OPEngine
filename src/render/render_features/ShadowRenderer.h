@@ -24,7 +24,7 @@ class ShadowRenderer : public RenderFeature
             this->cameraFar = camFar;
 
             this->GLOBAL_SHADOWS_BINDING = shadowBufferBinding;
-
+            
             // MAX CASCADE COUNT = 4 
             this->SHADOW_CASCADE_COUNT = std::min(cascadeCount, 4u);
             this->SHADOW_WIDTH = ShadowWidth;
@@ -33,6 +33,7 @@ class ShadowRenderer : public RenderFeature
         
         void RecreateResources()
         {
+            
             glGenFramebuffers(1, &shadowMapFBO);
             glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
             glGenTextures(1, &shadowMapBuffer0);
@@ -120,7 +121,7 @@ class ShadowRenderer : public RenderFeature
             ShadowBufferSize = 0;
             {
                 ShadowBufferSize += 4 * sizeof(float);
-                ShadowBufferSize += cascadeCount * sizeof(glm::mat4);
+                ShadowBufferSize += SHADOW_CASCADE_COUNT * sizeof(glm::mat4);
                 ShadowBufferSize += sizeof(frustrumCuts);
             }
 
@@ -139,7 +140,6 @@ class ShadowRenderer : public RenderFeature
             shadowDepthPass.AddShaderStage(BASE_DIR"/data/shaders/shadow_mapping/layeredGeom.geom",GL_GEOMETRY_SHADER);
             shadowDepthPass.BuildProgram();
             shadowDepthPass.BindUniformBlock("Shadows", GLOBAL_SHADOWS_BINDING);
-
         }
         
         // Add a frameResources as as struct for input!!. ADD the scene reference. viewport reference. Matrices reference
@@ -170,6 +170,7 @@ class ShadowRenderer : public RenderFeature
 
             //these dont have to be set every frame
             glBufferSubData(GL_UNIFORM_BUFFER, 0, 4 * sizeof(float), &shadowParams);
+            
 
             int offset = 0;
             offset += 4 * sizeof(float);
@@ -232,15 +233,15 @@ class ShadowRenderer : public RenderFeature
                 // multiply by the inverse projection matrix
                 glm::mat4 lightMatrix = lightProjection * lightView;
 
-                            
+                //std::cout << "render shadows set parameter: " << glGetError() << std::endl; 
                 glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(glm::mat4), glm::value_ptr(lightMatrix));
                 offset += sizeof(glm::mat4);
             }
-
+            //std::cout << "render start render: " << glGetError() << std::endl; 
             // these dont have to be set every frame
             glBufferSubData(GL_UNIFORM_BUFFER, offset, 4 * sizeof(float), &frustrumCuts[1]);
             glBindBuffer(GL_UNIFORM_BUFFER, 0); 
-
+            
 
             // Rendering objects to shadow map:
             
@@ -291,7 +292,6 @@ class ShadowRenderer : public RenderFeature
         unsigned int GLOBAL_SHADOWS_BINDING = 4;
         unsigned int ShadowsUBO;
         unsigned int ShadowBufferSize;
-        unsigned int cascadeCount;
         float frustrumCuts[5];
         Shader shadowDepthPass;
 };

@@ -4,6 +4,7 @@
 #include "BaseRenderer.h"
 #include "render_features/ShadowRenderer.h"
 #include "render_features/SkyRenderer.h"
+#include "../debug/OPProfiler.h"
 #include <exception>
 
 
@@ -60,10 +61,11 @@ class ForwardRenderer : public BaseRenderer
             
         };
 
-        ForwardRenderer(unsigned int vpWidth, unsigned int vpHeight)
+        ForwardRenderer(unsigned int vpWidth, unsigned int vpHeight, OPProfiler::OPProfiler *profiler = nullptr)
         {
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
+            this->profiler = profiler;
         }
 
         void RecreateResources(Scene &scene, Camera &camera)
@@ -558,6 +560,8 @@ class ForwardRenderer : public BaseRenderer
         }
 
     private:
+        OPProfiler::OPProfiler *profiler;
+
         ShadowRenderer shadowRenderer;
         SkyRenderer skyRenderer;
 

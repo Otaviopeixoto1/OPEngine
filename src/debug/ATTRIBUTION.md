@@ -1,0 +1,1 @@
+The code in this directory is a modified version of the profiler that was written by Alexander Sannikov and made available at: https://github.com/Raikiri/LegitProfiler/tree/master under the MIT license.

@@ -4,7 +4,7 @@
 #include "BaseRenderer.h"
 #include "render_features/ShadowRenderer.h"
 #include "render_features/SkyRenderer.h"
-
+#include "../debug/OPProfiler.h"
 
 class DeferredRenderer : public BaseRenderer
 {
@@ -64,10 +64,11 @@ class DeferredRenderer : public BaseRenderer
         
         
         
-        DeferredRenderer(unsigned int vpWidth, unsigned int vpHeight)
+        DeferredRenderer(unsigned int vpWidth, unsigned int vpHeight, OPProfiler::OPProfiler *profiler)
         {
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
+            this->profiler = profiler;
         }
 
         void RecreateResources(Scene &scene, Camera &camera)
@@ -788,6 +789,8 @@ class DeferredRenderer : public BaseRenderer
         }
 
     private:
+        OPProfiler::OPProfiler *profiler;
+
         ShadowRenderer shadowRenderer;
         SkyRenderer skyRenderer;
 

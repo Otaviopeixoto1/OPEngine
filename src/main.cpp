@@ -1,7 +1,8 @@
-#include <iostream>
+//always include glad and glfw in this order
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include <iostream>
 #include <cmath>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -19,7 +20,7 @@
 //#include "scene/Scene.h"
 #include "scene/SceneParser.h"
 #include "render/renderers.h"
-
+#include "debug/OPProfiler.h"
 
 //a custom library with simple objects for testing:
 #include "test/GLtest.h"
@@ -29,8 +30,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+//#define VSYNC_OFF
 
-// Frame time:
+// Frame time variables:
+float frametime = 0;
 float deltaTime = 0.0f;	
 float lastFrame = 0.0f; 
 
@@ -66,12 +69,12 @@ int main()
 
     // makes sure the glfw is the right version and using core profile:
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
+    #ifdef __APPLE__
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    #endif
 
 
     // GLFW: rendering window creation
@@ -79,7 +82,9 @@ int main()
     window = glfwCreateWindow(windowWidth, windowHeight, PROJECT_NAME " " VERSION, NULL, NULL);
     glfwMakeContextCurrent(window);
 
-
+    #ifdef VSYNC_OFF
+        glfwSwapInterval(0);
+    #endif
     // glad: load all OpenGL function pointers
     // ---------------------------------------
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -154,16 +159,20 @@ int main()
     glCullFace(GL_BACK); 
     glFrontFace(GL_CCW);
 
-    
-    
-    auto sceneParser = JsonHelpers::SceneParser();
+
+       
     Scene scene = Scene();
+    auto sceneParser = JsonHelpers::SceneParser();
     sceneParser.Parse(scene, &mainCamera, "/data/scenes/sponza_scene.json", OP_OBJ);
     
+    auto profiler = OPProfiler::OPProfiler(); 
+    
+    //An extremely weird problem happens to the shadow renderer when passing the profiler pointer to the forward renderer constructor !!!!!
 
-    ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight);
-    DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight);
+    ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight, &profiler);
+    DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight, &profiler);
     BaseRenderer* renderer = &forwardRenderer;
+
     
     try
     {
@@ -188,10 +197,19 @@ int main()
     }
         
 
+
     // Render Loop
     // -----------
     while(!glfwWindowShouldClose(window))
     {
+        
+
+
+        // calculating the frame time
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame; 
+
         // GLFW: poll IO events (keys pressed/released, mouse moved etc.)
         // --------------------------------------------------------------
 
@@ -206,13 +224,6 @@ int main()
         ImGui_ImplOpenGL3_NewFrame();// Start the Dear ImGui frame
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        //ImGui::ShowDemoWindow(); // Show demo window! :)
-        //ImGui::SeparatorText("General");
-
-        // calculating the frame time
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame; 
 
 
         
@@ -240,13 +251,14 @@ int main()
 
 
 
-        glm::vec3 camPos = mainCamera.GetPosition();
+        
+
         // Finish Rendering UI
         // -------------------
 
         ImGui::Begin("Camera");
-        //ImGui::Button("Hello!");
-        
+        glm::vec3 camPos = mainCamera.GetPosition();
+
         if (ImGui::InputFloat3("Position", (float*)&camPos))
         {
             mainCamera.SetPosition(camPos);
@@ -257,8 +269,27 @@ int main()
         ImGui::Text("Scene");
         ImGui::End();
 
-        ImGui::Begin("Profiler");
-        ImGui::Text("Profiler");
+
+
+        /**/
+        // Profiler Window
+        std::stringstream title;
+        title.precision(2);
+        title << std::fixed << "profiler [" << deltaTime * 1000.0f << "ms  " << 1.0f/deltaTime << "fps]###ProfilerWindow";
+
+        ImGui::Begin(title.str().c_str(), 0, ImGuiWindowFlags_NoScrollbar);
+
+        ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+        int sizeMargin = int(ImGui::GetStyle().ItemSpacing.y);
+        int maxGraphHeight = 300;
+        int availableGraphHeight = (int(canvasSize.y) - sizeMargin) / 2;
+        int graphHeight = std::min(maxGraphHeight, availableGraphHeight);
+        int legendWidth = 200;
+        int graphWidth = int(canvasSize.x) - legendWidth;
+        int frameOffset = 0;
+
+        profiler.RenderWindow(graphWidth, legendWidth, graphHeight, frameOffset);
+
         ImGui::End();
 
 
@@ -276,6 +307,7 @@ int main()
         // issues, windowing applications apply a double buffer for rendering. The front buffer contains the final 
         // output image that is shown at the screen, while all the rendering commands draw to the back buffer. As soon
         // as all the rendering commands are finished we swap the back buffer to the front buffer:
+        
         glfwSwapBuffers(window);
 
     }
