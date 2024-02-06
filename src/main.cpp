@@ -210,6 +210,8 @@ int main()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame; 
 
+        profiler.BeginFrame();
+
         // GLFW: poll IO events (keys pressed/released, mouse moved etc.)
         // --------------------------------------------------------------
 
@@ -248,6 +250,7 @@ int main()
         renderer->RenderFrame(mainCamera, &scene, window);
 
 
+        profiler.EndFrame();
 
 
 
@@ -269,6 +272,7 @@ int main()
         ImGui::Text("Scene");
         ImGui::End();
 
+        
 
 
         /**/

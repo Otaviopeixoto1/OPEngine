@@ -1,6 +1,7 @@
 #ifndef PROFILER_H
 #define PROFILER_H
 
+#include <iostream>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -30,41 +31,62 @@ namespace OPProfiler
     class ProfilerTask //GPUTask
     {   
         public:
-            double startTime;
-            double endTime;
             std::string name;
-            uint32_t color;
+            uint32_t color = Colors::amethyst; //set per task
+            int available = 0;
 
-            void Setup()
+            void Setup(unsigned int glObjectId)
             {
-                //use a previous query object id or create a new one
+                this->queryObject = glObjectId;
             }
 
             void Start()
             {
-                glBeginQuery(GL_TIME_ELAPSED, taskglId);
+                glBeginQuery(GL_TIME_ELAPSED, queryObject);
             }
             void End()
             {
                 glEndQuery(GL_TIME_ELAPSED);
             }
 
-            double GetLength()
+            //returns true if the current time is available
+            bool FinishQuery()
             {
-                return endTime - startTime;
+                while (!available)
+                    glGetQueryObjectiv(queryObject, GL_QUERY_RESULT_AVAILABLE, &available);
+
+                GLuint64 elapsed_time;
+                if (available)
+                {
+                    glGetQueryObjectui64v(queryObject, GL_QUERY_RESULT, &elapsed_time);
+                    timeElapsed = elapsed_time / 1000000.0;
+                }
+                else
+                {
+                    timeElapsed = 0.0;
+                }
+
+                return available;
+            }
+
+            double GetTime() const
+            {
+                return timeElapsed;
             }
 
             unsigned int GetGlId()
             {
-                return taskglId;
+                return queryObject;
             }
         private:
             //the id of the query object used for that task
-            unsigned int taskglId = 0;
+            unsigned int queryObject = 0;
+            double timeElapsed = 1.0f / 120.0f; //test
     };
 
-    struct TaskDispStats
+    struct TaskStats //task handle ?
     {
+        unsigned int queryObject;
         double maxTime;
         size_t priorityOrder;
         size_t onScreenIndex;
@@ -82,7 +104,7 @@ namespace OPProfiler
             int frameWidth;
             int frameSpacing;
             
-            float maxFrameTime = 1.0f / 30.0f;
+            float maxFrameTime = 1000.0f / 30.0f;
 
             //the profiler will loop every "framesCount" frames
             OPProfiler(size_t framesCount = 300, int frameWidth = 3, int frameSpacing = 1)
@@ -95,12 +117,22 @@ namespace OPProfiler
                     frame.tasks.reserve(100);
                 }
 
-                frameWidth = frameWidth;
-                frameSpacing = frameSpacing;
+                this->frameWidth = frameWidth;
+                this->frameSpacing = frameSpacing;
             }
 
             void BeginFrame()
             {
+                auto &prevFrame = frames[prevFrameIndex];
+
+                //query the results of all the tasks in the previous frame
+                for (size_t taskIndex = 0; taskIndex < prevFrame.tasks.size(); taskIndex++)
+                {
+                    prevFrame.tasks[taskIndex].FinishQuery();
+                }
+                
+
+
                 auto &currFrame = frames[currFrameIndex];
                 currFrame.tasks.resize(0);
 
@@ -108,9 +140,13 @@ namespace OPProfiler
 
             void EndFrame()
             {
-                // get all query results here
-                
                 auto &currFrame = frames[currFrameIndex];
+                
+                
+                //ONLY QUERY THE RESULTS AT THE NEXT FRAME !!!
+
+                //query all the tasks
+                /*  
 
                 currFrame.taskStatsIndex.resize(currFrame.tasks.size());
                 for (size_t taskIndex = 0; taskIndex < currFrame.tasks.size(); taskIndex++)
@@ -122,84 +158,55 @@ namespace OPProfiler
                     if (it == taskNameToStatsIndex.end())
                     {
                         taskNameToStatsIndex[task.name] = taskStats.size();
-                        TaskDispStats taskStat;
+                        TaskStats taskStat;
                         taskStat.maxTime = -1.0;
                         taskStats.push_back(taskStat);
                     }
 
                     currFrame.taskStatsIndex[taskIndex] = taskNameToStatsIndex[task.name];
-                }
+                }*/ 
                 
+                prevFrameIndex = currFrameIndex;
+
                 // frame index loops arround when we reach a multiple of frames.size()
                 currFrameIndex = (currFrameIndex + 1) % frames.size();
                 
                 RebuildTaskStats(currFrameIndex, framesCount);
             }
 
-            ProfilerTask* AddTask(const std::string& name)
+            ProfilerTask* AddTask(const std::string& name, uint32_t color)
             {
                 auto &currFrame = frames[currFrameIndex];
                 currFrame.tasks.emplace_back();
 
                 ProfilerTask* newTask = &currFrame.tasks.back();
                 newTask->name = name;
-                //check if the task name already exists and try to reuse its query object, otherwise just make a new one
-                // use taskNameToStatsIndex 
+                newTask->color = color;
+
+                //if task wasnt registered already, initialize it into the map
+                auto it = taskNameToStatsIndex.find(name);
+                if (it == taskNameToStatsIndex.end())
+                {
+                    taskNameToStatsIndex[name] = taskStats.size();
+
+                    //initialize query object here
+                    unsigned int queryObject;
+                    glGenQueries(1, &queryObject);
+                    TaskStats taskStat;
+                    taskStat.maxTime = -1.0;
+                    taskStat.queryObject = queryObject;
+                    taskStats.push_back(taskStat);
+                    newTask->Setup(queryObject);
+                }
+                else
+                {
+                    newTask->Setup(taskStats[taskNameToStatsIndex[name]].queryObject);
+                }
+
+                currFrame.taskStatsIndex.push_back(taskNameToStatsIndex[name]);
 
                 return newTask;
             }
-
-
-            //////////////////////////// Not Necessary if passing the OPProfiler to the renderers ///////////////////////////////////////////////////////////////
-            //Loads in the array of tasks into the profiler 
-            void LoadFrameData(const ProfilerTask *tasks, size_t count)
-            {
-                auto &currFrame = frames[currFrameIndex];
-                currFrame.tasks.resize(0);
-
-                for (size_t taskIndex = 0; taskIndex < count; taskIndex++)
-                {
-                    if (taskIndex == 0)
-                        currFrame.tasks.push_back(tasks[taskIndex]);
-                    else
-                    {
-                        if (tasks[taskIndex - 1].color != tasks[taskIndex].color || tasks[taskIndex - 1].name != tasks[taskIndex].name)
-                        {
-                            currFrame.tasks.push_back(tasks[taskIndex]);
-                        }
-                        else
-                        {
-                            currFrame.tasks.back().endTime = tasks[taskIndex].endTime;
-                        }
-                    }
-                }
-
-                currFrame.taskStatsIndex.resize(currFrame.tasks.size());
-
-                for (size_t taskIndex = 0; taskIndex < currFrame.tasks.size(); taskIndex++)
-                {
-                    auto &task = currFrame.tasks[taskIndex];
-
-                    // if the task is not already Registered, initialize it into the map
-                    auto it = taskNameToStatsIndex.find(task.name);
-                    if (it == taskNameToStatsIndex.end())
-                    {
-                        taskNameToStatsIndex[task.name] = taskStats.size();
-                        TaskDispStats taskStat;
-                        taskStat.maxTime = -1.0;
-                        taskStats.push_back(taskStat);
-                    }
-
-                    currFrame.taskStatsIndex[taskIndex] = taskNameToStatsIndex[task.name];
-                }
-
-                // frame index loops arround when we reach a multiple of frames.size()
-                currFrameIndex = (currFrameIndex + 1) % frames.size();
-
-
-                RebuildTaskStats(currFrameIndex, framesCount);
-            }
-            /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
             void RenderWindow(int graphWidth, int legendWidth, int height, int frameIndexOffset)
@@ -220,12 +227,14 @@ namespace OPProfiler
                 std::vector<size_t> taskStatsIndex;
             };
 
-            //split between cpu and gpu frames/tasks
             std::vector<FrameData> frames;
-            std::vector<TaskDispStats> taskStats;
+
+            // each taskstat object will be unique for each named task and it will persist between frames
+            std::vector<TaskStats> taskStats;
             std::map<std::string, size_t> taskNameToStatsIndex;
 
-            size_t currFrameIndex = 0;
+            size_t currFrameIndex = 1;
+            size_t prevFrameIndex = 0;
 
 
             void RebuildTaskStats(size_t endFrame, size_t framesCount)
@@ -239,15 +248,17 @@ namespace OPProfiler
 
                 for (size_t frameNumber = 0; frameNumber < framesCount; frameNumber++)
                 {
-
-                    // **************** remove the -1 and just the frame index increment on the EndFrame() ******************
                     size_t frameIndex = (endFrame - 1 - frameNumber + frames.size()) % frames.size();
                     auto &frame = frames[frameIndex];
                     for (size_t taskIndex = 0; taskIndex < frame.tasks.size(); taskIndex++)
                     {
                         auto &task = frame.tasks[taskIndex];
+                        
+                        if (!task.available)
+                            continue;
+
                         auto &stats = taskStats[frame.taskStatsIndex[taskIndex]];
-                        stats.maxTime = std::max(stats.maxTime, task.endTime - task.startTime);
+                        stats.maxTime = std::max(stats.maxTime, task.GetTime());
                     }
                 }
 
@@ -270,46 +281,57 @@ namespace OPProfiler
 
             void RenderGraph(ImDrawList *drawList, glm::vec2 graphPos, glm::vec2 graphSize, size_t frameIndexOffset)
             {
+                //bounding box of the graph
                 Rect(drawList, graphPos, graphPos + graphSize, 0xffffffff, false);
                 float heightThreshold = 1.0f;
 
                 for (size_t frameNumber = 0; frameNumber < frames.size(); frameNumber++)
                 {
-                    size_t frameIndex = (currFrameIndex - frameIndexOffset - 1 - frameNumber + 2 * frames.size()) % frames.size();
+                    size_t frameIndex = (prevFrameIndex - frameIndexOffset - 1 - frameNumber + 2 * frames.size()) % frames.size();
 
                     glm::vec2 framePos = graphPos + glm::vec2(graphSize.x - 1 - frameWidth - (frameWidth + frameSpacing) * frameNumber, graphSize.y - 1);
                     
                     if (framePos.x < graphPos.x + 1)
                         break;
                     
-                    glm::vec2 taskPos = framePos + glm::vec2(0.0f, 0.0f);
                     auto &frame = frames[frameIndex];
+                    glm::vec2 taskPos = framePos;
+                    
+
                     for (const auto& task : frame.tasks)
                     {
-                        //just make one float taskheight
-                        float taskStartHeight = (float(task.startTime) / maxFrameTime) * graphSize.y;
-                        float taskEndHeight = (float(task.endTime) / maxFrameTime) * graphSize.y;
+                        //float taskStartHeight = (float(task.startTime) / maxFrameTime) * graphSize.y;
+                        //float taskEndHeight = (float(task.endTime) / maxFrameTime) * graphSize.y;
+                        if (!task.available)
+                            continue;
 
-                        if (abs(taskEndHeight - taskStartHeight) > heightThreshold)
-                            Rect(drawList, taskPos + glm::vec2(0.0f, -taskStartHeight), taskPos + glm::vec2(frameWidth, -taskEndHeight), task.color, true);
+                        float taskHeight = (float(task.GetTime()) / maxFrameTime) * graphSize.y;
+
+                        if (abs(taskHeight) > heightThreshold)
+                        {
+                            //Rect(drawList, taskPos + glm::vec2(0.0f, -taskStartHeight), taskPos + glm::vec2(frameWidth, -taskEndHeight), task.color, true);
+                            Rect(drawList, taskPos, taskPos + glm::vec2(frameWidth, -taskHeight), task.color, true);
+                            taskPos += glm::vec2(0.0f, -taskHeight);
+                        } 
+                            
                     }
                 }
             }
 
+            float markerLeftRectMargin = 3.0f;
+            float markerLeftRectWidth = 5.0f;
+            float markerMidWidth = 30.0f;
+            float markerRightRectWidth = 10.0f;
+            float markerRigthRectMargin = 3.0f;
+            float markerRightRectHeight = 10.0f;
+            float markerRightRectSpacing = 4.0f;
+            float taskNameOffset = 38.0f;
+
             void RenderLegend(ImDrawList *drawList, glm::vec2 legendPos, glm::vec2 legendSize, size_t frameIndexOffset)
             {
-                float markerLeftRectMargin = 3.0f;
-                float markerLeftRectWidth = 5.0f;
-                float markerMidWidth = 30.0f;
-                float markerRightRectWidth = 10.0f;
-                float markerRigthRectMargin = 3.0f;
-                float markerRightRectHeight = 10.0f;
-                float markerRightRectSpacing = 4.0f;
-                float nameOffset = 30.0f;
-
                 glm::vec2 textMargin = glm::vec2(5.0f, -3.0f);
 
-                auto &currFrame = frames[(currFrameIndex - frameIndexOffset - 1 + 2 * frames.size()) % frames.size()];
+                auto &currFrame = frames[(prevFrameIndex - frameIndexOffset - 1 + 2 * frames.size()) % frames.size()];
                 size_t maxTasksCount = size_t(legendSize.y / (markerRightRectHeight + markerRightRectSpacing));
 
                 for (auto &taskStat : taskStats)
@@ -319,12 +341,16 @@ namespace OPProfiler
 
                 size_t tasksToShow = std::min<size_t>(taskStats.size(), maxTasksCount);
                 size_t tasksShownCount = 0;
+
+                //n
+                float taskStartHeight = 0;
+
                 for (size_t taskIndex = 0; taskIndex < currFrame.tasks.size(); taskIndex++)
                 {
                     auto &task = currFrame.tasks[taskIndex];
                     auto &stat = taskStats[currFrame.taskStatsIndex[taskIndex]];
 
-                    if (stat.priorityOrder >= tasksToShow)
+                    if (!task.available || stat.priorityOrder >= tasksToShow)
                         continue;
 
                     if (stat.onScreenIndex == size_t(-1))
@@ -334,8 +360,11 @@ namespace OPProfiler
                     else
                         continue;
 
-                    float taskStartHeight = (float(task.startTime) / maxFrameTime) * legendSize.y;
-                    float taskEndHeight = (float(task.endTime) / maxFrameTime) * legendSize.y;
+                    float taskTime = float(task.GetTime());
+
+                    //float taskStartHeight = (float(task.startTime) / maxFrameTime) * legendSize.y;
+                    //float taskEndHeight = (float(task.endTime) / maxFrameTime) * legendSize.y;
+                    float taskEndHeight = taskStartHeight + (taskTime / maxFrameTime) * legendSize.y;
 
                     glm::vec2 markerLeftRectMin = legendPos + glm::vec2(markerLeftRectMargin, legendSize.y);
                     glm::vec2 markerLeftRectMax = markerLeftRectMin + glm::vec2(markerLeftRectWidth, 0.0f);
@@ -348,14 +377,16 @@ namespace OPProfiler
 
                     uint32_t textColor = useColoredLegendText ? task.color : Colors::imguiText;
 
-                    float taskTimeMs = float(task.endTime - task.startTime);
+                    
                     std::ostringstream timeText;
                     timeText.precision(2);
-                    timeText << std::fixed << std::string("[") << (taskTimeMs * 1000.0f);
+                    timeText << std::fixed << std::string("[") << (taskTime);
 
 
                     drawList->AddText(markerRightRectMax + textMargin, textColor, timeText.str().c_str());
-                    drawList->AddText(markerRightRectMax + textMargin + glm::vec2(nameOffset, 0.0f), textColor, (std::string("ms] ") + task.name).c_str());
+                    drawList->AddText(markerRightRectMax + textMargin + glm::vec2(taskNameOffset, 0.0f), textColor, (std::string("ms] ") + task.name).c_str());
+
+                    taskStartHeight = taskEndHeight;
                 }
             
             }
@@ -365,17 +396,17 @@ namespace OPProfiler
             static void Rect(ImDrawList *drawList, glm::vec2 minPoint, glm::vec2 maxPoint, uint32_t col, bool filled = true)
             {
                 if(filled)
-                    drawList->AddRectFilled(ImVec2(minPoint.x, minPoint.y), ImVec2(maxPoint.x, maxPoint.y), col);
+                    drawList->AddRectFilled(minPoint, maxPoint, col);
                 else
-                    drawList->AddRect(ImVec2(minPoint.x, minPoint.y), ImVec2(maxPoint.x, maxPoint.y), col);
+                    drawList->AddRect(minPoint, maxPoint, col);
             }
 
             static void Triangle(ImDrawList *drawList, std::array<glm::vec2, 3> points, uint32_t col, bool filled = true)
             {
                 if (filled)
-                    drawList->AddTriangleFilled(ImVec2(points[0].x, points[0].y), ImVec2(points[1].x, points[1].y), ImVec2(points[2].x, points[2].y), col);
+                    drawList->AddTriangleFilled(points[0], points[1], points[2], col);
                 else
-                    drawList->AddTriangle(ImVec2(points[0].x, points[0].y), ImVec2(points[1].x, points[1].y), ImVec2(points[2].x, points[2].y), col);
+                    drawList->AddTriangle(points[0], points[1], points[2], col);
             }
 
             static void RenderTaskMarker(ImDrawList *drawList, glm::vec2 leftMinPoint, glm::vec2 leftMaxPoint, glm::vec2 rightMinPoint, glm::vec2 rightMaxPoint, uint32_t col)

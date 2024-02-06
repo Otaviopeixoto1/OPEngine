@@ -5,6 +5,7 @@
 #include "render_features/ShadowRenderer.h"
 #include "render_features/SkyRenderer.h"
 #include "../debug/OPProfiler.h"
+#include "../common/Colors.h"
 #include <exception>
 
 
@@ -203,19 +204,25 @@ class ForwardRenderer : public BaseRenderer
 
 
 
-
+            
             // 1) Shadow Map Rendering Pass:
             // -----------------------------
+            auto shadowTask = profiler->AddTask("shadows", Colors::amethyst);
+            shadowTask->Start();
 
             std::vector<unsigned int> shadowMapBuffers = {0};
             if (enableShadowMapping)
             {
                 shadowMapBuffers = shadowRenderer.Render(frameResources);
             }
+            
+            shadowTask->End();
                 
 
             // 2) Main Rendering pass:
             // -----------------------
+            auto mainPassTask = profiler->AddTask("main pass", Colors::emerald);
+            mainPassTask->Start();
 
             glBindFramebuffer(GL_FRAMEBUFFER, multisampledFBO);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -348,6 +355,11 @@ class ForwardRenderer : public BaseRenderer
                 //Indexed drawing
                 glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
             });  
+            
+            mainPassTask->End();
+
+
+
 
             // Rendering skybox
             this->skyRenderer.Render(frameResources);
