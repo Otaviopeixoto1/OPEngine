@@ -56,15 +56,10 @@ namespace OPProfiler
                     glGetQueryObjectiv(queryObject, GL_QUERY_RESULT_AVAILABLE, &available);
 
                 GLuint64 elapsed_time;
-                if (available)
-                {
-                    glGetQueryObjectui64v(queryObject, GL_QUERY_RESULT, &elapsed_time);
-                    timeElapsed = elapsed_time / 1000000.0;
-                }
-                else
-                {
-                    timeElapsed = 0.0;
-                }
+                
+                glGetQueryObjectui64v(queryObject, GL_QUERY_RESULT, &elapsed_time);
+                timeElapsed = elapsed_time / 1000000.0;
+                
 
                 return available;
             }
@@ -86,7 +81,7 @@ namespace OPProfiler
 
     struct TaskStats //task handle ?
     {
-        unsigned int queryObject;
+        unsigned int queryObjects[2]; //make a query object swap chain cycle using "%2"
         double maxTime;
         size_t priorityOrder;
         size_t onScreenIndex;
@@ -122,6 +117,12 @@ namespace OPProfiler
             }
 
             void BeginFrame()
+            {   
+                auto &currFrame = frames[currFrameIndex];
+                currFrame.tasks.resize(0);
+            }
+
+            void EndFrame()
             {
                 auto &prevFrame = frames[prevFrameIndex];
 
@@ -130,41 +131,9 @@ namespace OPProfiler
                 {
                     prevFrame.tasks[taskIndex].FinishQuery();
                 }
-                
 
 
-                auto &currFrame = frames[currFrameIndex];
-                currFrame.tasks.resize(0);
-
-            }
-
-            void EndFrame()
-            {
-                auto &currFrame = frames[currFrameIndex];
-                
-                
-                //ONLY QUERY THE RESULTS AT THE NEXT FRAME !!!
-
-                //query all the tasks
-                /*  
-
-                currFrame.taskStatsIndex.resize(currFrame.tasks.size());
-                for (size_t taskIndex = 0; taskIndex < currFrame.tasks.size(); taskIndex++)
-                {
-                    auto &task = currFrame.tasks[taskIndex];
-
-                    // if the task is not already Registered, initialize it into the map
-                    auto it = taskNameToStatsIndex.find(task.name);
-                    if (it == taskNameToStatsIndex.end())
-                    {
-                        taskNameToStatsIndex[task.name] = taskStats.size();
-                        TaskStats taskStat;
-                        taskStat.maxTime = -1.0;
-                        taskStats.push_back(taskStat);
-                    }
-
-                    currFrame.taskStatsIndex[taskIndex] = taskNameToStatsIndex[task.name];
-                }*/ 
+                //auto &currFrame = frames[currFrameIndex];
                 
                 prevFrameIndex = currFrameIndex;
 
@@ -188,19 +157,15 @@ namespace OPProfiler
                 if (it == taskNameToStatsIndex.end())
                 {
                     taskNameToStatsIndex[name] = taskStats.size();
-
-                    //initialize query object here
-                    unsigned int queryObject;
-                    glGenQueries(1, &queryObject);
                     TaskStats taskStat;
                     taskStat.maxTime = -1.0;
-                    taskStat.queryObject = queryObject;
+                    glGenQueries(2, taskStat.queryObjects);
                     taskStats.push_back(taskStat);
-                    newTask->Setup(queryObject);
+                    newTask->Setup(taskStat.queryObjects[currFrameIndex % 2]); //the objects used for query are swaped between frames
                 }
                 else
                 {
-                    newTask->Setup(taskStats[taskNameToStatsIndex[name]].queryObject);
+                    newTask->Setup(taskStats[taskNameToStatsIndex[name]].queryObjects[currFrameIndex % 2]);
                 }
 
                 currFrame.taskStatsIndex.push_back(taskNameToStatsIndex[name]);

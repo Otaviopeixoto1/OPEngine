@@ -32,6 +32,7 @@
 
 //#define VSYNC_OFF
 
+
 // Frame time variables:
 float frametime = 0;
 float deltaTime = 0.0f;	
@@ -282,7 +283,7 @@ int main()
         title << std::fixed << "profiler [" << deltaTime * 1000.0f << "ms  " << 1.0f/deltaTime << "fps]###ProfilerWindow";
 
         ImGui::Begin(title.str().c_str(), 0, ImGuiWindowFlags_NoScrollbar);
-
+        ImGui::Text("GPU profiler:");
         ImVec2 canvasSize = ImGui::GetContentRegionAvail();
         int sizeMargin = int(ImGui::GetStyle().ItemSpacing.y);
         int maxGraphHeight = 300;

@@ -360,21 +360,23 @@ class ForwardRenderer : public BaseRenderer
 
 
 
-
             // Rendering skybox
+            auto skytask = profiler->AddTask("Render Sky", Colors::clouds);
+            skytask->Start();
             this->skyRenderer.Render(frameResources);
+            skytask->End();
+
+
+            // 3) Final Pass (blit + Postprocessing):
+            // --------------------------------------
+            auto finalTask = profiler->AddTask("Blit & Tonemapping", Colors::carrot);
+            finalTask->Start();
 
             // Blit the MSAA buffer to an intermediate framebuffer for postprocessing:
             glBindFramebuffer(GL_READ_FRAMEBUFFER, multisampledFBO);
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, intermediateFBO);
             glBlitFramebuffer(0, 0, viewportWidth, viewportHeight, 0, 0, viewportWidth, viewportHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
-
-
-
-
-            // 3) Final Pass (Postprocessing):
-            // -------------------------------
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glClear(GL_COLOR_BUFFER_BIT);
@@ -386,6 +388,8 @@ class ForwardRenderer : public BaseRenderer
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, screenTexture); 
             glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            finalTask->End();
 
         }
 
