@@ -5,6 +5,7 @@ include(ExternalProject)
 
 #configs for building the right version of openGL
 find_package(glfw3 REQUIRED)
+#set(OpenGL_GL_PREFERENCE LEGACY)
 find_package(OpenGL REQUIRED)
 cmake_policy(SET CMP0072 NEW)
 

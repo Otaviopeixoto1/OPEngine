@@ -70,7 +70,7 @@ int main()
 
     // makes sure the glfw is the right version and using core profile:
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     #ifdef __APPLE__
@@ -103,7 +103,7 @@ int main()
     // GLFW's window size processed coordinates in OpenGL are between -1 and 1 so we effectively map from the range 
     // (-1 to 1) to (0, 640) and (0, 360). 
     glViewport(0, 0, windowWidth, windowHeight);
-
+    
     // setting the initial mouse position to the center of the screen
     lastMouseX = windowWidth/2;
     lastMouseY = windowHeight/2;
@@ -172,7 +172,8 @@ int main()
 
     ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight, &profiler);
     DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight, &profiler);
-    BaseRenderer* renderer = &forwardRenderer;
+    VCTGIRenderer vctgiRenderer = VCTGIRenderer(windowWidth, windowHeight, &profiler);
+    BaseRenderer* renderer = &vctgiRenderer;
 
     
     try
@@ -203,15 +204,14 @@ int main()
     // -----------
     while(!glfwWindowShouldClose(window))
     {
-        
-
-
         // calculating the frame time
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame; 
 
         profiler.BeginFrame();
+
+
 
         // GLFW: poll IO events (keys pressed/released, mouse moved etc.)
         // --------------------------------------------------------------
@@ -257,9 +257,8 @@ int main()
 
         
 
-        // Finish Rendering UI
-        // -------------------
-
+        // Render UI
+        // ---------
         ImGui::Begin("Camera");
         glm::vec3 camPos = mainCamera.GetPosition();
 
@@ -275,9 +274,8 @@ int main()
 
         
 
-
-        /**/
-        // Profiler Window
+        // Render Profiler Window
+        // ----------------------
         std::stringstream title;
         title.precision(2);
         title << std::fixed << "profiler [" << deltaTime * 1000.0f << "ms  " << 1.0f/deltaTime << "fps]###ProfilerWindow";
@@ -287,7 +285,7 @@ int main()
         ImVec2 canvasSize = ImGui::GetContentRegionAvail();
         int sizeMargin = int(ImGui::GetStyle().ItemSpacing.y);
         int maxGraphHeight = 300;
-        int availableGraphHeight = (int(canvasSize.y) - sizeMargin) / 2;
+        int availableGraphHeight = (int(canvasSize.y) - sizeMargin);// / 2;
         int graphHeight = std::min(maxGraphHeight, availableGraphHeight);
         int legendWidth = 200;
         int graphWidth = int(canvasSize.x) - legendWidth;
@@ -306,7 +304,6 @@ int main()
 
         // GLFW: swap buffers 
         // ------------------
-
         // Double buffering: When an application draws in a single buffer the resulting image may have flickering.
         // scince the resulting output image is not drawn in an instant, but drawn pixel by pixel. To circumvent these
         // issues, windowing applications apply a double buffer for rendering. The front buffer contains the final 
@@ -321,12 +318,11 @@ int main()
     sceneParser.SerializeToJson(cameraData);
 
 
-
-
     // imgui: clearing all resources alocated:
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+
 
     // GLFW: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------

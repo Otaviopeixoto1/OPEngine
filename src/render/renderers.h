@@ -3,6 +3,7 @@
 
 #include "ForwardRenderer.h"
 #include "DeferredRenderer.h"
+#include "VCTGIRenderer.h"
 
 
 #endif

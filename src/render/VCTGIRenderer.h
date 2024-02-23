@@ -1,5 +1,8 @@
-#ifndef DEFERRED_RENDERER_H
-#define DEFERRED_RENDERER_H
+#ifndef VCTGI_RENDERER_H
+#define VCTGI_RENDERER_H
+
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 
 #include "BaseRenderer.h"
 #include "render_features/ShadowRenderer.h"
@@ -7,11 +10,15 @@
 #include "../debug/OPProfiler.h"
 #include "../common/Colors.h"
 
-class DeferredRenderer : public BaseRenderer
+
+class VCTGIRenderer : public BaseRenderer
 {
     public:
+        static constexpr unsigned int MAX_MIP_MAP_LEVELS = 9;
+        static constexpr unsigned int MAX_SPARSE_BUFFER_SIZE = 134217728;
+
         const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
-        static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
+        static constexpr unsigned int SHADOW_CASCADE_COUNT = 1; // MAX == 4
 
         static constexpr bool enableShadowMapping = true;
         static constexpr bool enableNormalMaps = true;
@@ -53,7 +60,7 @@ class DeferredRenderer : public BaseRenderer
         };
 
         //ADD UNIFORM AS PREFIX TO MAKE CLEAR THAT THESE ARE NOT TEXTURE BINDINGS BUT UNIFORM BUFFER BINDINGS
-        enum DRUniformBufferBindings
+        enum VCTGIUniformBufferBindings
         {
             UNIFORM_GLOBAL_MATRICES_BINDING = 0,
             UNIFORM_LOCAL_MATRICES_BINDING = 1,
@@ -62,10 +69,16 @@ class DeferredRenderer : public BaseRenderer
             UNIFORM_GLOBAL_SHADOWS_BINDING = 4,
 
         };
+        enum VCTGIShaderStorageBindings 
+        {
+            DRAW_INDIRECT_BINDING = 0,
+            COMPUTE_INDIRECT_BINDING = 1,
+            SPARSE_LIST_BINDING = 2
+        };
         
         
         
-        DeferredRenderer(unsigned int vpWidth, unsigned int vpHeight, OPProfiler::OPProfiler *profiler)
+        VCTGIRenderer(unsigned int vpWidth, unsigned int vpHeight, OPProfiler::OPProfiler *profiler)
         {
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
@@ -162,6 +175,42 @@ class DeferredRenderer : public BaseRenderer
                 GL_COLOR_ATTACHMENT0 + POSITION_BUFFER_BINDING
             };
             glDrawBuffers(3, attachments);
+
+
+
+
+            // Voxelization:
+            glGenFramebuffers(1, &voxelFBO);
+
+            //setup sparse active voxel list (filled during voxelization):
+            glGenBuffers(1, &sparseListBuffer);
+	        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, SPARSE_LIST_BINDING, sparseListBuffer);
+            glBufferData(GL_SHADER_STORAGE_BUFFER, (sizeof(GLuint) * MAX_SPARSE_BUFFER_SIZE), NULL, GL_STREAM_DRAW);
+
+            //contains data for drawing the voxels with indirect commands and for generating mipmaps:
+            SetupDrawInd();
+
+            //contains the workgroup structure used for the mipmap compute:
+            //this will represent a 1d array of workgroups (of size 64) that will process the sparse voxel list and the 3d texture into the mipmaps
+            SetupCompInd();
+            
+            numMipLevels = (GLuint)log2(256);
+            glGenTextures(1, &voxelBuffer);
+            glBindTexture(GL_TEXTURE_3D, voxelBuffer);
+            glTexStorage3D(GL_TEXTURE_3D, numMipLevels + 1, GL_R32UI, voxelRes, voxelRes, voxelRes);
+            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+            glGenTextures(1, &voxel2DTex);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, voxel2DTex);
+            glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_R32UI, voxelRes, voxelRes, 3);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 
 
@@ -263,6 +312,18 @@ class DeferredRenderer : public BaseRenderer
 
         void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window)
         {
+            /*
+                VCTGI order:
+                CreateShadow();
+                RenderData(); (gbuffer)
+                Voxelize(); (light accumulation)
+                MipMap();
+                Draw();
+            
+            */
+
+
+
             // Set default rendering settings:
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             glDepthMask(GL_TRUE);
@@ -298,7 +359,6 @@ class DeferredRenderer : public BaseRenderer
                 shadowMapBuffers = shadowRenderer.Render(frameResources);
             }
             shadowTask->End();
-
 
 
             // 2) gBuffer Pass:
@@ -412,11 +472,170 @@ class DeferredRenderer : public BaseRenderer
 
             gbufferTask->End();
 
+
+
+            // VOXELIZATION PASS 
+            auto voxelizationTask = profiler->AddTask("voxelization", Colors::belizeHole);
+            voxelizationTask->Start();
+
+            //these are bound in dispatch indirect and shader storage, since they are first filled in the voxelization (storage) and then read in the mipmap compute shader (indirect)
+            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndBuffer);     
+            glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, compIndBuffer);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, DRAW_INDIRECT_BINDING, drawIndBuffer);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, COMPUTE_INDIRECT_BINDING, compIndBuffer);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, SPARSE_LIST_BINDING, sparseListBuffer);
+
+            auto sceneMat2 = glm::scale(glm::mat4(1.0f), glm::vec3(0.02,0.02,0.02)); //calculate based on the scene size or the frustrum bounds !!
+            auto sceneMat0 = glm::rotate(sceneMat2, -glm::half_pi<float>(), glm::vec3(0.0f, 1.0f, 0.0f));
+            auto sceneMat1 = glm::rotate(sceneMat2, glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
+
+            glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);  //this buffer could be set only once on initialization
+            glBufferSubData(GL_UNIFORM_BUFFER, 3*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(sceneMat0));
+            glBufferSubData(GL_UNIFORM_BUFFER, 4*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(sceneMat1));
+            glBufferSubData(GL_UNIFORM_BUFFER, 5*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(sceneMat2));
+            glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+
+            // Setup framebuffer for rendering offscreen
+            GLint origViewportSize[4];
+            glGetIntegerv(GL_VIEWPORT, origViewportSize);
+
+            // Enable rendering to framebuffer with voxelRes resolution
+            glBindFramebuffer(GL_FRAMEBUFFER, voxelFBO);
+            glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_WIDTH, voxelRes);
+            glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_HEIGHT, voxelRes);
+            glViewport(0, 0, voxelRes, voxelRes);
+
+            // Clear the last voxelization data
+            glClearTexImage(voxel2DTex, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+            for(size_t i = 0; i <= numMipLevels; i++) 
+                glClearTexImage(voxelBuffer, (GLint)i, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+
+            // Reset the sparse voxel count
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, drawIndBuffer);
+            for(size_t i = 0; i <= MAX_MIP_MAP_LEVELS; i++) 
+                glClearBufferSubData(GL_SHADER_STORAGE_BUFFER, GL_R32UI, i * sizeof(DrawElementsIndirectCommand) + sizeof(GLuint), sizeof(GLuint), GL_RED, GL_UNSIGNED_INT, NULL); // Clear data before since data is used when drawing
+            
+
+            // Reset the sparse voxel count for compute shader
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, compIndBuffer);
+            for(size_t i = 0; i <= MAX_MIP_MAP_LEVELS; i++) 
+                glClearBufferSubData(GL_SHADER_STORAGE_BUFFER, GL_R32UI, i * sizeof(ComputeIndirectCommand), sizeof(GLuint), GL_RED, GL_UNSIGNED_INT, NULL); // Clear data before since data is used when drawing
+            
+
+            glBindImageTexture(2, voxel2DTex, 0, GL_TRUE, 0, GL_READ_WRITE, GL_R32UI);
+            glBindImageTexture(3, voxelBuffer, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
+
+            glActiveTexture(GL_TEXTURE5); // use a propper binding point variable
+            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowMapBuffers[0]);
+
+            // All faces must be rendered
+            glDisable(GL_CULL_FACE);
+            
+            // 1st VOXELIZATION:
+            
+            voxelizationShader.UseProgram();
+            voxelizationShader.SetInt("shadowMap0", 5); // do the binding properly
+            scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
+            {    
+                GLuint activeRoutine;
+
+                if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
+                {
+                    return;
+                }
+                else if (materialInstance->HasFlag(OP_MATERIAL_TEXTURED_DIFFUSE))
+                {
+                    activeRoutine = 1;
+                }
+                else
+                {
+                    activeRoutine = 0;
+                }
+
+                glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &activeRoutine);
+
+
+                // Setting object-related properties
+                // ---------------------------------
+                glBindBuffer(GL_UNIFORM_BUFFER, MaterialUBO);
+                glBufferSubData(GL_UNIFORM_BUFFER, 0, MaterialBufferSize, &(materialInstance->properties));
+                glBindBuffer(GL_UNIFORM_BUFFER, 0);   
+
+
+                // Update model and normal matrices:
+                glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
+                glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(objectToWorld));
+                glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)));
+                glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+
+
+                //Bind all textures
+                unsigned int diffuseNr = 1;
+                unsigned int specularNr = 1;
+                unsigned int normalNr = 1;
+
+                for (unsigned int i = 0; i < materialInstance->numTextures; i++)
+                {
+                    Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
+
+                    // activate proper texture unit before binding
+                    glActiveTexture(GL_TEXTURE0); 
+
+                    std::string number;
+                    TextureType type = texture.type;
+
+                    if (texture.type == OP_TEXTURE_DIFFUSE)
+                    {
+                        voxelizationShader.SetInt("texture_diffuse1", 0);
+                        glBindTexture(GL_TEXTURE_2D, texture.id);
+                        break;
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
+                
+                //bind VAO
+                mesh->BindBuffers();
+
+                //Indexed drawing
+                glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
+                glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+            });  
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+            glViewport(origViewportSize[0], origViewportSize[1], origViewportSize[2], origViewportSize[3]);
+            glEnable(GL_CULL_FACE);
+            
+            
+            
+            //MIPMAPPING
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            voxelizationTask->End();
+            //
+
             
             // 3) Lighting Accumulation pass: use g-buffer to calculate the scene's lighting
             // -----------------------------------------------------------------------------
             auto lightAccTask = profiler->AddTask("Light Accumulation", Colors::orange);
             lightAccTask->Start();
+
             glBindFramebuffer(GL_FRAMEBUFFER, lightAccumulationFBO);
             glClear(GL_COLOR_BUFFER_BIT);
             glDepthMask(GL_FALSE);
@@ -534,6 +753,7 @@ class DeferredRenderer : public BaseRenderer
             // --------------------------------------------------------------------------------------
             auto renderUnlitTask = profiler->AddTask("Unlit & Sky Pass", Colors::greenSea);
             renderUnlitTask->Start();
+
             glDepthMask(GL_TRUE);
             glEnable(GL_DEPTH_TEST);
             glDisable(GL_BLEND);
@@ -570,7 +790,7 @@ class DeferredRenderer : public BaseRenderer
             }); 
 
             this->skyRenderer.Render(frameResources);
-            
+
             renderUnlitTask->End();
 
             // 5) Postprocess Pass: apply tonemap to the HDR color buffer
@@ -581,7 +801,6 @@ class DeferredRenderer : public BaseRenderer
             glBindFramebuffer(GL_FRAMEBUFFER, postProcessFBO);
             glClear(GL_COLOR_BUFFER_BIT);
             glDisable(GL_DEPTH_TEST);
-            
 
             postProcessShader.UseProgram();
             postProcessShader.SetFloat("exposure", tonemapExposure);
@@ -591,7 +810,6 @@ class DeferredRenderer : public BaseRenderer
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
             postProcessTask->End();
-
 
             // 6) Final Pass (Antialiasing):
             // -----------------------------
@@ -612,7 +830,6 @@ class DeferredRenderer : public BaseRenderer
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
             FXAATask->End();
-
         }
 
 
@@ -701,6 +918,17 @@ class DeferredRenderer : public BaseRenderer
             FXAAShader.BuildProgram();
 
 
+
+
+            voxelizationShader = Shader(BASE_DIR"/data/shaders/voxelization/voxel.vert", BASE_DIR"/data/shaders/voxelization/voxel.frag");
+            voxelizationShader.AddPreProcessorDefines(preprocessorDefines);
+            voxelizationShader.AddShaderStage(BASE_DIR"/data/shaders/voxelization/voxel.geom", GL_GEOMETRY_SHADER);
+            voxelizationShader.BuildProgram();
+            voxelizationShader.BindUniformBlocks(NamedBufferBindings, 5);
+
+
+
+
             // Setting UBOs to the correct binding points
             // ------------------------------------------
 
@@ -714,6 +942,7 @@ class DeferredRenderer : public BaseRenderer
              *    mat4 projectionMatrix; 
              *    mat4 viewMatrix;       
              *    mat4 inverseViewMatrix
+             *    mat4 SceneMatrices[3];
              * }
              * 
              * LocalMatrices Uniform buffer structure:
@@ -726,14 +955,14 @@ class DeferredRenderer : public BaseRenderer
             // Create the buffer and specify its size:
 
             glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
-            glBufferData(GL_UNIFORM_BUFFER, 3 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
+            glBufferData(GL_UNIFORM_BUFFER, 6 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
             glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
             glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
             glBindBuffer(GL_UNIFORM_BUFFER, 0);
             
             // Bind a certain range of the buffer to the uniform block: this allows to use multiple UBOs 
             // per uniform block
-            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_GLOBAL_MATRICES_BINDING, GlobalMatricesUBO, 0, 3 * sizeof(glm::mat4));
+            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_GLOBAL_MATRICES_BINDING, GlobalMatricesUBO, 0, 6 * sizeof(glm::mat4));
             glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_LOCAL_MATRICES_BINDING, LocalMatricesUBO, 0, 2 * sizeof(glm::mat4));
 
 
@@ -817,28 +1046,41 @@ class DeferredRenderer : public BaseRenderer
         unsigned int viewportWidth;
         unsigned int viewportHeight;
 
-        unsigned int gBufferFBO;
-        unsigned int gColorBuffer, gNormalBuffer, gPositionBuffer;
-        unsigned int depthStencilBuffer;
+        GLuint gBufferFBO;
+        GLuint gColorBuffer, gNormalBuffer, gPositionBuffer;
+        GLuint depthStencilBuffer;
 
-        unsigned int lightAccumulationFBO;
-        unsigned int lightAccumulationTexture;
+        GLuint lightAccumulationFBO;
+        GLuint lightAccumulationTexture;
 
-        unsigned int postProcessFBO;
-        unsigned int postProcessColorBuffer;
+        GLuint postProcessFBO;
+        GLuint postProcessColorBuffer;
 
-        unsigned int LightBufferSize = 0;
-        unsigned int MaterialBufferSize = 0;
+        GLuint LightBufferSize = 0;
+        GLuint MaterialBufferSize = 0;
 
-        unsigned int GlobalMatricesUBO;
-        unsigned int LocalMatricesUBO;
-        unsigned int LightsUBO;
-        unsigned int MaterialUBO;
+        GLuint GlobalMatricesUBO;
+        GLuint LocalMatricesUBO;
+        GLuint LightsUBO;
+        GLuint MaterialUBO;
+
+
 
         Shader defaultVertFrag;
         Shader defaultVertTexFrag;
         Shader defaultVertNormalTexFrag;
         Shader defaultVertUnlitFrag;
+
+
+        
+        GLuint voxelFBO;
+        GLuint sparseListBuffer;
+        GLuint voxelBuffer;
+        GLuint voxel2DTex;
+        unsigned int voxelRes = 256;
+        GLuint numMipLevels;
+        Shader voxelizationShader;
+
 
 
 
@@ -865,6 +1107,77 @@ class DeferredRenderer : public BaseRenderer
         
         Shader postProcessShader;
         Shader FXAAShader;
+
+
+
+
+        //indirect buffers:
+        struct DrawElementsIndirectCommand 
+        {
+            GLuint vertexCount;
+            GLuint instanceCount;
+            GLuint firstVertex;
+            GLuint baseVertex;
+            GLuint baseInstance;
+        };
+
+        struct ComputeIndirectCommand 
+        {
+            GLuint workGroupSizeX;
+            GLuint workGroupSizeY;
+            GLuint workGroupSizeZ;
+        };
+
+        // Draw indirect buffer and struct
+        DrawElementsIndirectCommand drawIndCmd[10];
+        GLuint drawIndBuffer;
+
+        // Compute indirect buffer and struct
+        ComputeIndirectCommand compIndCmd[10];
+        GLuint compIndBuffer;
+
+        void SetupDrawInd()
+        {
+            // Initialize the indirect drawing buffer
+            for(int i = MAX_MIP_MAP_LEVELS, j = 0; i >= 0; i--, j++) 
+            {
+                //drawIndCmd[i].vertexCount = (GLuint)voxelModel->GetNumIndices();
+                drawIndCmd[i].instanceCount = 0;
+                drawIndCmd[i].firstVertex = 0;
+                drawIndCmd[i].baseVertex = 0;
+
+                if(i == 0) 
+                    drawIndCmd[i].baseInstance = 0;
+                else if(i == MAX_MIP_MAP_LEVELS) 
+                    drawIndCmd[i].baseInstance = MAX_SPARSE_BUFFER_SIZE - 1;
+                else 
+                    drawIndCmd[i].baseInstance = drawIndCmd[i + 1].baseInstance - (1 << (3 * j));
+                
+            }
+
+            // Draw Indirect Command buffer for drawing voxels
+            glGenBuffers(1, &drawIndBuffer);
+            //the buffer will be filled in a shader as a storage buffer and will be read for an indirect draw as a draw indirect buffer:
+            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndBuffer);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, DRAW_INDIRECT_BINDING, drawIndBuffer);
+            glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(drawIndCmd), drawIndCmd, GL_STREAM_DRAW);
+        }
+        void SetupCompInd()
+        {
+            // Initialize the indirect compute buffer
+            for(size_t i = 0; i <= MAX_MIP_MAP_LEVELS; i++) {
+                compIndCmd[i].workGroupSizeX = 0;
+                compIndCmd[i].workGroupSizeY = 1;
+                compIndCmd[i].workGroupSizeZ = 1;
+            }
+
+            // Draw Indirect Command buffer for drawing voxels
+            glGenBuffers(1, &compIndBuffer);
+            //the buffer will be filled in a shader as a storage buffer and will be read for a compute buffer:
+            glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, compIndBuffer);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, COMPUTE_INDIRECT_BINDING, compIndBuffer);
+            glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(compIndCmd), compIndCmd, GL_STREAM_DRAW);
+        }
 };
 
 #endif
