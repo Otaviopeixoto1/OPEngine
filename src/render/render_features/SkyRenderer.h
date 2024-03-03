@@ -25,7 +25,7 @@ class SkyRenderer : public RenderFeature
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
             //skybox shader: 
-            skyRenderPass = Shader(BASE_DIR"/data/shaders/skybox/skybox.vert", BASE_DIR"/data/shaders/skybox/skybox.frag");
+            skyRenderPass = StandardShader(BASE_DIR"/data/shaders/skybox/skybox.vert", BASE_DIR"/data/shaders/skybox/skybox.frag");
             skyRenderPass.BuildProgram();
         }
 
@@ -46,7 +46,7 @@ class SkyRenderer : public RenderFeature
         }
 
     private:
-        Shader skyRenderPass;
+        StandardShader skyRenderPass;
         unsigned int cubeMapTexture;
         unsigned int skyboxVAO, skyboxVBO;
         std::vector<unsigned int> r = {0};

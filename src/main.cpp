@@ -173,6 +173,7 @@ int main()
     ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight, &profiler);
     DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight, &profiler);
     VCTGIRenderer vctgiRenderer = VCTGIRenderer(windowWidth, windowHeight, &profiler);
+
     BaseRenderer* renderer = &vctgiRenderer;
 
     
@@ -188,7 +189,7 @@ int main()
     }
     
     
-    // hide the cursor and only show again when the window is out of focus or minimized:
+    // hide the cursor when the window on focus:
     if (!mainCamera.isLocked())
     {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);

@@ -45,12 +45,11 @@ class VCTGIRenderer : public BaseRenderer
             COLOR_SPEC_BUFFER_BINDING = 0,
             NORMAL_BUFFER_BINDING = 1,
             POSITION_BUFFER_BINDING = 2,
-            ACCUMULATION_BUFFER_BINDING = 3,
-            SHADOW_MAP_BUFFER0_BINDING = 4,
+            SHADOW_MAP_BUFFER0_BINDING = 3,
         };
 
         // Adopted naming conventions for the global uniform blocks
-        std::string NamedBufferBindings[5] = { // The indexes have to match values in the enum
+        std::string NamedUniformBufferBindings[5] = { // The indexes have to match values in the enum
             "GlobalMatrices",
             "LocalMatrices",
             "MaterialProperties",
@@ -59,7 +58,18 @@ class VCTGIRenderer : public BaseRenderer
 
         };
 
-        //ADD UNIFORM AS PREFIX TO MAKE CLEAR THAT THESE ARE NOT TEXTURE BINDINGS BUT UNIFORM BUFFER BINDINGS
+        
+        enum GIPassBindings
+        {
+            VOXEL2DTEX_BINDING = 0,
+            VOXEL3DTEX_BINDING = 1,
+            SHADOW_MAP0_BINDING = 2,
+            COLOR_SPEC_BINDING = 3,
+            NORMAL_BINDING = 4,
+            POSITION_BINDING = 5,
+
+        };
+
         enum VCTGIUniformBufferBindings
         {
             UNIFORM_GLOBAL_MATRICES_BINDING = 0,
@@ -121,9 +131,6 @@ class VCTGIRenderer : public BaseRenderer
             glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
 
-            MeshData PointVolData = MeshData::LoadMeshDataFromFile(BASE_DIR "/data/models/light_volumes/pointLightVolume.obj");
-            pointLightVolume = std::make_shared<Mesh>(PointVolData);
-
 
             // gBuffer:
             glGenFramebuffers(1, &gBufferFBO);
@@ -180,6 +187,9 @@ class VCTGIRenderer : public BaseRenderer
 
 
             // Voxelization:
+            MeshData voxelMeshData = MeshData::LoadMeshDataFromFile(BASE_DIR "/data/models/voxel.obj");
+            voxelMesh = std::make_shared<Mesh>(voxelMeshData);
+
             glGenFramebuffers(1, &voxelFBO);
 
             //setup sparse active voxel list (filled during voxelization):
@@ -228,14 +238,14 @@ class VCTGIRenderer : public BaseRenderer
 
             // Bind the accumulation texture, making sure it will be a different binding from those               (this is probably not necessary)
             // that will be used for the gbuffer textures that will be sampled on the accumulation pass
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + ACCUMULATION_BUFFER_BINDING, GL_TEXTURE_2D, lightAccumulationTexture, 0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, lightAccumulationTexture, 0);
             // Bind the same depth buffer for drawing light volumes
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencilBuffer);
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             {
                 throw RendererException("ERROR::FRAMEBUFFER:: Intermediate Framebuffer is incomplete");
             }
-            glDrawBuffer(GL_COLOR_ATTACHMENT0 + ACCUMULATION_BUFFER_BINDING);
+            glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
 
 
@@ -312,18 +322,6 @@ class VCTGIRenderer : public BaseRenderer
 
         void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window)
         {
-            /*
-                VCTGI order:
-                CreateShadow();
-                RenderData(); (gbuffer)
-                Voxelize(); (light accumulation)
-                MipMap();
-                Draw();
-            
-            */
-
-
-
             // Set default rendering settings:
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             glDepthMask(GL_TRUE);
@@ -377,11 +375,11 @@ class VCTGIRenderer : public BaseRenderer
             glBindBuffer(GL_UNIFORM_BUFFER, 0); 
 
 
-            int shaderCache = -1;
+            GLuint shaderCache = 0;
 
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
-                Shader activeShader;
+                StandardShader activeShader;
 
                 if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
                 {
@@ -459,7 +457,7 @@ class VCTGIRenderer : public BaseRenderer
                             break;
                     }
 
-                    activeShader.SetInt((name + number).c_str(), i);
+                    activeShader.SetSamplerBinding((name + number).c_str(), i);
                     glBindTexture(GL_TEXTURE_2D, texture.id);
                 }
                 
@@ -531,10 +529,8 @@ class VCTGIRenderer : public BaseRenderer
             // All faces must be rendered
             glDisable(GL_CULL_FACE);
             
-            // 1st VOXELIZATION:
-            
+            // 1st part of voxelization:
             voxelizationShader.UseProgram();
-            voxelizationShader.SetInt("shadowMap0", 5); // do the binding properly
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
                 GLuint activeRoutine;
@@ -586,7 +582,7 @@ class VCTGIRenderer : public BaseRenderer
 
                     if (texture.type == OP_TEXTURE_DIFFUSE)
                     {
-                        voxelizationShader.SetInt("texture_diffuse1", 0);
+                        voxelizationShader.SetSamplerBinding("texture_diffuse1", 0);
                         glBindTexture(GL_TEXTURE_2D, texture.id);
                         break;
                     }
@@ -607,53 +603,58 @@ class VCTGIRenderer : public BaseRenderer
 
             glViewport(origViewportSize[0], origViewportSize[1], origViewportSize[2], origViewportSize[3]);
             glEnable(GL_CULL_FACE);
-            
-            
-            
-            //MIPMAPPING
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             voxelizationTask->End();
-            //
+
+
+            // 2nd part of voxelization: MIPMAPPING
+            auto mipmappingTask = profiler->AddTask("mipmapping", Colors::pomegranate);
+            mipmappingTask->Start();
+
+            mipmappingShader.UseProgram();
+            for(GLuint level = 0; level < numMipLevels; level++) {
+                glBindImageTexture(3, voxelBuffer, level, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
+                glBindImageTexture(4, voxelBuffer, level + 1, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
+
+                mipmappingShader.SetUInt("currentLevel", level);
+
+                glDispatchComputeIndirect(NULL);
+
+                glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
+            }
+            glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_TEXTURE_UPDATE_BARRIER_BIT);
+
+            mipmappingTask->End();
+
 
             
-            // 3) Lighting Accumulation pass: use g-buffer to calculate the scene's lighting
-            // -----------------------------------------------------------------------------
-            auto lightAccTask = profiler->AddTask("Light Accumulation", Colors::orange);
-            lightAccTask->Start();
+
+
+
+            auto conetraceTask = profiler->AddTask("Cone tracing", Colors::orange);
+            conetraceTask->Start();
 
             glBindFramebuffer(GL_FRAMEBUFFER, lightAccumulationFBO);
             glClear(GL_COLOR_BUFFER_BIT);
             glDepthMask(GL_FALSE);
 
+            conetraceShader.UseProgram();
+            glBindVertexArray(screenQuadVAO);
 
-            // Binding the gBuffer textures:
-            //these binding dont have to be the same as the gbuffer bindings but it will be better follow a convention
-            glActiveTexture(GL_TEXTURE0 + COLOR_SPEC_BUFFER_BINDING);
-            glBindTexture(GL_TEXTURE_2D, gColorBuffer); 
-            glActiveTexture(GL_TEXTURE0 + NORMAL_BUFFER_BINDING);
-            glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
-            glActiveTexture(GL_TEXTURE0 + POSITION_BUFFER_BINDING);
-            glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
-            glActiveTexture(GL_TEXTURE0 + SHADOW_MAP_BUFFER0_BINDING);
+            glActiveTexture(GL_TEXTURE0 + VOXEL2DTEX_BINDING);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, voxel2DTex);
+            glActiveTexture(GL_TEXTURE0 + VOXEL3DTEX_BINDING);
+            glBindTexture(GL_TEXTURE_3D, voxelBuffer);
+            glActiveTexture(GL_TEXTURE0 + SHADOW_MAP0_BINDING);
             glBindTexture(GL_TEXTURE_2D_ARRAY, shadowMapBuffers[0]);
+            glActiveTexture(GL_TEXTURE0 + COLOR_SPEC_BINDING);
+            glBindTexture(GL_TEXTURE_2D, gColorBuffer);
+            glActiveTexture(GL_TEXTURE0 + NORMAL_BINDING);
+            glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
+            glActiveTexture(GL_TEXTURE0 + POSITION_BINDING);
+            glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
 
             
-            
+
             // Setting LightsUBO:
             glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
             int offset = 0;
@@ -675,79 +676,17 @@ class VCTGIRenderer : public BaseRenderer
 
             glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-            
-            // Light Volumes: Render all point light volumes
-            if (enableLightVolumes)
-            {
-                // Blend the lighting passes
-                glEnable(GL_BLEND);
-                glBlendEquation(GL_FUNC_ADD);
-                glBlendFunc(GL_ONE, GL_ONE);
 
-                glEnable(GL_STENCIL_TEST);
-                pointLightVolume->BindBuffers();
-                
-                for (size_t i = 0; i < lights.numPointLights; i++)
-                {
-                    // Stencil Pass:
-                    simpleDepthPass.UseProgram();
-                    glEnable(GL_DEPTH_TEST);
-                    glDisable(GL_CULL_FACE);
-                    glClear(GL_STENCIL_BUFFER_BIT);
+            conetraceShader.SetUInt("voxelRes", voxelRes);
+            GLuint drawFunc = 3;
+            glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &drawFunc);
 
-                    // We need the stencil test to be enabled but we want it to succeed always.
-                    // Only the depth test matters.
-                    glStencilFunc(GL_ALWAYS, 0, 0);
-
-                    // For the back facing polygons, INCREMENT the value in the stencil buffer when the depth test 
-                    // fails but keep it unchanged when either depth test or stencil test succeed.
-                    glStencilOpSeparate(GL_BACK, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
-
-                    // For the front facing polygons, DECREMENT the value in the stencil buffer when the depth test
-                    // fails but keep it unchanged when either depth test or stencil test succeed.
-                    glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
-
-                    // this will guarantee that the points inside the sphere have stencil of 1,
-                    // points outside the sphere will have stencil of 0
-
-
-                    PointLight::PointLightData l = lights.pointLights[i];
-                    glm::mat4 viewTransform = glm::mat4(1);
-                    viewTransform = glm::translate(viewTransform, glm::vec3(l.position));
-                    viewTransform = glm::scale(viewTransform, glm::vec3(l.radius, l.radius, l.radius));
-
-                    simpleDepthPass.SetMat4("MVPMatrix", projectionMatrix * viewTransform);
-
-                    glDrawElements(GL_TRIANGLES, pointLightVolume->indicesCount, GL_UNSIGNED_INT, 0);
-
-
-                    // Lighting calculation pass:
-                    glDisable(GL_DEPTH_TEST);
-
-                    // Only run for pixels which have stencil different from zero
-                    glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
-                    glEnable(GL_CULL_FACE);
-                    glCullFace(GL_FRONT);
-
-                    pointLightVolShader.UseProgram();
-
-                    pointLightVolShader.SetInt("instanceID", i);
-                    pointLightVolShader.SetMat4("MVPMatrix", projectionMatrix * viewTransform);
-                    pointLightVolShader.SetVec2("gScreenSize", viewportWidth, viewportHeight);
-
-                    glDrawElements(GL_TRIANGLES, pointLightVolume->indicesCount, GL_UNSIGNED_INT, 0);
-                    glCullFace(GL_BACK);
-                }
-                glDisable(GL_STENCIL_TEST);
-            }
-            
-            // Directional Lights:
-            directionalLightingPass.UseProgram();
-            glBindVertexArray(screenQuadVAO);
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
-            lightAccTask->End();
+            glDepthMask(GL_TRUE);
+            conetraceTask->End();
 
+            
 
             // 4) Unlit Pass (render objects with different lighting models using same depth buffer):
             // --------------------------------------------------------------------------------------
@@ -760,7 +699,7 @@ class VCTGIRenderer : public BaseRenderer
 
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
-                Shader activeShader;
+                StandardShader activeShader;
                 if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
                 {
                     activeShader = defaultVertUnlitFrag;   
@@ -805,7 +744,7 @@ class VCTGIRenderer : public BaseRenderer
             postProcessShader.UseProgram();
             postProcessShader.SetFloat("exposure", tonemapExposure);
             glBindVertexArray(screenQuadVAO);
-            glActiveTexture(GL_TEXTURE0 + ACCUMULATION_BUFFER_BINDING);
+            glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture); 
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -838,96 +777,78 @@ class VCTGIRenderer : public BaseRenderer
         void ReloadShaders()
         {
             //Material specific shaders. These should dynamically load depending on available scene materials
-            defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferAlbedo.frag");
+            defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferAlbedo.frag");
             defaultVertFrag.BuildProgram();
-            defaultVertFrag.BindUniformBlocks(NamedBufferBindings,3);
+            defaultVertFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
 
 
             
-            defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
+            defaultVertTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
             defaultVertTexFrag.BuildProgram();
-            defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,3);
+            defaultVertTexFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
 
 
 
-            defaultVertNormalTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
+            defaultVertNormalTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
             if (enableNormalMaps)
             {
                 std::string s = "NORMAL_MAPPED";
                 defaultVertNormalTexFrag.AddPreProcessorDefines(&s,1);
             }
             defaultVertNormalTexFrag.BuildProgram();
-            defaultVertNormalTexFrag.BindUniformBlocks(NamedBufferBindings,3);
+            defaultVertNormalTexFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
             
 
 
-            defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
+            defaultVertUnlitFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
             defaultVertUnlitFrag.BuildProgram();
-            defaultVertUnlitFrag.BindUniformBlocks(NamedBufferBindings,3);
-            
-
-
-            directionalLightingPass = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/deferred/fsDeferredLighting.frag");
-            directionalLightingPass.AddPreProcessorDefines(preprocessorDefines);
-            if (enableLightVolumes)
-            {
-                std::string s = "LIGHT_VOLUMES";
-                directionalLightingPass.AddPreProcessorDefines(&s,1);
-            }
-            if (enableShadowMapping)
-            {
-                std::string s = "DIR_LIGHT_SHADOWS";
-                directionalLightingPass.AddPreProcessorDefines(&s,1);
-            }
-            directionalLightingPass.BuildProgram();
-            directionalLightingPass.UseProgram();
-            directionalLightingPass.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
-            directionalLightingPass.SetInt("gNormal", NORMAL_BUFFER_BINDING);
-            directionalLightingPass.SetInt("gPosition", POSITION_BUFFER_BINDING);
-            directionalLightingPass.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
-            directionalLightingPass.BindUniformBlock(NamedBufferBindings[UNIFORM_GLOBAL_MATRICES_BINDING], UNIFORM_GLOBAL_MATRICES_BINDING);
-            directionalLightingPass.BindUniformBlock(NamedBufferBindings[UNIFORM_GLOBAL_LIGHTS_BINDING], UNIFORM_GLOBAL_LIGHTS_BINDING);
-            directionalLightingPass.BindUniformBlock(NamedBufferBindings[UNIFORM_GLOBAL_SHADOWS_BINDING], UNIFORM_GLOBAL_SHADOWS_BINDING);
+            defaultVertUnlitFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
 
 
 
-            simpleDepthPass = Shader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
-            simpleDepthPass.BuildProgram();
-
-            
-
-            pointLightVolShader = Shader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/deferred/pointVolumeLighting.frag");
-            pointLightVolShader.AddPreProcessorDefines(preprocessorDefines);
-            pointLightVolShader.BuildProgram();
-            pointLightVolShader.UseProgram();
-            pointLightVolShader.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
-            pointLightVolShader.SetInt("gNormal", NORMAL_BUFFER_BINDING);
-            pointLightVolShader.SetInt("gPosition", POSITION_BUFFER_BINDING);
-            pointLightVolShader.BindUniformBlock(NamedBufferBindings[UNIFORM_GLOBAL_LIGHTS_BINDING],UNIFORM_GLOBAL_LIGHTS_BINDING);
-
-
-
-            postProcessShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemapLum.frag");
+            postProcessShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemapLum.frag");
             postProcessShader.BuildProgram();
             postProcessShader.UseProgram();
-            postProcessShader.SetInt("screenTexture", ACCUMULATION_BUFFER_BINDING);
+            postProcessShader.SetSamplerBinding("screenTexture", 0);
 
 
 
-            FXAAShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadFXAA.frag");
+            FXAAShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadFXAA.frag");
             FXAAShader.BuildProgram();
 
 
 
 
-            voxelizationShader = Shader(BASE_DIR"/data/shaders/voxelization/voxel.vert", BASE_DIR"/data/shaders/voxelization/voxel.frag");
+            voxelizationShader = StandardShader(BASE_DIR"/data/shaders/voxelization/voxel.vert", BASE_DIR"/data/shaders/voxelization/voxel.frag");
             voxelizationShader.AddPreProcessorDefines(preprocessorDefines);
             voxelizationShader.AddShaderStage(BASE_DIR"/data/shaders/voxelization/voxel.geom", GL_GEOMETRY_SHADER);
             voxelizationShader.BuildProgram();
-            voxelizationShader.BindUniformBlocks(NamedBufferBindings, 5);
+            voxelizationShader.UseProgram();
+            voxelizationShader.SetSamplerBinding("shadowMap0", 5); // do the binding properly
+            voxelizationShader.BindUniformBlocks(NamedUniformBufferBindings, 5);
+
+            mipmappingShader = ComputeShader(BASE_DIR"/data/shaders/voxelization/mipmap.comp");
+            mipmappingShader.AddPreProcessorDefines(preprocessorDefines);
+            mipmappingShader.BuildProgram();
+            mipmappingShader.BindUniformBlocks(NamedUniformBufferBindings, 5);
 
 
-
+            conetraceShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/voxelization/conetraceGI.frag");
+            conetraceShader.AddPreProcessorDefines(preprocessorDefines);
+            if (enableShadowMapping)
+            {
+                std::string s = "DIR_LIGHT_SHADOWS";
+                conetraceShader.AddPreProcessorDefines(&s,1);
+            }
+            conetraceShader.BuildProgram();
+            conetraceShader.UseProgram();
+            conetraceShader.SetSamplerBinding("voxelTextures", VOXEL2DTEX_BINDING); 
+            conetraceShader.SetSamplerBinding("voxelData", VOXEL3DTEX_BINDING);
+            conetraceShader.SetSamplerBinding("shadowMap0", SHADOW_MAP0_BINDING);
+            conetraceShader.SetSamplerBinding("gColorSpec", COLOR_SPEC_BINDING); 
+            conetraceShader.SetSamplerBinding("gNormal", NORMAL_BINDING);
+            conetraceShader.SetSamplerBinding("gPosition", POSITION_BINDING);
+            conetraceShader.BindUniformBlocks(NamedUniformBufferBindings, 5);
 
             // Setting UBOs to the correct binding points
             // ------------------------------------------
@@ -1066,12 +987,15 @@ class VCTGIRenderer : public BaseRenderer
 
 
 
-        Shader defaultVertFrag;
-        Shader defaultVertTexFrag;
-        Shader defaultVertNormalTexFrag;
-        Shader defaultVertUnlitFrag;
+        StandardShader defaultVertFrag;
+        StandardShader defaultVertTexFrag;
+        StandardShader defaultVertNormalTexFrag;
+        StandardShader defaultVertUnlitFrag;
 
 
+
+
+        std::shared_ptr<Mesh> voxelMesh;
         
         GLuint voxelFBO;
         GLuint sparseListBuffer;
@@ -1079,12 +1003,12 @@ class VCTGIRenderer : public BaseRenderer
         GLuint voxel2DTex;
         unsigned int voxelRes = 256;
         GLuint numMipLevels;
-        Shader voxelizationShader;
+        StandardShader voxelizationShader;
+        ComputeShader mipmappingShader;
+        StandardShader conetraceShader;
 
 
 
-
-        Shader directionalLightingPass;
         unsigned int screenQuadVAO, screenQuadVBO;
         float quadVertices[24] = 
         {   // vertex attributes for a quad that fills the entire screen 
@@ -1097,16 +1021,11 @@ class VCTGIRenderer : public BaseRenderer
             1.0f, -1.0f,  1.0f, 0.0f,
             1.0f,  1.0f,  1.0f, 1.0f
         };
-        
-
-        Shader simpleDepthPass; 
-
-        Shader pointLightVolShader;
-        std::shared_ptr<Mesh> pointLightVolume;
+    
         
         
-        Shader postProcessShader;
-        Shader FXAAShader;
+        StandardShader postProcessShader;
+        StandardShader FXAAShader;
 
 
 
@@ -1139,19 +1058,22 @@ class VCTGIRenderer : public BaseRenderer
         void SetupDrawInd()
         {
             // Initialize the indirect drawing buffer
-            for(int i = MAX_MIP_MAP_LEVELS, j = 0; i >= 0; i--, j++) 
+            for(int mip = MAX_MIP_MAP_LEVELS, i = 0; mip >= 0; mip--, i++) 
             {
-                //drawIndCmd[i].vertexCount = (GLuint)voxelModel->GetNumIndices();
-                drawIndCmd[i].instanceCount = 0;
-                drawIndCmd[i].firstVertex = 0;
-                drawIndCmd[i].baseVertex = 0;
+                //drawIndCmd[mip].vertexCount = (GLuint)voxelModel->GetNumIndices();
+                drawIndCmd[mip].instanceCount = 0;
+                drawIndCmd[mip].firstVertex = 0;
+                drawIndCmd[mip].baseVertex = 0;
 
-                if(i == 0) 
-                    drawIndCmd[i].baseInstance = 0;
-                else if(i == MAX_MIP_MAP_LEVELS) 
-                    drawIndCmd[i].baseInstance = MAX_SPARSE_BUFFER_SIZE - 1;
+                //base instance will be the offset into the sparse list buffer
+                if(mip == 0) 
+                    drawIndCmd[mip].baseInstance = 0;
+                else if(mip == MAX_MIP_MAP_LEVELS) 
+                    drawIndCmd[mip].baseInstance = MAX_SPARSE_BUFFER_SIZE - 1;
                 else 
-                    drawIndCmd[i].baseInstance = drawIndCmd[i + 1].baseInstance - (1 << (3 * j));
+                    //the offsets will increase exponentially due to the mipmapping, the lower mips will have more voxels and when increasing mip level, we reduce the amount of voxels
+                    //by a factor of 2**3                                     * - (2**3)
+                    drawIndCmd[mip].baseInstance = drawIndCmd[mip + 1].baseInstance - (1 << (3 * i)); 
                 
             }
 
@@ -1165,10 +1087,10 @@ class VCTGIRenderer : public BaseRenderer
         void SetupCompInd()
         {
             // Initialize the indirect compute buffer
-            for(size_t i = 0; i <= MAX_MIP_MAP_LEVELS; i++) {
-                compIndCmd[i].workGroupSizeX = 0;
-                compIndCmd[i].workGroupSizeY = 1;
-                compIndCmd[i].workGroupSizeZ = 1;
+            for(size_t mip = 0; mip <= MAX_MIP_MAP_LEVELS; mip++) {
+                compIndCmd[mip].workGroupSizeX = 0;
+                compIndCmd[mip].workGroupSizeY = 1;
+                compIndCmd[mip].workGroupSizeZ = 1;
             }
 
             // Draw Indirect Command buffer for drawing voxels

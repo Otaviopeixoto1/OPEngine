@@ -132,7 +132,7 @@ class ShadowRenderer : public RenderFeature
             glBindBufferRange(GL_UNIFORM_BUFFER, GLOBAL_SHADOWS_BINDING, ShadowsUBO, 0, ShadowBufferSize);
 
             //Shadow map generation shader:
-            shadowDepthPass = Shader(BASE_DIR"/data/shaders/shadow_mapping/layeredVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
+            shadowDepthPass = StandardShader(BASE_DIR"/data/shaders/shadow_mapping/layeredVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
             {
                 std::string s = "SHADOW_CASCADE_COUNT " + std::to_string(SHADOW_CASCADE_COUNT);
                 shadowDepthPass.AddPreProcessorDefines(&s,1);
@@ -293,7 +293,7 @@ class ShadowRenderer : public RenderFeature
         unsigned int ShadowsUBO;
         unsigned int ShadowBufferSize;
         float frustrumCuts[5];
-        Shader shadowDepthPass;
+        StandardShader shadowDepthPass;
 };
 
 #endif

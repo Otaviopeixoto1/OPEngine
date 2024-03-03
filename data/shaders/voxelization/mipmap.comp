@@ -3,10 +3,13 @@
 
 layout(local_size_x = 64) in;
 
-layout(location = 7) uniform uint currentLevel;
+uniform uint currentLevel;
 
 layout(binding = 3, r32ui) uniform uimage3D voxelData;
 layout(binding = 4, r32ui) uniform uimage3D voxelDataNextLevel;
+
+
+
 
 
 
@@ -35,6 +38,13 @@ layout(std430, binding = 1) buffer ComputeCmdBuffer {
 layout(std430, binding = 2) buffer SparseBuffer {
 	uint sparseList[];
 };
+
+
+
+
+
+// same data storage scheme described by: Wahlén, Conrad. "Global Illumination in Real-Time using Voxel Cone Tracing on Mobile Devices." (2016).
+// found at: https://liu.diva-portal.org/smash/get/diva2:1148572/FULLTEXT01.pdf
 
 struct VoxelData 
 {
@@ -97,6 +107,14 @@ uvec3 unpackRG11B10(uint bytesIn)
 	return outVec;
 }
 
+
+
+
+
+
+//the compute shader runs over "workGroupSizeX" workgroups and reads all values in the sparse list in the interval: 
+// drawCmd[currentLevel].baseInstance -> drawCmd[currentLevel].baseInstance + active voxel count
+
 void main(void)
 {	
 	uint currentVoxel = gl_GlobalInvocationID.x;
@@ -104,22 +122,27 @@ void main(void)
 
 	if(currentVoxel < voxelCount) 
 	{
+		//Finding and sampling only the filled/active voxels in the sparse list:
 		uint currentOffset = drawCmd[currentLevel].baseInstance;
 		uint voxelPos = currentVoxel + currentOffset;
 		uvec3 voxelCoord = unpackRG11B10(sparseList[voxelPos]);
 
+		//the total color is divided by data.count during unpacking
 		VoxelData data = unpackARGB8(imageLoad(voxelData, ivec3(voxelCoord)).r);
 		
-		// Normalize the light counter
+		//Normalize the light counter: 
+		//if currentlight > counter/2 : nextlight = 1
+		//else : nextlight = 0
 		data.light = (data.light > (data.count >> 1)) ? 1 : 0;
-
-		// Reset the counter
+		//reset the counter:
 		data.count = 1;
 
 		uint nextLevel = currentLevel + 1;
 		uint nextOffset = drawCmd[nextLevel].baseInstance;
 		uvec3 nextVoxelCoord = voxelCoord >> 1;
 
+		//As long as the RGB channels dont overflow into the counter or light bits, each part of the voxel data will be added separately
+		//(the light and counter bits will not overflow since their maximum value is 8 in the current implementation)
 		uint prevData = imageAtomicAdd(voxelDataNextLevel, ivec3(nextVoxelCoord), packARGB8(data));
 
 		// Check if this voxel was empty before

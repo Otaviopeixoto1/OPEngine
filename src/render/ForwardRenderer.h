@@ -42,7 +42,7 @@ class ForwardRenderer : public BaseRenderer
 
 
         // Adopted naming conventions for the global uniform blocks
-        std::string NamedBufferBindings[5] = {
+        std::string NamedUniformBufferBindings[5] = {
             "GlobalMatrices",
             "LocalMatrices",
             "MaterialProperties",
@@ -269,7 +269,7 @@ class ForwardRenderer : public BaseRenderer
 
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
-                Shader activeShader;
+                StandardShader activeShader;
                 
                 /**/
                 if (materialInstance->HasFlags(OP_MATERIAL_TEXTURED_DIFFUSE | OP_MATERIAL_TEXTURED_NORMAL))
@@ -397,12 +397,12 @@ class ForwardRenderer : public BaseRenderer
 
         void ReloadShaders()
         {
-            simpleDepthPass = Shader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
+            simpleDepthPass = StandardShader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
             simpleDepthPass.BuildProgram();
 
 
 
-            defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/albedoFrag.frag");
+            defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/albedoFrag.frag");
             defaultVertFrag.AddPreProcessorDefines(preprocessorDefines);
             if (enableShadowMapping)
             {
@@ -412,11 +412,11 @@ class ForwardRenderer : public BaseRenderer
             defaultVertFrag.BuildProgram();
             defaultVertFrag.UseProgram();
             defaultVertFrag.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
-            defaultVertFrag.BindUniformBlocks(NamedBufferBindings,5);
+            defaultVertFrag.BindUniformBlocks(NamedUniformBufferBindings,5);
 
 
             // For textured materials with an albedo texture
-            defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
+            defaultVertTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
             defaultVertTexFrag.AddPreProcessorDefines(preprocessorDefines);
             if (enableShadowMapping)
             {
@@ -426,11 +426,11 @@ class ForwardRenderer : public BaseRenderer
             defaultVertTexFrag.BuildProgram();
             defaultVertTexFrag.UseProgram();
             defaultVertTexFrag.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
-            defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,5);
+            defaultVertTexFrag.BindUniformBlocks(NamedUniformBufferBindings,5);
 
 
             // For textured materials with an normal map and albedo textures
-            defaultVertNormalTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
+            defaultVertNormalTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
             defaultVertNormalTexFrag.AddPreProcessorDefines(preprocessorDefines);
             if (enableShadowMapping)
             {
@@ -445,17 +445,17 @@ class ForwardRenderer : public BaseRenderer
             defaultVertNormalTexFrag.BuildProgram();
             defaultVertNormalTexFrag.UseProgram();
             defaultVertNormalTexFrag.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
-            defaultVertNormalTexFrag.BindUniformBlocks(NamedBufferBindings,5);
+            defaultVertNormalTexFrag.BindUniformBlocks(NamedUniformBufferBindings,5);
 
 
 
-            defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
+            defaultVertUnlitFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
             defaultVertUnlitFrag.BuildProgram();
-            defaultVertUnlitFrag.BindUniformBlocks(NamedBufferBindings,3);
+            defaultVertUnlitFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
 
 
 
-            postProcessShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemap.frag");
+            postProcessShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemap.frag");
             postProcessShader.BuildProgram();
 
 
@@ -600,15 +600,15 @@ class ForwardRenderer : public BaseRenderer
         unsigned int MaterialUBO;
         unsigned int LightsUBO;
 
-        Shader simpleDepthPass;
+        StandardShader simpleDepthPass;
 
-        Shader defaultVertFrag;
-        Shader defaultVertTexFrag;
-        Shader defaultVertNormalTexFrag;
-        Shader defaultVertUnlitFrag;
+        StandardShader defaultVertFrag;
+        StandardShader defaultVertTexFrag;
+        StandardShader defaultVertNormalTexFrag;
+        StandardShader defaultVertUnlitFrag;
 
         //Shader used to render to a quad:
-        Shader postProcessShader;
+        StandardShader postProcessShader;
 
 
         float quadVertices[24] = 

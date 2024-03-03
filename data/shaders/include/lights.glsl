@@ -57,8 +57,11 @@ layout(std140) uniform Shadows
     vec4 frustrumDistances0; //this only allows for 4 cascades. To add more, a second vec4 of frustrum distances 
                              //must be added into this buffer
 };
-        //sampler2DArrayShadow
+
+
 uniform sampler2DArrayShadow shadowMap0;
+
+
 
 float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldNormal)
 {
@@ -129,9 +132,9 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
             }    
         }
         shadow /= 9.0f;
-        return  shadow;
 
-
+        return shadow;
+        
     #endif
 
 }

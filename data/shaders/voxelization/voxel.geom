@@ -11,7 +11,7 @@ in vec2 TexCoords[3];
 flat out uint domInd;
 out vec2 intTexCoords;
 out vec4 shadowCoord;
-out vec3 exNormal;
+out vec3 viewNormal;
 
 layout (std140) uniform GlobalMatrices
 {
@@ -56,7 +56,7 @@ vec3 CalculateNormal(vec3 a, vec3 b, vec3 c)
 void main()
 {          
     vec3 dir = CalculateNormal(gl_in[0].gl_Position.xyz, gl_in[1].gl_Position.xyz, gl_in[2].gl_Position.xyz);
-	exNormal = dir;
+	viewNormal = (viewMatrix * vec4(dir, 0.0f)).xyz;
 	dir = abs(dir);
 	float maxComponent = max(dir.x, max(dir.y, dir.z));
 	uint ind = maxComponent == dir.x ? 0 : maxComponent == dir.y ? 1 : 2;

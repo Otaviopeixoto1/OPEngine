@@ -38,12 +38,11 @@ class DeferredRenderer : public BaseRenderer
             COLOR_SPEC_BUFFER_BINDING = 0,
             NORMAL_BUFFER_BINDING = 1,
             POSITION_BUFFER_BINDING = 2,
-            ACCUMULATION_BUFFER_BINDING = 3,
-            SHADOW_MAP_BUFFER0_BINDING = 4,
+            SHADOW_MAP_BUFFER0_BINDING = 3,
         };
 
         // Adopted naming conventions for the global uniform blocks
-        std::string NamedBufferBindings[5] = { // The indexes have to match values in the enum
+        std::string NamedUniformBufferBindings[5] = { // The indexes have to match values in the enum
             "GlobalMatrices",
             "LocalMatrices",
             "MaterialProperties",
@@ -179,14 +178,14 @@ class DeferredRenderer : public BaseRenderer
 
             // Bind the accumulation texture, making sure it will be a different binding from those               (this is probably not necessary)
             // that will be used for the gbuffer textures that will be sampled on the accumulation pass
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + ACCUMULATION_BUFFER_BINDING, GL_TEXTURE_2D, lightAccumulationTexture, 0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, lightAccumulationTexture, 0);
             // Bind the same depth buffer for drawing light volumes
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencilBuffer);
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             {
                 throw RendererException("ERROR::FRAMEBUFFER:: Intermediate Framebuffer is incomplete");
             }
-            glDrawBuffer(GL_COLOR_ATTACHMENT0 + ACCUMULATION_BUFFER_BINDING);
+            glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
 
 
@@ -321,7 +320,7 @@ class DeferredRenderer : public BaseRenderer
 
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
-                Shader activeShader;
+                StandardShader activeShader;
 
                 if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
                 {
@@ -540,7 +539,7 @@ class DeferredRenderer : public BaseRenderer
 
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
-                Shader activeShader;
+                StandardShader activeShader;
                 if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
                 {
                     activeShader = defaultVertUnlitFrag;   
@@ -586,7 +585,7 @@ class DeferredRenderer : public BaseRenderer
             postProcessShader.UseProgram();
             postProcessShader.SetFloat("exposure", tonemapExposure);
             glBindVertexArray(screenQuadVAO);
-            glActiveTexture(GL_TEXTURE0 + ACCUMULATION_BUFFER_BINDING);
+            glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture); 
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -621,36 +620,36 @@ class DeferredRenderer : public BaseRenderer
         void ReloadShaders()
         {
             //Material specific shaders. These should dynamically load depending on available scene materials
-            defaultVertFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferAlbedo.frag");
+            defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferAlbedo.frag");
             defaultVertFrag.BuildProgram();
-            defaultVertFrag.BindUniformBlocks(NamedBufferBindings,3);
+            defaultVertFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
 
 
             
-            defaultVertTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
+            defaultVertTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
             defaultVertTexFrag.BuildProgram();
-            defaultVertTexFrag.BindUniformBlocks(NamedBufferBindings,3);
+            defaultVertTexFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
 
 
 
-            defaultVertNormalTexFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
+            defaultVertNormalTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
             if (enableNormalMaps)
             {
                 std::string s = "NORMAL_MAPPED";
                 defaultVertNormalTexFrag.AddPreProcessorDefines(&s,1);
             }
             defaultVertNormalTexFrag.BuildProgram();
-            defaultVertNormalTexFrag.BindUniformBlocks(NamedBufferBindings,3);
+            defaultVertNormalTexFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
             
 
 
-            defaultVertUnlitFrag = Shader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
+            defaultVertUnlitFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
             defaultVertUnlitFrag.BuildProgram();
-            defaultVertUnlitFrag.BindUniformBlocks(NamedBufferBindings,3);
+            defaultVertUnlitFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
             
 
 
-            directionalLightingPass = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/deferred/fsDeferredLighting.frag");
+            directionalLightingPass = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/deferred/fsDeferredLighting.frag");
             directionalLightingPass.AddPreProcessorDefines(preprocessorDefines);
             if (enableLightVolumes)
             {
@@ -668,36 +667,35 @@ class DeferredRenderer : public BaseRenderer
             directionalLightingPass.SetInt("gNormal", NORMAL_BUFFER_BINDING);
             directionalLightingPass.SetInt("gPosition", POSITION_BUFFER_BINDING);
             directionalLightingPass.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
-            directionalLightingPass.BindUniformBlock(NamedBufferBindings[UNIFORM_GLOBAL_MATRICES_BINDING], UNIFORM_GLOBAL_MATRICES_BINDING);
-            directionalLightingPass.BindUniformBlock(NamedBufferBindings[UNIFORM_GLOBAL_LIGHTS_BINDING], UNIFORM_GLOBAL_LIGHTS_BINDING);
-            directionalLightingPass.BindUniformBlock(NamedBufferBindings[UNIFORM_GLOBAL_SHADOWS_BINDING], UNIFORM_GLOBAL_SHADOWS_BINDING);
+            directionalLightingPass.BindUniformBlock(NamedUniformBufferBindings[UNIFORM_GLOBAL_MATRICES_BINDING], UNIFORM_GLOBAL_MATRICES_BINDING);
+            directionalLightingPass.BindUniformBlock(NamedUniformBufferBindings[UNIFORM_GLOBAL_LIGHTS_BINDING], UNIFORM_GLOBAL_LIGHTS_BINDING);
+            directionalLightingPass.BindUniformBlock(NamedUniformBufferBindings[UNIFORM_GLOBAL_SHADOWS_BINDING], UNIFORM_GLOBAL_SHADOWS_BINDING);
 
 
 
-            simpleDepthPass = Shader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
+            simpleDepthPass = StandardShader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
             simpleDepthPass.BuildProgram();
 
             
 
-            pointLightVolShader = Shader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/deferred/pointVolumeLighting.frag");
+            pointLightVolShader = StandardShader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/deferred/pointVolumeLighting.frag");
             pointLightVolShader.AddPreProcessorDefines(preprocessorDefines);
             pointLightVolShader.BuildProgram();
             pointLightVolShader.UseProgram();
             pointLightVolShader.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
             pointLightVolShader.SetInt("gNormal", NORMAL_BUFFER_BINDING);
             pointLightVolShader.SetInt("gPosition", POSITION_BUFFER_BINDING);
-            pointLightVolShader.BindUniformBlock(NamedBufferBindings[UNIFORM_GLOBAL_LIGHTS_BINDING],UNIFORM_GLOBAL_LIGHTS_BINDING);
+            pointLightVolShader.BindUniformBlock(NamedUniformBufferBindings[UNIFORM_GLOBAL_LIGHTS_BINDING],UNIFORM_GLOBAL_LIGHTS_BINDING);
 
 
 
-            postProcessShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemapLum.frag");
+            postProcessShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemapLum.frag");
             postProcessShader.BuildProgram();
             postProcessShader.UseProgram();
-            postProcessShader.SetInt("screenTexture", ACCUMULATION_BUFFER_BINDING);
 
 
 
-            FXAAShader = Shader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadFXAA.frag");
+            FXAAShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadFXAA.frag");
             FXAAShader.BuildProgram();
 
 
@@ -835,14 +833,14 @@ class DeferredRenderer : public BaseRenderer
         unsigned int LightsUBO;
         unsigned int MaterialUBO;
 
-        Shader defaultVertFrag;
-        Shader defaultVertTexFrag;
-        Shader defaultVertNormalTexFrag;
-        Shader defaultVertUnlitFrag;
+        StandardShader defaultVertFrag;
+        StandardShader defaultVertTexFrag;
+        StandardShader defaultVertNormalTexFrag;
+        StandardShader defaultVertUnlitFrag;
 
 
 
-        Shader directionalLightingPass;
+        StandardShader directionalLightingPass;
         unsigned int screenQuadVAO, screenQuadVBO;
         float quadVertices[24] = 
         {   // vertex attributes for a quad that fills the entire screen 
@@ -857,14 +855,14 @@ class DeferredRenderer : public BaseRenderer
         };
         
 
-        Shader simpleDepthPass; 
+        StandardShader simpleDepthPass; 
 
-        Shader pointLightVolShader;
+        StandardShader pointLightVolShader;
         std::shared_ptr<Mesh> pointLightVolume;
         
         
-        Shader postProcessShader;
-        Shader FXAAShader;
+        StandardShader postProcessShader;
+        StandardShader FXAAShader;
 };
 
 #endif

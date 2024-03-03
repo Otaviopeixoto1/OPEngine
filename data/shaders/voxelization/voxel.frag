@@ -11,7 +11,7 @@ layout(binding = 5) uniform sampler2DShadow shadowMap;
 
 in vec2 intTexCoords;
 in vec4 shadowCoord;
-in vec3 exNormal;
+in vec3 viewNormal;
 
 flat in uint domInd;
 
@@ -66,13 +66,14 @@ layout(std430, binding = 2) writeonly buffer SparseBuffer {
 
 
 
-
+// same data storage scheme described by: Wahlén, Conrad. "Global Illumination in Real-Time using Voxel Cone Tracing on Mobile Devices." (2016).
+// found at: https://liu.diva-portal.org/smash/get/diva2:1148572/FULLTEXT01.pdf
 
 struct VoxelData 
 {
 	vec4 color;
-	uint light;
-	uint count;
+	uint light; // voxels in shadow have light = 0 and lit voxels have light = 1
+	uint count; // the amount of voxels 
 };
 
 uint packARGB8(VoxelData dataIn) 
@@ -125,6 +126,53 @@ layout(location = 0) subroutine uniform SampleColor GetColor;
 
 
 
+float GetMainDirLightShadow(vec3 worldPos, vec3 worldNormal)
+{
+	//use view normal instead of world normal
+	//float bias = max(0.005 * (1.0 - dot(worldNormal, dirLights[lightIndex].direction.xyz)), 0.0005);
+	float bias = 0.00050;
+	vec2 texelSize = 1.0 / textureSize(shadowMap0, 0).xy;  
+	vec3 normalBias = worldNormal * max(texelSize.x, texelSize.y) * 1.4142136f * 100;
+
+
+	vec4 posClipSpace = lightSpaceMatrices[0] * vec4(worldPos.xyz + normalBias, 1);
+
+	// Perspective division is only realy necessary with perspective projection, 
+	// it wont affect ortographic projection be we do it anyway:
+	vec3 ndcPos = posClipSpace.xyz / posClipSpace.w;
+	ndcPos = ndcPos * 0.5 + 0.5; 
+
+	// Depth samples to compare   
+	float currentDepth = ndcPos.z; 
+
+	
+	// One sample:
+	//float closestDepth = texture(shadowMap0, vec3(ndcPos.xy, 0)).r;
+	//float shadow = currentDepth - bias > closestDepth  ? 0.0 : 1.0;
+
+
+
+	// Multiple samples (4x4 kernel):
+	float shadow = 0.0f;
+	for(float x = -1.5; x <= 1.5; ++x)
+	{
+		for(float y = -1.5; y <= 1.5; ++y)
+		{
+			//float pcfDepth = texture(shadowMap0, vec3(ndcPos.xy + vec2(x, y) * texelSize, 0) ).r; 
+			//shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0; 
+			
+			//for hardware pcf       
+			shadow += texture(shadowMap0, vec4(ndcPos.xy + vec2(x, y) * texelSize, 0, currentDepth - bias));
+		}    
+	}
+	shadow /= 9.0f;
+
+	return shadow;
+}
+
+
+
+
 
 void main()
 {	                           //color, light, count
@@ -141,19 +189,16 @@ void main()
 		voxelCoord = ivec3(gl_FragCoord.x, gl_FragCoord.y, depthCoord);
 	
 
-	// Calculate shadows
-	vec3 s = shadowCoord.xyz * 0.5f + 0.5f;
-    vec3 l = dirLights[0].direction.xyz;
-    float cosTheta = max(dot(l,normalize(exNormal)), 0.0f);
-    float b = 0.005f*tan(acos(cosTheta));
-    b = clamp(b, 0.0f,0.02f);
-    s.z = s.z - b;
+    vec3 viewLight = dirLights[0].direction.xyz;
 
-	float shadow = texture(shadowMap0, vec4(s.xy, 0, s.z));
-	data.light = uint(8.0f * (1.0f - shadow));
+	vec3 worldNormal = (inverseViewMatrix * vec4(viewNormal, 0.0f)).xyz;
+	float shadow = GetMainDirLightShadow(gl_FragCoord.xyz, worldNormal);
+	data.light = uint(8.0f * shadow);
 
-	// Set color
-	data.color = GetColor() * cosTheta;
+	//simple diffuse lighting
+	float NdotL = dot(viewNormal,viewLight);
+    float diff = max(NdotL, 0.0);
+	data.color = GetColor() * diff;
 	
 	uint outData = packARGB8(data);
 
