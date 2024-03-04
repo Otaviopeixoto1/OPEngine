@@ -1,49 +1,47 @@
 #version 440
 
-layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec3 inNormal;
-layout(location = 3) in uint inVoxelPos;
+layout (location = 0) in vec3 inPosition;
+layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec3 aTangent;
+layout (location = 3) in vec2 aTexCoords;
+layout (location = 4) in uint inVoxelPos;
 
-out vec4 outPosition;
-out vec3 outNormal;
+//out vec4 outPosition;
+//out vec3 outNormal;
 out vec4 outColor;
 
-layout(binding = 3) uniform usampler3D voxelData;
 
-struct Camera {
-	mat4 WTVmatrix;
-	mat4 VTPmatrix;
-	vec3 position;
+uniform usampler2DArray voxel2DTextures;
+uniform usampler3D voxel3DData;
+
+uniform uint mipLevel;
+uniform uint voxelRes;
+
+
+
+
+
+
+layout (std140) uniform GlobalMatrices
+{
+    mat4 projectionMatrix;
+    mat4 viewMatrix;
+    mat4 inverseViewMatrix;
+	mat4 SceneMatrices[3];
 };
 
-layout (std140, binding = 0) uniform CameraBuffer {
-	Camera cam;
-};
 
-struct SceneParams {
-	mat4 MTOmatrix[3];
-	mat4 MTWmatrix;
-	mat4 MTShadowMatrix;
-	vec3 lightDir;
-	uint voxelDraw;
-	uint view;
-	uint voxelRes;
-	uint voxelLayer;
-	uint numMipLevels;
-	uint mipLevel;
-};
 
-layout (std140, binding = 1) uniform SceneBuffer {
-	SceneParams scene;
-};
 
-struct VoxelData {
+struct VoxelData 
+{
 	vec4 color;
 	uint light;
 	uint count;
 };
 
-VoxelData unpackARGB8(uint bytesIn) {
+VoxelData unpackARGB8(uint bytesIn) 
+{
 	VoxelData data;
 	uvec3 uiColor;
 
@@ -60,7 +58,8 @@ VoxelData unpackARGB8(uint bytesIn) {
 	return data;
 }
 
-uvec3 unpackRG11B10(uint bytesIn) {
+uvec3 unpackRG11B10(uint bytesIn) 
+{
 	uvec3 outVec;
 
 	outVec.r = (bytesIn & 0xFFE00000) >> 21;
@@ -72,15 +71,17 @@ uvec3 unpackRG11B10(uint bytesIn) {
 
 void main(void)
 {
-	float size = float(scene.voxelRes >> scene.mipLevel);
+	float size = float(voxelRes >> mipLevel);
 	vec3 voxelPos = vec3(unpackRG11B10(inVoxelPos)) / size;
 
-	VoxelData data = unpackARGB8(textureLod(voxelData, voxelPos, float(scene.mipLevel)).r);
+	VoxelData data = unpackARGB8(textureLod(voxel3DData, voxelPos, float(mipLevel)).r);
 	data.color.rgb *= float(sign(data.light));
 	outColor = data.color;
+	//outColor = vec4(voxelPos, 1.0f);
 	
-	outNormal = mat3(cam.WTVmatrix) * inNormal;
-	vec4 temp = cam.WTVmatrix * scene.MTWmatrix * vec4(inPosition / size + 2.0f * voxelPos - vec3(1.0f), 1.0f);
-	outPosition = temp;
-	gl_Position = cam.VTPmatrix * temp;
+	//outNormal = mat3(cam.WTVmatrix) * inNormal; scene.MTWmatrix 
+	vec3 temp = inPosition / size + 2.0f * voxelPos - vec3(1.0f);
+	//temp /= 0.02f;
+	//outPosition = temp;
+	gl_Position = projectionMatrix * viewMatrix * vec4(temp,1.0f);
 }

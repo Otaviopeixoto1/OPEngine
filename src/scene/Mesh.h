@@ -22,11 +22,24 @@ enum MeshFlags
     OP_MESH_NORMALS = 1 << 0, // 1
     OP_MESH_TANGENTS = 1 << 1, // 2
     OP_MESH_TEXCOORDS = 1 << 2, // 4
-    OP_MESH_Flag5 = 1 << 3, // 8
-    OP_MESH_Flag6 = 1 << 4, // 16
-    OP_MESH_Flag7 = 1 << 5, // 32
-    OP_MESH_Flag8 = 1 << 6, // 64
-    OP_MESH_Flag9 = 1 << 7  //128
+    OP_MESH_EXTRA_ATTRIBUTE0 = 1 << 3, // 8
+    OP_MESH_EXTRA_ATTRIBUTE1 = 1 << 4, // 16
+    OP_MESH_EXTRA_ATTRIBUTE2 = 1 << 5, // 32
+    OP_MESH_EXTRA_ATTRIBUTE3 = 1 << 6, // 64
+    OP_MESH_EXTRA_ATTRIBUTE4 = 1 << 7  //128
+};
+
+enum MainMeshAttributeBindings
+{
+    MESH_COORDS_ATTRIBUTE = 0,
+    MESH_NORMALS_ATTRIBUTE = 1, 
+    MESH_TANGENTS_ATTRIBUTE = 2,
+    MESH_TEXCOORDS_ATTRIBUTE = 3,
+    MESH_EXTRA_ATTRIBUTE0 = 4,
+    MESH_EXTRA_ATTRIBUTE1 = 5, 
+    MESH_EXTRA_ATTRIBUTE2 = 6, 
+    MESH_EXTRA_ATTRIBUTE3 = 7, 
+    MESH_EXTRA_ATTRIBUTE4 = 8  
 };
 
 // Container for mesh data as well as methods to generate useful meshes
@@ -155,6 +168,30 @@ class Mesh
         {
             return (flags & (int)flag) == (int)flag;
         }
+
+        // Adds data from a given buffer into the vertex attributes 
+        unsigned int AddVertexAttribute(GLuint attBuffer)
+        {
+            for (unsigned int i = 0; i < 5; i++)
+            {
+                if (HasFlags(OP_MESH_EXTRA_ATTRIBUTE0 << i))
+                {
+                    continue;
+                }
+                BindBuffers();
+                glBindBuffer(GL_ARRAY_BUFFER, attBuffer);
+                glEnableVertexAttribArray(MESH_EXTRA_ATTRIBUTE0 + i);
+                glVertexAttribIPointer(MESH_EXTRA_ATTRIBUTE0 + i, 1, GL_UNSIGNED_INT, 0, 0);
+                glVertexAttribDivisor(MESH_EXTRA_ATTRIBUTE0 + i, 1);
+                UnbindBuffers();
+
+                return i;
+
+            }
+            
+        }
+
+
         
         void BindBuffers()
         {
@@ -165,14 +202,9 @@ class Mesh
             glBindVertexArray(0);
         }
 
-        void Draw(Shader &shader)
-        {
-
-        }
-
     private:
         //Vertex + Index buffers
-        unsigned int VAO, VBO, EBO;
+        GLuint VAO, VBO, EBO;
         unsigned int flags;
 
         void InitBuffers()
@@ -197,30 +229,30 @@ class Mesh
             // vertex positions
             if(HasFlags(OP_MESH_COORDS))
             {
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)0);
-                glEnableVertexAttribArray(0);
+                glVertexAttribPointer(MESH_COORDS_ATTRIBUTE, 3, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)0);
+                glEnableVertexAttribArray(MESH_COORDS_ATTRIBUTE);
             }
             
 
             // vertex normals
             if(HasFlags(OP_MESH_NORMALS))
             {
-                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)offsetof(MeshData::Vertex, Normal));
-                glEnableVertexAttribArray(1);
+                glVertexAttribPointer(MESH_NORMALS_ATTRIBUTE, 3, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)offsetof(MeshData::Vertex, Normal));
+                glEnableVertexAttribArray(MESH_NORMALS_ATTRIBUTE);
             }
 
             // vertex tangent
             if (HasFlags(OP_MESH_TANGENTS))
             {
-                glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)offsetof(MeshData::Vertex, Tangent));
-                glEnableVertexAttribArray(2);	
+                glVertexAttribPointer(MESH_TANGENTS_ATTRIBUTE, 3, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)offsetof(MeshData::Vertex, Tangent));
+                glEnableVertexAttribArray(MESH_TANGENTS_ATTRIBUTE);	
             }
 
             // vertex texture coords
             if (HasFlags(OP_MESH_TEXCOORDS))
             {
-                glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)offsetof(MeshData::Vertex, TexCoords));
-                glEnableVertexAttribArray(3);	
+                glVertexAttribPointer(MESH_TEXCOORDS_ATTRIBUTE, 2, GL_FLOAT, GL_FALSE, sizeof(MeshData::Vertex), (void*)offsetof(MeshData::Vertex, TexCoords));
+                glEnableVertexAttribArray(MESH_TEXCOORDS_ATTRIBUTE);	
             }
 
             

@@ -31,15 +31,15 @@ layout (std140) uniform GlobalMatrices
 // same data storage scheme described by: Wahlén, Conrad. "Global Illumination in Real-Time using Voxel Cone Tracing on Mobile Devices." (2016).
 // found at: https://liu.diva-portal.org/smash/get/diva2:1148572/FULLTEXT01.pdf
 
-struct Voxel3DData {
+struct VoxelData {
 	vec4 color;
 	uint light;
 	uint count;
 };
 
 
-Voxel3DData unpackARGB8(uint bytesIn) {
-	Voxel3DData data;
+VoxelData unpackARGB8(uint bytesIn) {
+	VoxelData data;
 	uvec3 uiColor;
 
 	// Put a first to improve max operation but it should not be very noticable
@@ -102,7 +102,7 @@ vec4 voxelSampleLevel(vec3 position, float level)
         float factor = offset.x * offset.y * offset.z;
 
 
-        Voxel3DData voxel = unpackARGB8(textureLod(voxel3DData, voxelPos, mip).r);
+        VoxelData voxel = unpackARGB8(textureLod(voxel3DData, voxelPos, mip).r);
 		
 		//check if voxelpos is out of bounds
         if(any(greaterThan(voxelPos, vec3(1.0f))) || any(lessThan(voxelPos, vec3(0.0f)))) 
