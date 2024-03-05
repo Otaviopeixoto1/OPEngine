@@ -123,7 +123,7 @@ void main(void)
 	if(currentVoxel < voxelCount) 
 	{
 		//Finding and sampling only the filled/active voxels in the sparse list:
-		uint currentOffset = drawCmd[currentLevel].baseInstance;
+		uint currentOffset = drawCmd[currentLevel].baseInstance; // the offset into the sparse list
 		uint voxelPos = currentVoxel + currentOffset;
 		uvec3 voxelCoord = unpackRG11B10(sparseList[voxelPos]);
 

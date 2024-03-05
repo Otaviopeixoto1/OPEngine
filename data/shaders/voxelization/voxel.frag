@@ -26,6 +26,7 @@ layout (std140) uniform GlobalMatrices
     mat4 viewMatrix;
     mat4 inverseViewMatrix;
 	mat4 SceneMatrices[3];
+	mat4 inverseVoxelMatrix;
 };
 
 layout (std140) uniform MaterialProperties
@@ -188,17 +189,19 @@ void main()
 	else 
 		voxelCoord = ivec3(gl_FragCoord.x, gl_FragCoord.y, depthCoord);
 	
+	vec3 vNormal = normalize(viewNormal);  
 
-    vec3 viewLight = dirLights[0].direction.xyz;
+    vec3 vLight = normalize(dirLights[0].direction.xyz);
 
-	vec3 worldNormal = (inverseViewMatrix * vec4(viewNormal, 0.0f)).xyz;
+	vec3 worldNormal = (inverseViewMatrix * vec4(vNormal, 0.0f)).xyz;
 	float shadow = GetMainDirLightShadow(gl_FragCoord.xyz, worldNormal);
 	data.light = uint(8.0f * shadow);
 
 	//simple diffuse lighting
-	float NdotL = dot(viewNormal,viewLight);
+	float NdotL = dot(vNormal,vLight);
     float diff = max(NdotL, 0.0);
-	data.color = GetColor() * diff;
+	data.color = GetColor() *diff;
+	
 	
 	uint outData = packARGB8(data);
 

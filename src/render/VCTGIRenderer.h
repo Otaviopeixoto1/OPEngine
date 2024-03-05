@@ -22,16 +22,18 @@ class VCTGIRenderer : public BaseRenderer
 
         static constexpr bool enableShadowMapping = true;
         static constexpr bool enableNormalMaps = true;
+        static constexpr bool enableLightVolumes = true;
+        
+        const int MAX_DIR_LIGHTS = 5;
+        const int MAX_POINT_LIGHTS = 20;
+
 
         float tonemapExposure = 1.0f;
         float FXAAContrastThreshold = 0.0312f;
         float FXAABrightnessThreshold = 0.063f;
 
-        static constexpr bool enableLightVolumes = true;
-        
+        unsigned int voxelRes = 256;
 
-        const int MAX_DIR_LIGHTS = 5;
-        const int MAX_POINT_LIGHTS = 20;
 
         std::unordered_map<std::string, unsigned int> preprocessorDefines =
         {
@@ -478,6 +480,30 @@ class VCTGIRenderer : public BaseRenderer
             auto voxelizationTask = profiler->AddTask("voxelization", Colors::belizeHole);
             voxelizationTask->Start();
 
+
+            // Setting LightsUBO:
+            glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
+            int offset = 0;
+
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, 4* sizeof(float), glm::value_ptr(lights.ambientLight));
+            offset = 4* sizeof(float);
+
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numDirLights);
+            offset += sizeof(int);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numPointLights);
+            offset += sizeof(int);
+
+            offset += 2 * sizeof(int);
+
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData), lights.directionalLights.data());
+            offset += MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData), lights.pointLights.data());
+            offset += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
+
+            glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+
+
             //these are bound in dispatch indirect and shader storage, since they are first filled in the voxelization (storage) and then read in the mipmap compute shader (indirect)
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndBuffer);     
             glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, compIndBuffer);
@@ -485,15 +511,6 @@ class VCTGIRenderer : public BaseRenderer
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, COMPUTE_INDIRECT_BINDING, compIndBuffer);
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, SPARSE_LIST_BINDING, sparseListBuffer);
 
-            auto sceneMat2 = glm::scale(glm::mat4(1.0f), glm::vec3(0.02,0.02,0.02)); //calculate based on the scene size or the frustrum bounds !!
-            auto sceneMat0 = glm::rotate(sceneMat2, -glm::half_pi<float>(), glm::vec3(0.0f, 1.0f, 0.0f));
-            auto sceneMat1 = glm::rotate(sceneMat2, glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
-
-            glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);  //this buffer could be set only once on initialization
-            glBufferSubData(GL_UNIFORM_BUFFER, 3*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(sceneMat0));
-            glBufferSubData(GL_UNIFORM_BUFFER, 4*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(sceneMat1));
-            glBufferSubData(GL_UNIFORM_BUFFER, 5*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(sceneMat2));
-            glBindBuffer(GL_UNIFORM_BUFFER, 0); 
 
             // Setup framebuffer for rendering offscreen
             GLint origViewportSize[4];
@@ -613,7 +630,8 @@ class VCTGIRenderer : public BaseRenderer
             mipmappingTask->Start();
 
             mipmappingShader.UseProgram();
-            for(GLuint level = 0; level < numMipLevels; level++) {
+            for(GLuint level = 0; level < numMipLevels; level++) 
+            {
                 glBindImageTexture(3, voxelBuffer, level, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
                 glBindImageTexture(4, voxelBuffer, level + 1, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
 
@@ -653,27 +671,6 @@ class VCTGIRenderer : public BaseRenderer
             glActiveTexture(GL_TEXTURE0 + POSITION_BINDING);
             glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
 
-            // Setting LightsUBO:
-            glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
-            int offset = 0;
-
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, 4* sizeof(float), glm::value_ptr(lights.ambientLight));
-            offset = 4* sizeof(float);
-
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numDirLights);
-            offset += sizeof(int);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numPointLights);
-            offset += sizeof(int);
-
-            offset += 2 * sizeof(int);
-
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData), lights.directionalLights.data());
-            offset += MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData), lights.pointLights.data());
-            offset += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
-
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
 
             conetraceShader.SetUInt("voxelRes", voxelRes);
             GLuint drawFunc = 3;
@@ -685,18 +682,16 @@ class VCTGIRenderer : public BaseRenderer
             conetraceTask->End();*/
 
             
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndBuffer);     
+
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);    
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glEnable(GL_DEPTH_TEST);
-            //glDepthMask(GL_FALSE);
 
             glActiveTexture(GL_TEXTURE0 + VOXEL3DTEX_BINDING);
             glBindTexture(GL_TEXTURE_3D, voxelBuffer);
 
             unsigned int mipLevel = 0;
-
-            
             
             drawVoxelsShader.UseProgram();
             drawVoxelsShader.SetUInt("mipLevel", mipLevel);
@@ -706,13 +701,10 @@ class VCTGIRenderer : public BaseRenderer
             
             glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(sizeof(DrawElementsIndirectCommand) * mipLevel)); // control this parameter with imgui
             
-            
-           
-           //glDepthMask(GL_TRUE);
 
 
             
-            /*
+            
             // 5) Unlit Pass (render objects with different lighting models using same depth buffer):
             // --------------------------------------------------------------------------------------
             auto renderUnlitTask = profiler->AddTask("Unlit & Sky Pass", Colors::greenSea);
@@ -756,7 +748,8 @@ class VCTGIRenderer : public BaseRenderer
             this->skyRenderer.Render(frameResources);
 
             renderUnlitTask->End();
-            
+
+            /*
             // 6) Postprocess Pass: apply tonemap to the HDR color buffer
             // ----------------------------------------------------------
             auto postProcessTask = profiler->AddTask("Tonemapping", Colors::carrot);
@@ -907,7 +900,8 @@ class VCTGIRenderer : public BaseRenderer
              *    mat4 projectionMatrix; 
              *    mat4 viewMatrix;       
              *    mat4 inverseViewMatrix
-             *    mat4 SceneMatrices[3];
+             *    mat4 voxelMatrices[3];
+             *    mat4 inverseVoxelMatrix;
              * }
              * 
              * LocalMatrices Uniform buffer structure:
@@ -920,7 +914,17 @@ class VCTGIRenderer : public BaseRenderer
             // Create the buffer and specify its size:
 
             glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
-            glBufferData(GL_UNIFORM_BUFFER, 6 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
+            glBufferData(GL_UNIFORM_BUFFER, 7*sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
+
+            auto voxelMatrix2 = glm::scale(glm::mat4(1.0f), glm::vec3(0.02,0.02,0.02)); //calculate based on the scene size or the frustrum bounds !!
+            auto voxelMatrix0 = glm::rotate(voxelMatrix2, -glm::half_pi<float>(), glm::vec3(0.0f, 1.0f, 0.0f));
+            auto voxelMatrix1 = glm::rotate(voxelMatrix2, glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
+            auto invVoxelMatrix2 = glm::inverse(voxelMatrix2);
+            glBufferSubData(GL_UNIFORM_BUFFER, 3*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(voxelMatrix0));
+            glBufferSubData(GL_UNIFORM_BUFFER, 4*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(voxelMatrix1));
+            glBufferSubData(GL_UNIFORM_BUFFER, 5*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(voxelMatrix2));
+            glBufferSubData(GL_UNIFORM_BUFFER, 6*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(invVoxelMatrix2));
+            
             glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
             glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
             glBindBuffer(GL_UNIFORM_BUFFER, 0);
@@ -1046,7 +1050,6 @@ class VCTGIRenderer : public BaseRenderer
         GLuint sparseListBuffer;
         GLuint voxelBuffer;
         GLuint voxel2DTex;
-        unsigned int voxelRes = 256;
         GLuint numMipLevels;
         StandardShader voxelizationShader;
         ComputeShader mipmappingShader;

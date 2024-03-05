@@ -24,6 +24,7 @@ layout (std140) uniform GlobalMatrices
     mat4 viewMatrix;
     mat4 inverseViewMatrix;
 	mat4 SceneMatrices[3];
+	mat4 inverseVoxelMatrix;
 };
 
 

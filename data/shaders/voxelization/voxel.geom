@@ -5,7 +5,7 @@
 layout(triangles) in;
 layout(triangle_strip, max_vertices = 3) out;
 
-
+in vec4 vNormal[3];
 in vec2 TexCoords[3];
 
 flat out uint domInd;
@@ -28,6 +28,7 @@ layout (std140) uniform GlobalMatrices
 / these matrices just fixed rotations and dont change with the viewer position 
 /*/
 	mat4 SceneMatrices[3];
+	mat4 inverseVoxelMatrix;
 };
 
 layout (std140) uniform LocalMatrices
@@ -58,6 +59,8 @@ void main()
     vec3 dir = CalculateNormal(gl_in[0].gl_Position.xyz, gl_in[1].gl_Position.xyz, gl_in[2].gl_Position.xyz);
 	viewNormal = (viewMatrix * vec4(dir, 0.0f)).xyz;
 	dir = abs(dir);
+	
+
 	float maxComponent = max(dir.x, max(dir.y, dir.z));
 	uint ind = maxComponent == dir.x ? 0 : maxComponent == dir.y ? 1 : 2;
 	domInd = ind;
@@ -65,16 +68,19 @@ void main()
 	gl_Position = SceneMatrices[ind] * gl_in[0].gl_Position;
 	shadowCoord = lightSpaceMatrices[0] * gl_in[0].gl_Position;
 	intTexCoords = TexCoords[0];
+	//viewNormal = vNormal[0].xyz;
 	EmitVertex();
 	
 	gl_Position = SceneMatrices[ind] * gl_in[1].gl_Position;
 	shadowCoord = lightSpaceMatrices[0] * gl_in[1].gl_Position;
 	intTexCoords = TexCoords[1];
+	//viewNormal = vNormal[1].xyz;
 	EmitVertex();
 
 	gl_Position = SceneMatrices[ind] * gl_in[2].gl_Position;
 	shadowCoord = lightSpaceMatrices[0] * gl_in[2].gl_Position;
 	intTexCoords = TexCoords[2];
+	//viewNormal = vNormal[2].xyz;
 	EmitVertex();
 
 	EndPrimitive();

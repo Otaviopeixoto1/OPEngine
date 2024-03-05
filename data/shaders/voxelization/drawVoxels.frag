@@ -9,6 +9,6 @@ out vec4 finalColor;
 
 void main()
 {	
-	//finalColor = outColor;
-	finalColor = vec4(1.0f,0.0f,0.0f,1.0f);
+	finalColor = outColor;
+	//finalColor = vec4(1.0f,0.0f,0.0f,1.0f);
 }
