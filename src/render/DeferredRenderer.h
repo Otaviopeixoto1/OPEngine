@@ -15,16 +15,20 @@ class DeferredRenderer : public BaseRenderer
 
         static constexpr bool enableShadowMapping = true;
         static constexpr bool enableNormalMaps = true;
+        static constexpr bool enableLightVolumes = true;
+        
+        const int MAX_DIR_LIGHTS = 5;
+        const int MAX_POINT_LIGHTS = 20;
+        
 
         float tonemapExposure = 1.0f;
         float FXAAContrastThreshold = 0.0312f;
         float FXAABrightnessThreshold = 0.063f;
 
-        static constexpr bool enableLightVolumes = true;
-        
 
-        const int MAX_DIR_LIGHTS = 5;
-        const int MAX_POINT_LIGHTS = 20;
+
+
+
 
         std::unordered_map<std::string, unsigned int> preprocessorDefines =
         {
@@ -64,11 +68,10 @@ class DeferredRenderer : public BaseRenderer
         
         
         
-        DeferredRenderer(unsigned int vpWidth, unsigned int vpHeight, OPProfiler::OPProfiler *profiler)
+        DeferredRenderer(unsigned int vpWidth, unsigned int vpHeight)
         {
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
-            this->profiler = profiler;
         }
 
         void RecreateResources(Scene &scene, Camera &camera)
@@ -260,7 +263,7 @@ class DeferredRenderer : public BaseRenderer
         }
 
 
-        void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window)
+        void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window, OPProfiler::OPProfiler *profiler)
         {
             // Set default rendering settings:
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -807,8 +810,6 @@ class DeferredRenderer : public BaseRenderer
         }
 
     private:
-        OPProfiler::OPProfiler *profiler;
-
         ShadowRenderer shadowRenderer;
         SkyRenderer skyRenderer;
 

@@ -90,11 +90,10 @@ class VCTGIRenderer : public BaseRenderer
         
         
         
-        VCTGIRenderer(unsigned int vpWidth, unsigned int vpHeight, OPProfiler::OPProfiler *profiler)
+        VCTGIRenderer(unsigned int vpWidth, unsigned int vpHeight)
         {
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
-            this->profiler = profiler;
         }
 
         void RecreateResources(Scene &scene, Camera &camera)
@@ -324,7 +323,7 @@ class VCTGIRenderer : public BaseRenderer
         }
 
 
-        void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window)
+        void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window, OPProfiler::OPProfiler *profiler)
         {
             // Set default rendering settings:
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -487,14 +486,11 @@ class VCTGIRenderer : public BaseRenderer
 
             glBufferSubData(GL_UNIFORM_BUFFER, offset, 4* sizeof(float), glm::value_ptr(lights.ambientLight));
             offset = 4* sizeof(float);
-
             glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numDirLights);
             offset += sizeof(int);
             glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numPointLights);
             offset += sizeof(int);
-
             offset += 2 * sizeof(int);
-
             glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData), lights.directionalLights.data());
             offset += MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData);
             glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData), lights.pointLights.data());
@@ -550,6 +546,8 @@ class VCTGIRenderer : public BaseRenderer
             
             // 1st part of voxelization:
             voxelizationShader.UseProgram();
+            voxelizationShader.SetUInt("voxelRes", voxelRes);
+            
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
                 GLuint activeRoutine;
@@ -648,7 +646,7 @@ class VCTGIRenderer : public BaseRenderer
 
 
             // 4) Conetrace Pass
-            /*auto conetraceTask = profiler->AddTask("Cone tracing", Colors::orange);
+            auto conetraceTask = profiler->AddTask("Cone tracing", Colors::orange);
             conetraceTask->Start();
 
             glBindFramebuffer(GL_FRAMEBUFFER, lightAccumulationFBO);
@@ -656,7 +654,7 @@ class VCTGIRenderer : public BaseRenderer
             glDepthMask(GL_FALSE);
 
             conetraceShader.UseProgram();
-            glBindVertexArray(screenQuadVAO);
+            
 
             glActiveTexture(GL_TEXTURE0 + VOXEL2DTEX_BINDING);
             glBindTexture(GL_TEXTURE_2D_ARRAY, voxel2DTex);
@@ -664,7 +662,7 @@ class VCTGIRenderer : public BaseRenderer
             glBindTexture(GL_TEXTURE_3D, voxelBuffer);
             glActiveTexture(GL_TEXTURE0 + SHADOW_MAP0_BINDING);
             glBindTexture(GL_TEXTURE_2D_ARRAY, shadowMapBuffers[0]);
-            glActiveTexture(GL_TEXTURE0 + COLOR_SPEC_BINDING);
+            glActiveTexture(GL_TEXTURE0 + COLOR_SPEC_BINDING); 
             glBindTexture(GL_TEXTURE_2D, gColorBuffer);
             glActiveTexture(GL_TEXTURE0 + NORMAL_BINDING);
             glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
@@ -674,16 +672,17 @@ class VCTGIRenderer : public BaseRenderer
 
             conetraceShader.SetUInt("voxelRes", voxelRes);
             GLuint drawFunc = 3;
+            glBindVertexArray(screenQuadVAO);
             glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &drawFunc);
 
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
             glDepthMask(GL_TRUE);
-            conetraceTask->End();*/
+            conetraceTask->End();
 
-            
+            /*
 
-
+            //draw voxels
             glBindFramebuffer(GL_FRAMEBUFFER, 0);    
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glEnable(GL_DEPTH_TEST);
@@ -700,8 +699,8 @@ class VCTGIRenderer : public BaseRenderer
             voxelMesh->BindBuffers();
             
             glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(sizeof(DrawElementsIndirectCommand) * mipLevel)); // control this parameter with imgui
+            */
             
-
 
             
             
@@ -749,7 +748,7 @@ class VCTGIRenderer : public BaseRenderer
 
             renderUnlitTask->End();
 
-            /*
+                 /**/
             // 6) Postprocess Pass: apply tonemap to the HDR color buffer
             // ----------------------------------------------------------
             auto postProcessTask = profiler->AddTask("Tonemapping", Colors::carrot);
@@ -786,8 +785,22 @@ class VCTGIRenderer : public BaseRenderer
             glBindTexture(GL_TEXTURE_2D, postProcessColorBuffer); 
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
-            FXAATask->End();*/
+            FXAATask->End();       
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1007,8 +1020,6 @@ class VCTGIRenderer : public BaseRenderer
         }
 
     private:
-        OPProfiler::OPProfiler *profiler;
-
         ShadowRenderer shadowRenderer;
         SkyRenderer skyRenderer;
 

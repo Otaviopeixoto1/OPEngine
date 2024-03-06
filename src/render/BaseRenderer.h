@@ -6,6 +6,7 @@
 #include "../scene/Camera.h"
 #include "../scene/lights.h"
 #include "../common/MathUtils.h"
+#include "../debug/OPProfiler.h"
 
 //excpecting glfwWindow to be included in the main.cpp
 class GLFWwindow;
@@ -19,7 +20,7 @@ class BaseRenderer
 
         //Original:
         //virtual void RenderFrame(const legit::InFlightQueue::FrameInfo &frameInfo, const Camera &camera, const Camera &light, Scene *scene, GLFWwindow *window){}
-        virtual void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window){}
+        virtual void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window, OPProfiler::OPProfiler *profiler){}
         virtual void ReloadShaders(){}
         virtual void ChangeView(){}
 

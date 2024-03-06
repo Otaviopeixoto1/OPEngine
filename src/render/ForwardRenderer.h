@@ -18,11 +18,11 @@ class ForwardRenderer : public BaseRenderer
         static constexpr bool enableShadowMapping = true;
         static constexpr bool enableNormalMaps = true;
 
-        unsigned int MSAASamples = 4; 
-        float tonemapExposure = 1.0f;
-
         const int MAX_DIR_LIGHTS = 3;
         const int MAX_POINT_LIGHTS = 10;
+
+        unsigned int MSAASamples = 4; 
+        float tonemapExposure = 1.0f;
 
 
         std::unordered_map<std::string, unsigned int> preprocessorDefines =
@@ -62,11 +62,10 @@ class ForwardRenderer : public BaseRenderer
             
         };
 
-        ForwardRenderer(unsigned int vpWidth, unsigned int vpHeight, OPProfiler::OPProfiler *profiler = nullptr)
+        ForwardRenderer(unsigned int vpWidth, unsigned int vpHeight)
         {
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
-            this->profiler = profiler;
         }
 
         void RecreateResources(Scene &scene, Camera &camera)
@@ -180,7 +179,7 @@ class ForwardRenderer : public BaseRenderer
         }
 
 
-        void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window)
+        void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window, OPProfiler::OPProfiler *profiler)
         {
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             glEnable(GL_DEPTH_TEST);
@@ -576,8 +575,6 @@ class ForwardRenderer : public BaseRenderer
         }
 
     private:
-        OPProfiler::OPProfiler *profiler;
-
         ShadowRenderer shadowRenderer;
         SkyRenderer skyRenderer;
 

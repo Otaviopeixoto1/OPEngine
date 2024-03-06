@@ -8,6 +8,8 @@ layout(binding = 2, r32ui) uniform uimage2DArray voxelTextures;
 layout(binding = 3, r32ui) uniform uimage3D voxelData;
 layout(binding = 5) uniform sampler2DShadow shadowMap;
 
+uniform uint voxelRes;
+
 
 in vec2 intTexCoords;
 in vec4 shadowCoord;
@@ -25,7 +27,7 @@ layout (std140) uniform GlobalMatrices
     mat4 projectionMatrix;
     mat4 viewMatrix;
     mat4 inverseViewMatrix;
-	mat4 SceneMatrices[3];
+	mat4 voxelMatrices[3];
 	mat4 inverseVoxelMatrix;
 };
 
@@ -180,17 +182,19 @@ void main()
 	VoxelData data = VoxelData(vec4(0.0f), 0x0, 0x8);
 
 	ivec3 voxelCoord;					//256 = voxelres. Add variable for this
-	int depthCoord = int(gl_FragCoord.z * 256);
+	int depthCoord = int(gl_FragCoord.z * voxelRes);
+
 
 	if(domInd == 0) 
-		voxelCoord = ivec3(depthCoord, gl_FragCoord.y, 256 - gl_FragCoord.x); 
+		voxelCoord = ivec3(depthCoord, gl_FragCoord.y, voxelRes - gl_FragCoord.x); 
 	else if (domInd == 1) 
-		voxelCoord = ivec3(gl_FragCoord.x, depthCoord, 256 - gl_FragCoord.y);
+		voxelCoord = ivec3(gl_FragCoord.x, depthCoord, voxelRes - gl_FragCoord.y);
 	else 
 		voxelCoord = ivec3(gl_FragCoord.x, gl_FragCoord.y, depthCoord);
+
+
 	
 	vec3 vNormal = normalize(viewNormal);  
-
     vec3 vLight = normalize(dirLights[0].direction.xyz);
 
 	vec3 worldNormal = (inverseViewMatrix * vec4(vNormal, 0.0f)).xyz;
@@ -200,13 +204,15 @@ void main()
 	//simple diffuse lighting
 	float NdotL = dot(vNormal,vLight);
     float diff = max(NdotL, 0.0);
-	data.color = GetColor() *diff;
+	data.color = GetColor() * diff;
 	
 	
 	uint outData = packARGB8(data);
 
 	//writes the "most lit" voxel to the 2d texture
 	imageAtomicMax(voxelTextures, ivec3(ivec2(gl_FragCoord.xy), domInd), outData);
+
+	//THIS MIGHT NOT BE NECESSARY 
 	uint prevData = imageAtomicMax(voxelData, voxelCoord, outData);
 
 	// if this voxel was empty before, add it to the sparse list

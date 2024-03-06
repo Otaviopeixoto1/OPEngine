@@ -20,14 +20,14 @@ layout (std140) uniform GlobalMatrices
     mat4 inverseViewMatrix;
 	
 /*/
-/ SceneMatrices[3]: these matrices that project the scene in three different ways: 
+/ voxelMatrices[3]: these matrices that project the scene in three different ways: 
 / 0 = view along x axis
 / 1 = view along y axis
 / 2 = view along z axis (identity matrix for the "default" view) 
 /
 / these matrices just fixed rotations and dont change with the viewer position 
 /*/
-	mat4 SceneMatrices[3];
+	mat4 voxelMatrices[3];
 	mat4 inverseVoxelMatrix;
 };
 
@@ -65,19 +65,21 @@ void main()
 	uint ind = maxComponent == dir.x ? 0 : maxComponent == dir.y ? 1 : 2;
 	domInd = ind;
 
-	gl_Position = SceneMatrices[ind] * gl_in[0].gl_Position;
+	//MAKE A FOR LOOP
+
+	gl_Position = voxelMatrices[ind] * gl_in[0].gl_Position;
 	shadowCoord = lightSpaceMatrices[0] * gl_in[0].gl_Position;
 	intTexCoords = TexCoords[0];
 	//viewNormal = vNormal[0].xyz;
 	EmitVertex();
 	
-	gl_Position = SceneMatrices[ind] * gl_in[1].gl_Position;
+	gl_Position = voxelMatrices[ind] * gl_in[1].gl_Position;
 	shadowCoord = lightSpaceMatrices[0] * gl_in[1].gl_Position;
 	intTexCoords = TexCoords[1];
 	//viewNormal = vNormal[1].xyz;
 	EmitVertex();
 
-	gl_Position = SceneMatrices[ind] * gl_in[2].gl_Position;
+	gl_Position = voxelMatrices[ind] * gl_in[2].gl_Position;
 	shadowCoord = lightSpaceMatrices[0] * gl_in[2].gl_Position;
 	intTexCoords = TexCoords[2];
 	//viewNormal = vNormal[2].xyz;

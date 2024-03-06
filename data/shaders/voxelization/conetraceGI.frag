@@ -23,7 +23,7 @@ layout (std140) uniform GlobalMatrices
     mat4 projectionMatrix;
     mat4 viewMatrix;
     mat4 inverseViewMatrix;
-	mat4 SceneMatrices[3];
+	mat4 voxelMatrices[3];
 	mat4 inverseVoxelMatrix;
 };
 
@@ -128,6 +128,8 @@ vec4 ConeTrace60(vec3 startPos, vec3 dir, float aoDist, float maxDist, float vox
 	vec4 sampleValue;
 	float sampleWeight;
 	float sampleLOD = 0.0f;
+
+	//return voxelSampleLevel(startPos, 0);
 	
 	for(float dist = voxelSize; dist < maxDist && accum.a < 1.0f;) 
 	{
@@ -146,7 +148,7 @@ vec4 ConeTrace60(vec3 startPos, vec3 dir, float aoDist, float maxDist, float vox
 	return vec4(accum.rgb, 1.0f - opacity);
 }
 
-vec4 DiffuseTrace(vec3 worldPos, vec3 worldNormal, float maxDistance) 
+vec4 DiffuseTrace(vec3 voxelPos, vec3 worldNormal, float maxDistance) 
 {
 	// cone trace directions:
 	vec3 dirs[] = {  
@@ -168,7 +170,7 @@ vec4 DiffuseTrace(vec3 worldPos, vec3 worldNormal, float maxDistance)
 	float voxelSize = 2.0f / float(voxelRes);
 	float aoDistance = min(0.03f, maxDistance);
 
-	worldPos += worldNormal * voxelSize;
+	voxelPos += worldNormal * voxelSize;
 
 	//constructing a vector basis using the world normal:
 	vec3 U = (abs(worldNormal.y) < 0.7) ? vec3(0.0f, 1.0f, 0.0f) : vec3(0.0f, 0.0f, 1.0f); 
@@ -180,7 +182,7 @@ vec4 DiffuseTrace(vec3 worldPos, vec3 worldNormal, float maxDistance)
 	for(int i = 0; i < 6; i++) 
 	{
 		vec3 direction = dirs[i].x * R + dirs[i].y * worldNormal + dirs[i].z * U;
-		total += weight[int(i != 0)] * ConeTrace60(worldPos, direction, aoDistance, maxDistance, voxelSize);
+		total += weight[int(i != 0)] * ConeTrace60(voxelPos, direction, aoDistance, maxDistance, voxelSize);
 	}
 
 	return total;
@@ -377,16 +379,15 @@ vec4 GIAOShadows()
 
     vec4 l = CalcDirLight(0, viewNormal, -normalize(ViewFragPos.xyz), vec3(1,1,1), cs.a);
     float s = GetDirLightShadow(0, ViewFragPos.xyz, worldPos.xyz, worldNormal);
-
-	//the coordinates of world position need to be scaled in the same way as the coordinates we used to store the voxels
-	// (using the scenematrix[2])
-	//the result is also view dependent, which doesnt make sense
-    vec4 d = DiffuseTrace((SceneMatrices[2] * worldPos).xyz, worldNormal, maxDst);
+	
+	vec4 voxelPos = voxelMatrices[2] * worldPos;
+	voxelPos.xyz  = (voxelPos.xyz + vec3(1.0f))/2;
+    vec4 d = DiffuseTrace(voxelPos.xyz, worldNormal, maxDst);
 
 	//s = mix(d.w, s * d.w, 0.9);
 
 	vec4 f = vec4(1.0f);
-	//f.xyz = l.xyz * s * c.xyz + 2.0f * d.xyz * c.xyz;
+	//f.xyz = l.xyz * s * c.xyz + d.xyz * c.xyz;
 	//f.xyz = l.xyz * s * c.xyz;
 	f.xyz =  d.xyz;
 

@@ -170,9 +170,9 @@ int main()
     
     //An extremely weird problem happens to the shadow renderer when passing the profiler pointer to the forward renderer constructor !!!!!
 
-    ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight, &profiler);
-    DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight, &profiler);
-    VCTGIRenderer vctgiRenderer = VCTGIRenderer(windowWidth, windowHeight, &profiler);
+    ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight);
+    DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight);
+    VCTGIRenderer vctgiRenderer = VCTGIRenderer(windowWidth, windowHeight);
 
     BaseRenderer* renderer = &vctgiRenderer;
 
@@ -249,7 +249,7 @@ int main()
         // Rendering the scene
         // -------------------
 
-        renderer->RenderFrame(mainCamera, &scene, window);
+        renderer->RenderFrame(mainCamera, &scene, window, &profiler);
 
 
         profiler.EndFrame();
