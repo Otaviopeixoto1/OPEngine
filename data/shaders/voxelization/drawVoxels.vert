@@ -78,13 +78,7 @@ void main(void)
 	VoxelData data = unpackARGB8(textureLod(voxel3DData, voxelPos, float(mipLevel)).r);
 	data.color.rgb *= float(sign(data.light));
 	outColor = data.color;
-	//outColor = vec4(float(data.count)/32.0f,0.0f,0.0f,1.0f);
-	//outColor = vec4(voxelPos, 1.0f);
-	//outColor =  vec4(textureLod(voxel3DData, voxelPos, float(mipLevel)).rrr, 1.0f);
-	
-	//outNormal = mat3(cam.WTVmatrix) * inNormal; scene.MTWmatrix 
 
-	//voxelPos is stored between 0 and 1, we need to properly center them:
 	vec3 temp = inPosition / size + 2.0f * voxelPos - vec3(1.0f);
 
 	gl_Position = projectionMatrix * viewMatrix * inverseVoxelMatrix * vec4(temp,1.0f);

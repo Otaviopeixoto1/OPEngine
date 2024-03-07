@@ -4,7 +4,7 @@ layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
 layout (location = 3) in vec2 aTexCoords;
 
-out vec2 TexCoords;
+out vec2 vTexCoords;
 out vec4 vNormal;
 
 layout (std140) uniform GlobalMatrices
@@ -27,7 +27,7 @@ layout (std140) uniform LocalMatrices
 
 void main()
 {
-    TexCoords = aTexCoords;    
+    vTexCoords = aTexCoords;    
     vNormal = normalMatrix * vec4(aNormal, 0.0f);
     gl_Position = modelMatrix * vec4(aPos, 1.0f);
 }

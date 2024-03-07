@@ -83,7 +83,7 @@ class DeferredRenderer : public BaseRenderer
             // Shadow maps:
             if (enableShadowMapping)
             {
-                this->shadowRenderer = ShadowRenderer(
+                this->shadowRenderer = CascadedShadowRenderer(
                     camera.Near,
                     camera.Far,
                     UNIFORM_GLOBAL_SHADOWS_BINDING, 
@@ -324,6 +324,7 @@ class DeferredRenderer : public BaseRenderer
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
                 StandardShader activeShader;
+                GLuint activeRoutine;
 
                 if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
                 {
@@ -332,14 +333,17 @@ class DeferredRenderer : public BaseRenderer
                 else if (materialInstance->HasFlags(OP_MATERIAL_TEXTURED_DIFFUSE | OP_MATERIAL_TEXTURED_NORMAL))
                 {
                     activeShader = defaultVertNormalTexFrag;
+                    activeRoutine = 1;
                 }
                 else if (materialInstance->HasFlag(OP_MATERIAL_TEXTURED_DIFFUSE))
                 {
-                    activeShader = defaultVertTexFrag;
+                    activeShader = defaultVertFrag;
+                    activeRoutine = 1;
                 }
                 else
                 {
                     activeShader = defaultVertFrag;
+                    activeRoutine = 0;
                 }
 
                 // shader has to be used before updating the uniforms
@@ -348,6 +352,9 @@ class DeferredRenderer : public BaseRenderer
                     activeShader.UseProgram();
                     shaderCache = activeShader.ID;
                 }
+
+                // setting if the color is sampled from texture or from UBO
+                glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &activeRoutine);
 
 
                 // Setting object-related properties
@@ -621,18 +628,10 @@ class DeferredRenderer : public BaseRenderer
 
 
         void ReloadShaders()
-        {
-            //Material specific shaders. These should dynamically load depending on available scene materials
-            defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferAlbedo.frag");
+        {   
+            defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
             defaultVertFrag.BuildProgram();
             defaultVertFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
-
-
-            
-            defaultVertTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
-            defaultVertTexFrag.BuildProgram();
-            defaultVertTexFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
-
 
 
             defaultVertNormalTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
@@ -810,7 +809,7 @@ class DeferredRenderer : public BaseRenderer
         }
 
     private:
-        ShadowRenderer shadowRenderer;
+        CascadedShadowRenderer shadowRenderer;
         SkyRenderer skyRenderer;
 
         unsigned int viewportWidth;
@@ -835,7 +834,6 @@ class DeferredRenderer : public BaseRenderer
         unsigned int MaterialUBO;
 
         StandardShader defaultVertFrag;
-        StandardShader defaultVertTexFrag;
         StandardShader defaultVertNormalTexFrag;
         StandardShader defaultVertUnlitFrag;
 

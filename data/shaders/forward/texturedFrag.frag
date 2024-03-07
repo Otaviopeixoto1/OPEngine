@@ -1,4 +1,4 @@
-#version 330 core
+#version 440 core
 
 #include "lights.glsl"
 
@@ -29,6 +29,31 @@ layout (std140) uniform MaterialProperties
     vec4 emissiveColor;
     vec4 specular;
 };
+
+
+//We define 2 sampling methods: one for when the model is textured and the other for untextured models. This allows the same shader program to be used
+//for both cases, instead of having to build and manage 2 different programs
+subroutine vec4 GetColor();
+
+layout(index = 0) subroutine(GetColor) 
+vec4 AlbedoColor() {return albedoColor;}
+
+layout(index = 1) subroutine(GetColor)
+vec4 TextureColor() {return vec4(texture(texture_diffuse1, TexCoords).rgb, 1.0f);}
+
+layout(location = 0) subroutine uniform GetColor SampleColor;
+
+
+subroutine vec4 GetSpecular();
+
+layout(index = 2) subroutine(GetSpecular) 
+vec4 UniformSpecular() {return specular;}
+
+layout(index = 3) subroutine(GetSpecular)
+vec4 TextureSpecular() {return vec4(texture(texture_specular1, TexCoords).rgb, 1.0f);}
+
+layout(location = 1) subroutine uniform GetSpecular SampleSpecular;
+
 
 
 
@@ -85,16 +110,14 @@ vec3 CalcBumpedNormal()
 
 void main()
 {    
-    vec4 albedo = texture(texture_diffuse1, TexCoords);
-    vec4 specMap = texture(texture_specular1, TexCoords);
+    vec4 albedo = SampleColor();
+    vec4 specMap = SampleSpecular();
 
 
     vec4 outFrag = vec4(ambientLight.xyz * ambientLight.w,1.0) * albedo;
 
     #ifdef NORMAL_MAPPED
-        //vec3 norm = CalcBumpedNormal();
         vec3 norm = perturb_normal(normalize(ViewNormal), -ViewFragPos, TexCoords);
-        //vec3 norm = normalize(ViewNormal);
     #else
         vec3 norm = normalize(ViewNormal);
     #endif
@@ -115,6 +138,4 @@ void main()
     }
 
     FragColor = outFrag;
-    //FragColor = vec4(norm,1.0);
-    //FragColor = vec4(TexCoords,0.0,1.0);
 }

@@ -3,12 +3,14 @@
 
 #include "RenderFeature.h"
 
+
+
 // Cascade partitioning scheme was Based on: https://developer.download.nvidia.com/SDK/10.5/opengl/src/cascaded_shadow_maps/doc/cascaded_shadow_maps.pdf
 
 
 //Add enum containing all shadow mapping techniques to select from
 
-class ShadowRenderer : public RenderFeature
+class CascadedShadowRenderer : public RenderFeature
 {
     public:
         float seamCorrection = 0.4f;
@@ -16,9 +18,9 @@ class ShadowRenderer : public RenderFeature
         // This parameter multiplies the size of each frustrum in the CSM
         float zMult = 4.0f;
 
-        ShadowRenderer(){}
+        CascadedShadowRenderer(){}
 
-        ShadowRenderer(float camNear, float camFar, unsigned int shadowBufferBinding, unsigned int cascadeCount, unsigned int ShadowWidth, unsigned int ShadowHeight)
+        CascadedShadowRenderer(float camNear, float camFar, unsigned int shadowBufferBinding, unsigned int cascadeCount, unsigned int ShadowWidth, unsigned int ShadowHeight)
         {
             this->cameraNear = camNear;
             this->cameraFar = camFar;
@@ -95,8 +97,6 @@ class ShadowRenderer : public RenderFeature
                     // the camera (this is for shader calculations)
                     frustrumCuts[i] = cameraFar * 1.1f;
                 }
-                
-                //std::cout << frustrumCuts[i] << "\n";
             }
 
 

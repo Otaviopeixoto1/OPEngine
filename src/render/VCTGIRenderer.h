@@ -28,11 +28,12 @@ class VCTGIRenderer : public BaseRenderer
         const int MAX_POINT_LIGHTS = 20;
 
 
-        float tonemapExposure = 1.0f;
+        float tonemapExposure = 0.3f;
         float FXAAContrastThreshold = 0.0312f;
         float FXAABrightnessThreshold = 0.063f;
-
         unsigned int voxelRes = 256;
+        bool drawVoxels = false;
+
 
 
         std::unordered_map<std::string, unsigned int> preprocessorDefines =
@@ -40,14 +41,6 @@ class VCTGIRenderer : public BaseRenderer
             {"MAX_DIR_LIGHTS", MAX_DIR_LIGHTS},
             {"MAX_POINT_LIGHTS", MAX_POINT_LIGHTS},
             {"SHADOW_CASCADE_COUNT", SHADOW_CASCADE_COUNT}
-        };
-
-        enum LightingPassBufferBindings
-        {
-            COLOR_SPEC_BUFFER_BINDING = 0,
-            NORMAL_BUFFER_BINDING = 1,
-            POSITION_BUFFER_BINDING = 2,
-            SHADOW_MAP_BUFFER0_BINDING = 3,
         };
 
         // Adopted naming conventions for the global uniform blocks
@@ -60,15 +53,30 @@ class VCTGIRenderer : public BaseRenderer
 
         };
 
+        enum gBufferPassBindings
+        {
+            G_COLOR_SPEC_BUFFER_BINDING = 0,
+            G_NORMAL_BUFFER_BINDING = 1,
+            G_POSITION_BUFFER_BINDING = 2,
+        };
+
+
+        enum VoxelizationPassBindings
+        {
+            VX_COLOR_SPEC_BINDING = 0,
+            VX_VOXEL2DTEX_BINDING = 1,
+            VX_VOXEL3DTEX_BINDING = 2,
+            VX_SHADOW_MAP0_BINDING = 3,
+        };
         
         enum GIPassBindings
         {
-            VOXEL2DTEX_BINDING = 0,
-            VOXEL3DTEX_BINDING = 1,
-            SHADOW_MAP0_BINDING = 2,
-            COLOR_SPEC_BINDING = 3,
-            NORMAL_BINDING = 4,
-            POSITION_BINDING = 5,
+            GI_VOXEL2DTEX_BINDING = 0,
+            GI_VOXEL3DTEX_BINDING = 1,
+            GI_SHADOW_MAP0_BINDING = 2,
+            GI_COLOR_SPEC_BINDING = 3,
+            GI_NORMAL_BINDING = 4,
+            GI_POSITION_BINDING = 5,
 
         };
 
@@ -105,7 +113,7 @@ class VCTGIRenderer : public BaseRenderer
             // Shadow maps:
             if (enableShadowMapping)
             {
-                this->shadowRenderer = ShadowRenderer(
+                this->shadowRenderer = CascadedShadowRenderer(
                     camera.Near,
                     camera.Far,
                     UNIFORM_GLOBAL_SHADOWS_BINDING, 
@@ -144,7 +152,7 @@ class VCTGIRenderer : public BaseRenderer
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindTexture(GL_TEXTURE_2D, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + COLOR_SPEC_BUFFER_BINDING, GL_TEXTURE_2D, gColorBuffer, 0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + G_COLOR_SPEC_BUFFER_BINDING, GL_TEXTURE_2D, gColorBuffer, 0);
             
             // 2) View space normal buffer attachment 
             glGenTextures(1, &gNormalBuffer);
@@ -153,7 +161,7 @@ class VCTGIRenderer : public BaseRenderer
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindTexture(GL_TEXTURE_2D, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + NORMAL_BUFFER_BINDING, GL_TEXTURE_2D, gNormalBuffer, 0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + G_NORMAL_BUFFER_BINDING, GL_TEXTURE_2D, gNormalBuffer, 0);
 
             // 3) View space position buffer attachment 
             glGenTextures(1, &gPositionBuffer);
@@ -162,7 +170,7 @@ class VCTGIRenderer : public BaseRenderer
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindTexture(GL_TEXTURE_2D, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + POSITION_BUFFER_BINDING, GL_TEXTURE_2D, gPositionBuffer, 0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + G_POSITION_BUFFER_BINDING, GL_TEXTURE_2D, gPositionBuffer, 0);
 
             //setting the depth and stencil attachments
             glGenRenderbuffers(1, &depthStencilBuffer); 
@@ -178,9 +186,9 @@ class VCTGIRenderer : public BaseRenderer
             }
                 
             unsigned int attachments[3] = { 
-                GL_COLOR_ATTACHMENT0 + COLOR_SPEC_BUFFER_BINDING, 
-                GL_COLOR_ATTACHMENT0 + NORMAL_BUFFER_BINDING, 
-                GL_COLOR_ATTACHMENT0 + POSITION_BUFFER_BINDING
+                GL_COLOR_ATTACHMENT0 + G_COLOR_SPEC_BUFFER_BINDING, 
+                GL_COLOR_ATTACHMENT0 + G_NORMAL_BUFFER_BINDING, 
+                GL_COLOR_ATTACHMENT0 + G_POSITION_BUFFER_BINDING
             };
             glDrawBuffers(3, attachments);
 
@@ -199,13 +207,13 @@ class VCTGIRenderer : public BaseRenderer
             voxelPosBinding = voxelMesh->AddVertexAttribute(sparseListBuffer);
 
             //contains data for drawing the voxels with indirect commands and for generating mipmaps:
-            SetupDrawInd((GLuint)voxelMesh->indicesCount );
+            SetupDrawInd((GLuint)voxelMesh->indicesCount);
 
             //contains the workgroup structure used for the mipmap compute:
             //this will represent a 1d array of workgroups (of size 64) that will process the sparse voxel list and the 3d texture into the mipmaps
             SetupCompInd();
-            
-            numMipLevels = (GLuint)log2(256);
+
+            numMipLevels = (GLuint)log2(voxelRes);
             glGenTextures(1, &voxelBuffer);
             glBindTexture(GL_TEXTURE_3D, voxelBuffer);
             glTexStorage3D(GL_TEXTURE_3D, numMipLevels + 1, GL_R32UI, voxelRes, voxelRes, voxelRes);
@@ -348,11 +356,34 @@ class VCTGIRenderer : public BaseRenderer
             frameResources.inverseViewMatrix = inverseViewMatrix;
             frameResources.projectionMatrix = projectionMatrix;
             frameResources.lightData = &lights;
+
+            glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
+            glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(projectionMatrix));
+            glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(viewMatrix));
+            glBufferSubData(GL_UNIFORM_BUFFER, 2*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(inverseViewMatrix));
+            glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+
+
+            int offset = 0;
+            glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, 4* sizeof(float), glm::value_ptr(lights.ambientLight));
+            offset = 4* sizeof(float);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numDirLights);
+            offset += sizeof(int);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numPointLights);
+            offset += sizeof(int);
+            offset += 2 * sizeof(int);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData), lights.directionalLights.data());
+            offset += MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData), lights.pointLights.data());
+            offset += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
+            glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
             
 
             // 1) Shadow Map Rendering Pass:
             // -----------------------------
-            auto shadowTask = profiler->AddTask("Shadow Pass", Colors::nephritis);
+            auto shadowTask = profiler->AddTask("Shadow Pass", Colors::sunFlower);
             shadowTask->Start();
             std::vector<unsigned int> shadowMapBuffers = {0};
             if (enableShadowMapping)
@@ -370,19 +401,12 @@ class VCTGIRenderer : public BaseRenderer
             glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
-            glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
-            glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(projectionMatrix));
-            glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(viewMatrix));
-            glBufferSubData(GL_UNIFORM_BUFFER, 2*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(inverseViewMatrix));
-            glBindBuffer(GL_UNIFORM_BUFFER, 0); 
-
-
             GLuint shaderCache = 0;
 
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
                 StandardShader activeShader;
+                GLuint activeRoutine;
 
                 if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
                 {
@@ -391,14 +415,17 @@ class VCTGIRenderer : public BaseRenderer
                 else if (materialInstance->HasFlags(OP_MATERIAL_TEXTURED_DIFFUSE | OP_MATERIAL_TEXTURED_NORMAL))
                 {
                     activeShader = defaultVertNormalTexFrag;
+                    activeRoutine = 1;
                 }
                 else if (materialInstance->HasFlag(OP_MATERIAL_TEXTURED_DIFFUSE))
                 {
-                    activeShader = defaultVertTexFrag;
+                    activeShader = defaultVertFrag;
+                    activeRoutine = 1;
                 }
                 else
                 {
                     activeShader = defaultVertFrag;
+                    activeRoutine = 0;
                 }
 
                 // shader has to be used before updating the uniforms
@@ -407,6 +434,9 @@ class VCTGIRenderer : public BaseRenderer
                     activeShader.UseProgram();
                     shaderCache = activeShader.ID;
                 }
+
+                // setting if the color is sampled from texture or from UBO
+                glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &activeRoutine);
 
 
                 // Setting object-related properties
@@ -479,27 +509,6 @@ class VCTGIRenderer : public BaseRenderer
             auto voxelizationTask = profiler->AddTask("voxelization", Colors::belizeHole);
             voxelizationTask->Start();
 
-
-            // Setting LightsUBO:
-            glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
-            int offset = 0;
-
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, 4* sizeof(float), glm::value_ptr(lights.ambientLight));
-            offset = 4* sizeof(float);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numDirLights);
-            offset += sizeof(int);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numPointLights);
-            offset += sizeof(int);
-            offset += 2 * sizeof(int);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData), lights.directionalLights.data());
-            offset += MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData), lights.pointLights.data());
-            offset += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
-
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-
-
             //these are bound in dispatch indirect and shader storage, since they are first filled in the voxelization (storage) and then read in the mipmap compute shader (indirect)
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndBuffer);     
             glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, compIndBuffer);
@@ -535,14 +544,14 @@ class VCTGIRenderer : public BaseRenderer
                 glClearBufferSubData(GL_SHADER_STORAGE_BUFFER, GL_R32UI, i * sizeof(ComputeIndirectCommand), sizeof(GLuint), GL_RED, GL_UNSIGNED_INT, NULL); // Clear data before since data is used when drawing
             
 
-            glBindImageTexture(2, voxel2DTex, 0, GL_TRUE, 0, GL_READ_WRITE, GL_R32UI);
-            glBindImageTexture(3, voxelBuffer, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
+            glBindImageTexture(VX_VOXEL2DTEX_BINDING, voxel2DTex, 0, GL_TRUE, 0, GL_READ_WRITE, GL_R32UI);
+            glBindImageTexture(VX_VOXEL3DTEX_BINDING, voxelBuffer, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
 
-            glActiveTexture(GL_TEXTURE5); // use a propper binding point variable
+            glActiveTexture(GL_TEXTURE0 + VX_SHADOW_MAP0_BINDING);
             glBindTexture(GL_TEXTURE_2D_ARRAY, shadowMapBuffers[0]);
 
-            // All faces must be rendered
-            glDisable(GL_CULL_FACE);
+            
+            glDisable(GL_CULL_FACE); // all faces must be rendered
             
             // 1st part of voxelization:
             voxelizationShader.UseProgram();
@@ -592,7 +601,7 @@ class VCTGIRenderer : public BaseRenderer
                     Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
 
                     // activate proper texture unit before binding
-                    glActiveTexture(GL_TEXTURE0); 
+                    glActiveTexture(GL_TEXTURE0 + VX_COLOR_SPEC_BINDING); 
 
                     std::string number;
                     TextureType type = texture.type;
@@ -645,61 +654,71 @@ class VCTGIRenderer : public BaseRenderer
 
 
 
+            
+            //draw voxels
+            if (drawVoxels)
+            {
+                auto drawVoxelsTask = profiler->AddTask("drawVoxels", Colors::wisteria);
+                drawVoxelsTask->Start();
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);    
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                glEnable(GL_DEPTH_TEST);
+
+                glActiveTexture(GL_TEXTURE0 + GI_VOXEL3DTEX_BINDING);
+                glBindTexture(GL_TEXTURE_3D, voxelBuffer);
+
+                unsigned int mipLevel = 0;
+                
+                drawVoxelsShader.UseProgram();
+                drawVoxelsShader.SetUInt("mipLevel", mipLevel);
+                drawVoxelsShader.SetUInt("voxelRes", voxelRes);
+
+                voxelMesh->BindBuffers();
+                
+                glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(sizeof(DrawElementsIndirectCommand) * mipLevel)); // control this parameter with imgui
+                
+                drawVoxelsTask->End();
+
+                
+                return; //END RENDERING
+            }
+            
+
+
+
             // 4) Conetrace Pass
             auto conetraceTask = profiler->AddTask("Cone tracing", Colors::orange);
             conetraceTask->Start();
 
             glBindFramebuffer(GL_FRAMEBUFFER, lightAccumulationFBO);
             glClear(GL_COLOR_BUFFER_BIT);
-            glDepthMask(GL_FALSE);
+            glDisable(GL_DEPTH_TEST);
 
             conetraceShader.UseProgram();
             
 
-            glActiveTexture(GL_TEXTURE0 + VOXEL2DTEX_BINDING);
+            glActiveTexture(GL_TEXTURE0 + GI_VOXEL2DTEX_BINDING);
             glBindTexture(GL_TEXTURE_2D_ARRAY, voxel2DTex);
-            glActiveTexture(GL_TEXTURE0 + VOXEL3DTEX_BINDING);
+            glActiveTexture(GL_TEXTURE0 + GI_VOXEL3DTEX_BINDING);
             glBindTexture(GL_TEXTURE_3D, voxelBuffer);
-            glActiveTexture(GL_TEXTURE0 + SHADOW_MAP0_BINDING);
+            glActiveTexture(GL_TEXTURE0 + GI_SHADOW_MAP0_BINDING);
             glBindTexture(GL_TEXTURE_2D_ARRAY, shadowMapBuffers[0]);
-            glActiveTexture(GL_TEXTURE0 + COLOR_SPEC_BINDING); 
+            glActiveTexture(GL_TEXTURE0 + GI_COLOR_SPEC_BINDING); 
             glBindTexture(GL_TEXTURE_2D, gColorBuffer);
-            glActiveTexture(GL_TEXTURE0 + NORMAL_BINDING);
+            glActiveTexture(GL_TEXTURE0 + GI_NORMAL_BINDING);
             glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
-            glActiveTexture(GL_TEXTURE0 + POSITION_BINDING);
+            glActiveTexture(GL_TEXTURE0 + GI_POSITION_BINDING);
             glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
 
 
             conetraceShader.SetUInt("voxelRes", voxelRes);
-            GLuint drawFunc = 3;
-            glBindVertexArray(screenQuadVAO);
-            glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &drawFunc);
 
+            glBindVertexArray(screenQuadVAO);
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
-            glDepthMask(GL_TRUE);
+            glEnable(GL_DEPTH_TEST);
             conetraceTask->End();
 
-            /*
-
-            //draw voxels
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);    
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glEnable(GL_DEPTH_TEST);
-
-            glActiveTexture(GL_TEXTURE0 + VOXEL3DTEX_BINDING);
-            glBindTexture(GL_TEXTURE_3D, voxelBuffer);
-
-            unsigned int mipLevel = 0;
-            
-            drawVoxelsShader.UseProgram();
-            drawVoxelsShader.SetUInt("mipLevel", mipLevel);
-            drawVoxelsShader.SetUInt("voxelRes", voxelRes);
-
-            voxelMesh->BindBuffers();
-            
-            glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(sizeof(DrawElementsIndirectCommand) * mipLevel)); // control this parameter with imgui
-            */
             
 
             
@@ -748,7 +767,7 @@ class VCTGIRenderer : public BaseRenderer
 
             renderUnlitTask->End();
 
-                 /**/
+        
             // 6) Postprocess Pass: apply tonemap to the HDR color buffer
             // ----------------------------------------------------------
             auto postProcessTask = profiler->AddTask("Tonemapping", Colors::carrot);
@@ -807,16 +826,9 @@ class VCTGIRenderer : public BaseRenderer
 
         void ReloadShaders()
         {
-            //Material specific shaders. These should dynamically load depending on available scene materials
-            defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferAlbedo.frag");
+            defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
             defaultVertFrag.BuildProgram();
             defaultVertFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
-
-
-            
-            defaultVertTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
-            defaultVertTexFrag.BuildProgram();
-            defaultVertTexFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
 
 
 
@@ -855,7 +867,10 @@ class VCTGIRenderer : public BaseRenderer
             voxelizationShader.AddShaderStage(BASE_DIR"/data/shaders/voxelization/voxel.geom", GL_GEOMETRY_SHADER);
             voxelizationShader.BuildProgram();
             voxelizationShader.UseProgram();
-            voxelizationShader.SetSamplerBinding("shadowMap0", 5); // do the binding properly
+            voxelizationShader.SetSamplerBinding("texture_diffuse1", VX_COLOR_SPEC_BINDING);
+            voxelizationShader.SetSamplerBinding("voxelTextures", VX_VOXEL2DTEX_BINDING);
+            voxelizationShader.SetSamplerBinding("voxelData", VX_VOXEL3DTEX_BINDING);
+            voxelizationShader.SetSamplerBinding("shadowMap0", VX_SHADOW_MAP0_BINDING); // do the binding properly
             voxelizationShader.BindUniformBlocks(NamedUniformBufferBindings, 5);
 
             mipmappingShader = ComputeShader(BASE_DIR"/data/shaders/voxelization/mipmap.comp");
@@ -873,12 +888,12 @@ class VCTGIRenderer : public BaseRenderer
             }
             conetraceShader.BuildProgram();
             conetraceShader.UseProgram();
-            conetraceShader.SetSamplerBinding("voxel2DTextures", VOXEL2DTEX_BINDING); 
-            conetraceShader.SetSamplerBinding("voxel3DData", VOXEL3DTEX_BINDING);
-            conetraceShader.SetSamplerBinding("shadowMap0", SHADOW_MAP0_BINDING);
-            conetraceShader.SetSamplerBinding("gColorSpec", COLOR_SPEC_BINDING); 
-            conetraceShader.SetSamplerBinding("gNormal", NORMAL_BINDING);
-            conetraceShader.SetSamplerBinding("gPosition", POSITION_BINDING);
+            conetraceShader.SetSamplerBinding("voxel2DTextures", GI_VOXEL2DTEX_BINDING); 
+            conetraceShader.SetSamplerBinding("voxel3DData", GI_VOXEL3DTEX_BINDING);
+            conetraceShader.SetSamplerBinding("shadowMap0", GI_SHADOW_MAP0_BINDING);
+            conetraceShader.SetSamplerBinding("gColorSpec", GI_COLOR_SPEC_BINDING); 
+            conetraceShader.SetSamplerBinding("gNormal", GI_NORMAL_BINDING);
+            conetraceShader.SetSamplerBinding("gPosition", GI_POSITION_BINDING);
             conetraceShader.BindUniformBlocks(NamedUniformBufferBindings, 5);
 
 
@@ -891,8 +906,8 @@ class VCTGIRenderer : public BaseRenderer
             }
             drawVoxelsShader.BuildProgram();
             drawVoxelsShader.UseProgram();
-            drawVoxelsShader.SetSamplerBinding("voxel2DTextures", VOXEL2DTEX_BINDING); 
-            drawVoxelsShader.SetSamplerBinding("voxel3DData", VOXEL3DTEX_BINDING);
+            drawVoxelsShader.SetSamplerBinding("voxel2DTextures", GI_VOXEL2DTEX_BINDING); 
+            drawVoxelsShader.SetSamplerBinding("voxel3DData", GI_VOXEL3DTEX_BINDING);
             drawVoxelsShader.BindUniformBlocks(NamedUniformBufferBindings, 5);
 
 
@@ -1020,7 +1035,7 @@ class VCTGIRenderer : public BaseRenderer
         }
 
     private:
-        ShadowRenderer shadowRenderer;
+        CascadedShadowRenderer shadowRenderer;
         SkyRenderer skyRenderer;
 
         unsigned int viewportWidth;
@@ -1047,7 +1062,6 @@ class VCTGIRenderer : public BaseRenderer
 
 
         StandardShader defaultVertFrag;
-        StandardShader defaultVertTexFrag;
         StandardShader defaultVertNormalTexFrag;
         StandardShader defaultVertUnlitFrag;
 
@@ -1132,7 +1146,7 @@ class VCTGIRenderer : public BaseRenderer
                     drawIndCmd[mip].baseInstance = MAX_SPARSE_BUFFER_SIZE - 1;
                 else 
                     //the offsets will increase exponentially due to the mipmapping, the lower mips will have more voxels and when increasing mip level, we reduce the amount of voxels
-                    //by a factor of 2**3                                     * - (2**3)
+                    //by a factor of 2**3                                              - (2^(3 * i))
                     drawIndCmd[mip].baseInstance = drawIndCmd[mip + 1].baseInstance - (1 << (3 * i)); 
                 
             }

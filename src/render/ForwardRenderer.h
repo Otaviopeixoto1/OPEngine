@@ -75,7 +75,7 @@ class ForwardRenderer : public BaseRenderer
 
             if (enableShadowMapping)
             {
-                this->shadowRenderer = ShadowRenderer(
+                this->shadowRenderer = CascadedShadowRenderer(
                     camera.Near,
                     camera.Far,
                     UNIFORM_GLOBAL_SHADOWS_BINDING, 
@@ -269,30 +269,42 @@ class ForwardRenderer : public BaseRenderer
             scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
             {    
                 StandardShader activeShader;
+                GLuint activeRoutines[2];
                 
-                /**/
                 if (materialInstance->HasFlags(OP_MATERIAL_TEXTURED_DIFFUSE | OP_MATERIAL_TEXTURED_NORMAL))
                 {
                     activeShader = defaultVertNormalTexFrag;
+                    activeRoutines[0] = 1;
+                    activeRoutines[1] = 3;
                 }
                 else if (materialInstance->HasFlag(OP_MATERIAL_TEXTURED_DIFFUSE))
                 {
-                    activeShader = defaultVertTexFrag;
+                    activeShader = defaultVertFrag;
+                    activeRoutines[0] = 1;
+                    activeRoutines[1] = 3;
                 }
                 else if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
                 {
                     activeShader = defaultVertUnlitFrag;
+                    activeRoutines[0] = 0;
+                    activeRoutines[1] = 2;
                 }
                 else
                 {
                     activeShader = defaultVertFrag;
+                    activeRoutines[0] = 0;
+                    activeRoutines[1] = 2;
                 }
+
 
                 if (activeShader.ID != shaderCache)
                 {
                     activeShader.UseProgram();
                     shaderCache = activeShader.ID;
                 }
+
+                // setting if the color is sampled from texture or from UBO
+                glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 2, activeRoutines);
 
 
                 // -Material
@@ -400,8 +412,8 @@ class ForwardRenderer : public BaseRenderer
             simpleDepthPass.BuildProgram();
 
 
-
-            defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/albedoFrag.frag");
+            // For textured materials with an albedo texture
+            defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
             defaultVertFrag.AddPreProcessorDefines(preprocessorDefines);
             if (enableShadowMapping)
             {
@@ -412,20 +424,6 @@ class ForwardRenderer : public BaseRenderer
             defaultVertFrag.UseProgram();
             defaultVertFrag.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
             defaultVertFrag.BindUniformBlocks(NamedUniformBufferBindings,5);
-
-
-            // For textured materials with an albedo texture
-            defaultVertTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
-            defaultVertTexFrag.AddPreProcessorDefines(preprocessorDefines);
-            if (enableShadowMapping)
-            {
-                std::string s = "DIR_LIGHT_SHADOWS";
-                defaultVertTexFrag.AddPreProcessorDefines(&s,1);
-            }
-            defaultVertTexFrag.BuildProgram();
-            defaultVertTexFrag.UseProgram();
-            defaultVertTexFrag.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
-            defaultVertTexFrag.BindUniformBlocks(NamedUniformBufferBindings,5);
 
 
             // For textured materials with an normal map and albedo textures
@@ -575,7 +573,7 @@ class ForwardRenderer : public BaseRenderer
         }
 
     private:
-        ShadowRenderer shadowRenderer;
+        CascadedShadowRenderer shadowRenderer;
         SkyRenderer skyRenderer;
 
         unsigned int viewportWidth;
@@ -600,7 +598,6 @@ class ForwardRenderer : public BaseRenderer
         StandardShader simpleDepthPass;
 
         StandardShader defaultVertFrag;
-        StandardShader defaultVertTexFrag;
         StandardShader defaultVertNormalTexFrag;
         StandardShader defaultVertUnlitFrag;
 

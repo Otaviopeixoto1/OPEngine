@@ -1,18 +1,16 @@
 #version 440
 
-layout(location = 0) uniform vec3 diffColor;//a diffuse value set for untextured models
-layout(binding = 0) uniform sampler2D texture_diffuse1; //the model diffuse texture (if there is one)
 
-
-layout(binding = 2, r32ui) uniform uimage2DArray voxelTextures;
-layout(binding = 3, r32ui) uniform uimage3D voxelData;
-layout(binding = 5) uniform sampler2DShadow shadowMap;
+uniform sampler2D texture_diffuse1;
+layout(r32ui) uniform uimage2DArray voxelTextures;
+layout(r32ui) uniform uimage3D voxelData;
+uniform sampler2DShadow shadowMap;
 
 uniform uint voxelRes;
 
 
-in vec2 intTexCoords;
-in vec4 shadowCoord;
+in vec2 TexCoords;
+in vec4 worldPosition;
 in vec3 viewNormal;
 
 flat in uint domInd;
@@ -39,6 +37,8 @@ layout (std140) uniform MaterialProperties
 };
 
 
+
+
 struct DrawElementsIndirectCommand {
 	uint vertexCount;
 	uint instanceCount;
@@ -47,21 +47,24 @@ struct DrawElementsIndirectCommand {
 	uint baseInstance;
 };
 
-layout(std430, binding = 0) buffer DrawCmdBuffer {
-	DrawElementsIndirectCommand drawCmd[10];
-};
-
 struct ComputeIndirectCommand {
 	uint workGroupSizeX;
 	uint workGroupSizeY;
 	uint workGroupSizeZ;
 };
 
-layout(std430, binding = 1) buffer ComputeCmdBuffer {
+layout(std430, binding = 0) buffer DrawCmdBuffer 
+{
+	DrawElementsIndirectCommand drawCmd[10];
+};
+
+layout(std430, binding = 1) buffer ComputeCmdBuffer 
+{
 	ComputeIndirectCommand compCmd[10];
 };
 
-layout(std430, binding = 2) writeonly buffer SparseBuffer {
+layout(std430, binding = 2) writeonly buffer SparseBuffer 
+{
 	uint sparseList[];
 };
 
@@ -109,20 +112,17 @@ uint packRG11B10(uvec3 dataIn)
 
 
 
-//We define 2 sampling methods: one for when the model is textured and the other for untextured models
-subroutine vec4 SampleColor();
+//We define 2 sampling methods: one for when the model is textured and the other for untextured models. This allows the same shader program to be used
+//for both cases, instead of having to build and manage 2 different programs
+subroutine vec4 GetColor();
 
-layout(index = 0) subroutine(SampleColor) 
-vec4 DiffuseColor() {
-	return albedoColor;
-}
+layout(index = 0) subroutine(GetColor) 
+vec4 AlbedoColor() {return albedoColor;}
 
-layout(index = 1) subroutine(SampleColor)
-vec4 TextureColor() {
-	return vec4(texture(texture_diffuse1, intTexCoords).rgb, 1.0f);
-}
+layout(index = 1) subroutine(GetColor)
+vec4 TextureColor() {return vec4(texture(texture_diffuse1, TexCoords).rgb, 1.0f);}
 
-layout(location = 0) subroutine uniform SampleColor GetColor;
+layout(location = 0) subroutine uniform GetColor SampleColor;
 
 
 
@@ -160,11 +160,7 @@ float GetMainDirLightShadow(vec3 worldPos, vec3 worldNormal)
 	for(float x = -1.5; x <= 1.5; ++x)
 	{
 		for(float y = -1.5; y <= 1.5; ++y)
-		{
-			//float pcfDepth = texture(shadowMap0, vec3(ndcPos.xy + vec2(x, y) * texelSize, 0) ).r; 
-			//shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0; 
-			
-			//for hardware pcf       
+		{  
 			shadow += texture(shadowMap0, vec4(ndcPos.xy + vec2(x, y) * texelSize, 0, currentDepth - bias));
 		}    
 	}
@@ -181,7 +177,7 @@ void main()
 {	                           //color, light, count
 	VoxelData data = VoxelData(vec4(0.0f), 0x0, 0x8);
 
-	ivec3 voxelCoord;					//256 = voxelres. Add variable for this
+	ivec3 voxelCoord;					
 	int depthCoord = int(gl_FragCoord.z * voxelRes);
 
 
@@ -198,21 +194,19 @@ void main()
     vec3 vLight = normalize(dirLights[0].direction.xyz);
 
 	vec3 worldNormal = (inverseViewMatrix * vec4(vNormal, 0.0f)).xyz;
-	float shadow = GetMainDirLightShadow(gl_FragCoord.xyz, worldNormal);
+	float shadow = GetMainDirLightShadow(worldPosition.xyz, worldNormal);
 	data.light = uint(8.0f * shadow);
 
 	//simple diffuse lighting
 	float NdotL = dot(vNormal,vLight);
     float diff = max(NdotL, 0.0);
-	data.color = GetColor() * diff;
+	data.color = SampleColor() * diff;
 	
 	
 	uint outData = packARGB8(data);
 
 	//writes the "most lit" voxel to the 2d texture
 	imageAtomicMax(voxelTextures, ivec3(ivec2(gl_FragCoord.xy), domInd), outData);
-
-	//THIS MIGHT NOT BE NECESSARY 
 	uint prevData = imageAtomicMax(voxelData, voxelCoord, outData);
 
 	// if this voxel was empty before, add it to the sparse list
