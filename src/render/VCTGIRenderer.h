@@ -34,6 +34,9 @@ class VCTGIRenderer : public BaseRenderer
         unsigned int voxelRes = 256;
         bool drawVoxels = false;
 
+        float aoDistance = 0.03f;
+        float maxConeDistance = 1.5f;
+
 
 
         std::unordered_map<std::string, unsigned int> preprocessorDefines =
@@ -652,8 +655,6 @@ class VCTGIRenderer : public BaseRenderer
 
             mipmappingTask->End();
 
-
-
             
             //draw voxels
             if (drawVoxels)
@@ -694,9 +695,6 @@ class VCTGIRenderer : public BaseRenderer
             glClear(GL_COLOR_BUFFER_BIT);
             glDisable(GL_DEPTH_TEST);
 
-            conetraceShader.UseProgram();
-            
-
             glActiveTexture(GL_TEXTURE0 + GI_VOXEL2DTEX_BINDING);
             glBindTexture(GL_TEXTURE_2D_ARRAY, voxel2DTex);
             glActiveTexture(GL_TEXTURE0 + GI_VOXEL3DTEX_BINDING);
@@ -711,7 +709,10 @@ class VCTGIRenderer : public BaseRenderer
             glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
 
 
+            conetraceShader.UseProgram();
             conetraceShader.SetUInt("voxelRes", voxelRes);
+            conetraceShader.SetFloat("aoDistance", aoDistance);
+            conetraceShader.SetFloat("maxConeDistance", maxConeDistance);
 
             glBindVertexArray(screenQuadVAO);
             glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -1032,6 +1033,13 @@ class VCTGIRenderer : public BaseRenderer
             glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_MATERIAL_PROPERTIES_BINDING, MaterialUBO, 0, MaterialBufferSize);
 
 
+        }
+
+        void RenderGUI()
+        {
+            ImGui::Begin("VCTGI");
+            ImGui::Text("VCTGI");
+            ImGui::End();
         }
 
     private:

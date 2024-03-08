@@ -272,6 +272,9 @@ int main()
         ImGui::Begin("Scene");
         ImGui::Text("Scene");
         ImGui::End();
+        
+
+        renderer->RenderGUI();
 
         
 

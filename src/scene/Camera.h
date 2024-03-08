@@ -198,10 +198,10 @@ class Camera
                 Zoom = 45.0f;
         }
 
-        inline std::vector<glm::vec4> GetFrustumCornersWorldSpace(float nearPlane, float farPlane, const glm::mat4& view) const
+        inline std::vector<glm::vec4> GetFrustumCornersWorldSpace(float nearPlane, float farPlane) const
         {
             glm::mat4 proj = glm::perspective(glm::radians(Zoom), Aspect, nearPlane, farPlane);
-
+            glm::mat4 view = GetViewMatrix(); 
             const auto inv = glm::inverse(proj * view);
             
             std::vector<glm::vec4> frustumCorners;

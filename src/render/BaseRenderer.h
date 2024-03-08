@@ -17,10 +17,8 @@ class BaseRenderer
         BaseRenderer(){}
         virtual ~BaseRenderer() {}
         virtual void RecreateResources(Scene &scene, Camera &camera){}
-
-        //Original:
-        //virtual void RenderFrame(const legit::InFlightQueue::FrameInfo &frameInfo, const Camera &camera, const Camera &light, Scene *scene, GLFWwindow *window){}
         virtual void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window, OPProfiler::OPProfiler *profiler){}
+        virtual void RenderGUI(){}
         virtual void ReloadShaders(){}
         virtual void ChangeView(){}
 

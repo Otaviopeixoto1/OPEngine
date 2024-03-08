@@ -16,7 +16,9 @@ uniform sampler2D gPosition;
 
 
 uniform uint voxelRes;
-uniform uint voxelTextureInd;
+uniform float maxConeDistance;
+uniform float aoDistance;
+
 
 layout (std140) uniform GlobalMatrices
 {
@@ -223,12 +225,12 @@ vec4 voxelSampleLevel(vec3 position, float level)
 
         VoxelData voxel = unpackARGB8(textureLod(voxel3DData, voxelPos, mip).r);
 		
-		/**/
+		/*
 		//check if voxelpos is out of bounds
         if(any(greaterThan(voxelPos, vec3(1.0f))) || any(lessThan(voxelPos, vec3(0.0f)))) 
 		{
             factor = 0.0f;
-        }
+        }*/
 
 		total.rgb += voxel.color.rgb * factor * float(sign(int(voxel.light)));
 		total.a += voxel.color.a * factor;
@@ -239,7 +241,7 @@ vec4 voxelSampleLevel(vec3 position, float level)
 }
 
 //this will trace the cones with 60 degree apperture angles, which allows to increment the LOD by one on each trace and simplifies the math for sampling voxels
-vec4 ConeTrace60(vec3 startPos, vec3 dir, float aoDist, float maxDist, float voxelSize) 
+vec4 ConeTrace60(vec3 startPos, vec3 dir, float aoDist, float voxelSize) 
 {
 	vec4 accum = vec4(0.0f);
 	float opacity = 0.0f;
@@ -249,7 +251,7 @@ vec4 ConeTrace60(vec3 startPos, vec3 dir, float aoDist, float maxDist, float vox
 	float sampleLOD = 0.0f;
 
 	
-	for(float dist = voxelSize; dist < maxDist && accum.a < 1.0f;) 
+	for(float dist = voxelSize; dist < maxConeDistance && accum.a < 1.0f;) 
 	{
 		samplePos = startPos + dir * dist;
 		sampleValue = voxelSampleLevel(samplePos, sampleLOD);
@@ -266,7 +268,7 @@ vec4 ConeTrace60(vec3 startPos, vec3 dir, float aoDist, float maxDist, float vox
 	return vec4(accum.rgb, 1.0f - opacity);
 }
 
-vec4 DiffuseTrace(vec3 voxelPos, vec3 worldNormal, float maxDistance) 
+vec4 DiffuseTrace(vec3 voxelPos, vec3 worldNormal) 
 {
 	// cone trace directions:
 	vec3 dirs[] = {  
@@ -286,7 +288,7 @@ vec4 DiffuseTrace(vec3 voxelPos, vec3 worldNormal, float maxDistance)
 	weight[1] = (1.0f - weight[0]) / 5.0f;
 	
 	float voxelSize = 2.0f / float(voxelRes);
-	float aoDistance = min(0.03f, maxDistance);
+	float aoMaxDist = min(aoDistance, maxConeDistance);
 
 	voxelPos += worldNormal * voxelSize;
 
@@ -300,7 +302,7 @@ vec4 DiffuseTrace(vec3 voxelPos, vec3 worldNormal, float maxDistance)
 	for(int i = 0; i < 6; i++) 
 	{
 		vec3 direction = dirs[i].x * R + dirs[i].y * worldNormal + dirs[i].z * U;
-		total += weight[int(i != 0)] * ConeTrace60(voxelPos, direction, aoDistance, maxDistance, voxelSize);
+		total += weight[int(i != 0)] * ConeTrace60(voxelPos, direction, aoMaxDist, voxelSize);
 	}
 
 	return total;
@@ -315,8 +317,7 @@ void main()
 
 	vec4 worldPos = inverseViewMatrix * ViewFragPos;
 	vec4 worldNormal = (inverseViewMatrix * vec4(viewNormal.xyz,0.0));
-    
-    float maxDst = 1.5f;
+
 
 	vec4 cs = texture(gColorSpec, TexCoords);
 	vec4 c = vec4(1.0f);
@@ -327,12 +328,12 @@ void main()
 	
 	vec4 voxelPos = voxelMatrices[2] * worldPos;
 	voxelPos.xyz  = (voxelPos.xyz + vec3(1.0f)) * 0.5f;
-    vec4 d = DiffuseTrace(voxelPos.xyz, worldNormal.xyz, maxDst);
+    vec4 d = DiffuseTrace(voxelPos.xyz, worldNormal.xyz);
 
 	s = mix(d.w, s * d.w, 0.9);
 
 	vec4 f = vec4(1.0f);
-	f.xyz = l.xyz * s * c.xyz + d.xyz * c.xyz;
+	f.xyz = l.xyz * s * c.xyz + 2.0 * d.xyz * c.xyz;
 	//f.xyz = l.xyz * s * c.xyz;
 	//f.xyz =  d.xyz;
 
