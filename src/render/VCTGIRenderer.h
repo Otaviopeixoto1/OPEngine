@@ -929,7 +929,7 @@ class VCTGIRenderer : public BaseRenderer
              *    mat4 projectionMatrix; 
              *    mat4 viewMatrix;       
              *    mat4 inverseViewMatrix
-             *    mat4 voxelMatrices[3];
+             *    mat4 voxelMatrix;
              *    mat4 inverseVoxelMatrix;
              * }
              * 
@@ -943,16 +943,12 @@ class VCTGIRenderer : public BaseRenderer
             // Create the buffer and specify its size:
 
             glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
-            glBufferData(GL_UNIFORM_BUFFER, 7*sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
+            glBufferData(GL_UNIFORM_BUFFER, 5*sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
 
-            auto voxelMatrix2 = glm::scale(glm::mat4(1.0f), glm::vec3(0.02,0.02,0.02)); //calculate based on the scene size or the frustrum bounds !!
-            auto voxelMatrix0 = glm::rotate(voxelMatrix2, -glm::half_pi<float>(), glm::vec3(0.0f, 1.0f, 0.0f));
-            auto voxelMatrix1 = glm::rotate(voxelMatrix2, glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
-            auto invVoxelMatrix2 = glm::inverse(voxelMatrix2);
-            glBufferSubData(GL_UNIFORM_BUFFER, 3*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(voxelMatrix0));
-            glBufferSubData(GL_UNIFORM_BUFFER, 4*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(voxelMatrix1));
-            glBufferSubData(GL_UNIFORM_BUFFER, 5*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(voxelMatrix2));
-            glBufferSubData(GL_UNIFORM_BUFFER, 6*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(invVoxelMatrix2));
+            auto voxelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.02,0.02,0.02)); //calculate based on the scene size or the frustrum bounds !!
+            auto invVoxelMatrix = glm::inverse(voxelMatrix);
+            glBufferSubData(GL_UNIFORM_BUFFER, 3*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(voxelMatrix));
+            glBufferSubData(GL_UNIFORM_BUFFER, 4*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(invVoxelMatrix));
             
             glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
             glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
@@ -960,7 +956,7 @@ class VCTGIRenderer : public BaseRenderer
             
             // Bind a certain range of the buffer to the uniform block: this allows to use multiple UBOs 
             // per uniform block
-            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_GLOBAL_MATRICES_BINDING, GlobalMatricesUBO, 0, 6 * sizeof(glm::mat4));
+            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_GLOBAL_MATRICES_BINDING, GlobalMatricesUBO, 0, 5 * sizeof(glm::mat4));
             glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_LOCAL_MATRICES_BINDING, LocalMatricesUBO, 0, 2 * sizeof(glm::mat4));
 
 

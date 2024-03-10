@@ -25,7 +25,7 @@ layout (std140) uniform GlobalMatrices
     mat4 projectionMatrix;
     mat4 viewMatrix;
     mat4 inverseViewMatrix;
-	mat4 voxelMatrices[3];
+	mat4 voxelMatrix;
 	mat4 inverseVoxelMatrix;
 };
 
@@ -326,16 +326,16 @@ void main()
     vec4 l = CalcDirLight(0, viewNormal.xyz, -normalize(ViewFragPos.xyz), vec3(1,1,1), cs.a);
     float s = GetDirLightShadow(0, ViewFragPos.xyz, worldPos.xyz, worldNormal.xyz);
 	
-	vec4 voxelPos = voxelMatrices[2] * worldPos;
+	vec4 voxelPos = voxelMatrix * worldPos;
 	voxelPos.xyz  = (voxelPos.xyz + vec3(1.0f)) * 0.5f;
     vec4 d = DiffuseTrace(voxelPos.xyz, worldNormal.xyz);
 
 	s = mix(d.w, s * d.w, 0.9);
 
 	vec4 f = vec4(1.0f);
-	f.xyz = l.xyz * s * c.xyz + 2.0 * d.xyz * c.xyz;
+	//f.xyz = l.xyz * s * c.xyz + 2.0 * d.xyz * c.xyz;
 	//f.xyz = l.xyz * s * c.xyz;
-	//f.xyz =  d.xyz;
+	f.xyz =  d.xyz;
 
 	outColor = f;
 }

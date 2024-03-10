@@ -62,7 +62,7 @@ layout(std140) uniform Shadows
 uniform sampler2DArrayShadow shadowMap0;
 
 
-
+//this output should depend on the shadow renderer:
 float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldNormal)
 {
     #ifndef DIR_LIGHT_SHADOWS

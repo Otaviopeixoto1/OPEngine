@@ -6,13 +6,14 @@ layout (location = 3) in vec2 aTexCoords;
 
 out vec2 vTexCoords;
 out vec4 vNormal;
+out vec4 vWorldPos;
 
 layout (std140) uniform GlobalMatrices
 {
     mat4 projectionMatrix;
     mat4 viewMatrix;
     mat4 inverseViewMatrix;
-    mat4 voxelMatrices[3];
+    mat4 voxelMatrix;
     mat4 inverseVoxelMatrix;
 };
 
@@ -29,5 +30,6 @@ void main()
 {
     vTexCoords = aTexCoords;    
     vNormal = normalMatrix * vec4(aNormal, 0.0f);
-    gl_Position = modelMatrix * vec4(aPos, 1.0f);
+    vWorldPos =  modelMatrix * vec4(aPos, 1.0f);
+    gl_Position = voxelMatrix * vWorldPos;
 }

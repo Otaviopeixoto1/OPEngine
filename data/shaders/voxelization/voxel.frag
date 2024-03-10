@@ -12,6 +12,7 @@ uniform uint voxelRes;
 in vec2 TexCoords;
 in vec4 worldPosition;
 in vec3 viewNormal;
+in vec3 voxelTexCoord;
 
 flat in uint domInd;
 
@@ -25,7 +26,7 @@ layout (std140) uniform GlobalMatrices
     mat4 projectionMatrix;
     mat4 viewMatrix;
     mat4 inverseViewMatrix;
-	mat4 voxelMatrices[3];
+	mat4 voxelMatrix;
 	mat4 inverseVoxelMatrix;
 };
 
@@ -177,24 +178,13 @@ void main()
 {	                           //color, light, count
 	VoxelData data = VoxelData(vec4(0.0f), 0x0, 0x8);
 
-	ivec3 voxelCoord;					
-	int depthCoord = int(gl_FragCoord.z * voxelRes);
-
-
-	if(domInd == 0) 
-		voxelCoord = ivec3(depthCoord, gl_FragCoord.y, voxelRes - gl_FragCoord.x); 
-	else if (domInd == 1) 
-		voxelCoord = ivec3(gl_FragCoord.x, depthCoord, voxelRes - gl_FragCoord.y);
-	else 
-		voxelCoord = ivec3(gl_FragCoord.x, gl_FragCoord.y, depthCoord);
-
-
+	ivec3 voxelCoord = ivec3(voxelTexCoord * voxelRes);	
 	
 	vec3 vNormal = normalize(viewNormal);  
     vec3 vLight = normalize(dirLights[0].direction.xyz);
 
-	vec3 worldNormal = (inverseViewMatrix * vec4(vNormal, 0.0f)).xyz;
-	float shadow = GetMainDirLightShadow(worldPosition.xyz, worldNormal);
+	vec4 worldNormal = (inverseViewMatrix * vec4(vNormal, 0.0f));
+	float shadow = GetMainDirLightShadow(worldPosition.xyz, worldNormal.xyz);
 	data.light = uint(8.0f * shadow);
 
 	//simple diffuse lighting
