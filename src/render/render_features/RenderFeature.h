@@ -2,6 +2,11 @@
 #ifndef RENDER_FEATURE_H
 #define RENDER_FEATURE_H
 
+////////////////////////////////////////////////////
+//DEPRECATED
+//render features no longer inherit from this class
+////////////////////////////////////////////////////
+
 #include <memory>
 #include "../../scene/Scene.h"
 #include "../../scene/Camera.h"

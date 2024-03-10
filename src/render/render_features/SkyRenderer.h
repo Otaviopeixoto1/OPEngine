@@ -1,9 +1,14 @@
 #ifndef SKYBOX_RENDER_FEATURE_H
 #define SKYBOX_RENDER_FEATURE_H
 
-#include "RenderFeature.h"
+#include <memory>
+#include "../../scene/Scene.h"
+#include "../../scene/Camera.h"
+#include "../../scene/lights.h"
+#include "../../common/MathUtils.h"
+#include "../BaseRenderer.h"
 
-class SkyRenderer : public RenderFeature
+class SkyRenderer
 {
 
     public:

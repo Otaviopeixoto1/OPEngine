@@ -1,10 +1,11 @@
 #version 440
 
+in vec4 lightSpacePos;
+out vec4 FragColor;
 
-    
 void main() 
 {
-    float FragmentDepth = v_position.z/v_position.w;
+    float FragmentDepth = lightSpacePos.z/lightSpacePos.w;
     FragmentDepth = FragmentDepth * 0.5 + 0.5;			//Don't forget to move away from unit cube ([-1,1]) to [0,1] coordinate system
 
     vec2 mu = vec2(FragmentDepth,FragmentDepth*FragmentDepth);
@@ -17,5 +18,5 @@ void main()
     //OPTIMIZED MOMENT QUANTIZATION
     //mu.y = 4.0*(mu.x-mu.y);
 
-    gl_FragColor = vec4(mu,0.0,0.0);
+    FragColor = vec4(mu,0.0,0.0);
 }

@@ -125,6 +125,16 @@ class VCTGIRenderer : public BaseRenderer
                     SHADOW_HEIGHT
                 );
                 this->shadowRenderer.RecreateResources();
+
+                this->VSMRenderer = VarianceShadowRenderer(
+                    camera.Near,
+                    camera.Far,
+                    UNIFORM_GLOBAL_SHADOWS_BINDING, 
+                    SHADOW_CASCADE_COUNT,
+                    SHADOW_WIDTH,
+                    SHADOW_HEIGHT
+                );
+                this->VSMRenderer.RecreateResources();
             }
 
             this->skyRenderer = SkyRenderer();
@@ -392,6 +402,7 @@ class VCTGIRenderer : public BaseRenderer
             if (enableShadowMapping)
             {
                 shadowMapBuffers = shadowRenderer.Render(frameResources);
+                std::vector<unsigned int> vsmBuffers = VSMRenderer.Render(frameResources);
             }
             shadowTask->End();
 
@@ -648,9 +659,14 @@ class VCTGIRenderer : public BaseRenderer
                 mipmappingShader.SetUInt("currentLevel", level);
 
                 glDispatchComputeIndirect(NULL);
-
+                
+                // Wait for buffer updates before reading and writing to next mip:
+                //GL_SHADER_IMAGE_ACCESS_BARRIER_BIT: for the voxel buffer
+                //GL_SHADER_STORAGE_BARRIER_BIT: for the storage buffers (drawIndBuffer, compIndBuffer and sparseListBuffer)
+                //GL_COMMAND_BARRIER_BIT: for the indirect buffers (drawIndBuffer and compIndBuffer)
                 glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
             }
+            //barriers for other gl commands involving the buffers and textures 
             glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_TEXTURE_UPDATE_BARRIER_BIT);
 
             mipmappingTask->End();
@@ -681,7 +697,7 @@ class VCTGIRenderer : public BaseRenderer
                 drawVoxelsTask->End();
 
                 
-                return; //END RENDERING
+                return; // EARLY STOP
             }
             
 
@@ -1040,6 +1056,7 @@ class VCTGIRenderer : public BaseRenderer
 
     private:
         CascadedShadowRenderer shadowRenderer;
+        VarianceShadowRenderer VSMRenderer;
         SkyRenderer skyRenderer;
 
         unsigned int viewportWidth;

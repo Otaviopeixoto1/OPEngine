@@ -1,14 +1,29 @@
 #ifndef SHADOW_RENDER_FEATURE_H
 #define SHADOW_RENDER_FEATURE_H
 
-#include "RenderFeature.h"
+
+#include <memory>
+#include "../../scene/Scene.h"
+#include "../../scene/Camera.h"
+#include "../../scene/lights.h"
+#include "../../common/MathUtils.h"
+#include "../BaseRenderer.h"
 
 
+struct CascadedShadowsInput
+{
+    GLuint shadowUBOBinding;
+};
+
+struct CascadedShadowsOutput
+{
+    GLuint shadowMap0;
+};
 
 // Cascade partitioning scheme was Based on: https://developer.download.nvidia.com/SDK/10.5/opengl/src/cascaded_shadow_maps/doc/cascaded_shadow_maps.pdf
 //Add enum containing all shadow mapping techniques to select from
 
-class CascadedShadowRenderer : public RenderFeature
+class CascadedShadowRenderer
 {
     public:
         float seamCorrection = 0.4f;
@@ -324,10 +339,19 @@ class CascadedShadowRenderer : public RenderFeature
 
 
 
+struct VarianceShadowsInput
+{
+    GLuint shadowUBOBinding;
+};
+
+struct VarianceShadowsOutput
+{
+    GLuint shadowMap0;
+};
 
 //Todo: use mipmaps and MSAA for the shadowmap rendering
 
-class VarianceShadowRenderer : public RenderFeature
+class VarianceShadowRenderer 
 {
     public:
         float seamCorrection = 0.4f;
@@ -359,8 +383,12 @@ class VarianceShadowRenderer : public RenderFeature
             glGenTextures(1, &depthBuffer);      //buffer for depth testing during the shadow pass
 
             // VSM texture:
-            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowMapBuffer0);
+            //glBindTexture(GL_TEXTURE_2D_ARRAY, shadowMapBuffer0);
+            glBindTexture(GL_TEXTURE_2D, shadowMapBuffer0);
 
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_RG, GL_FLOAT, 0);
+            
+            /*
             glTexImage3D(
                 GL_TEXTURE_2D_ARRAY,
                 0,
@@ -372,25 +400,40 @@ class VarianceShadowRenderer : public RenderFeature
                 GL_RG,
                 GL_FLOAT,
                 nullptr
-            );
+            );*/
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             
+            /*
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);*/
 
             // Settings for PCF comparissons:
             //glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
             //glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
             /////////////////////////////////////////////////////////////////////////////////////////
 
+            /*
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
             const float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-            glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, borderColor);    
+            glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, borderColor);   */ 
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+            const float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+            glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor); 
+
+
 
 
             // Depth buffer:
-            glBindTexture(GL_TEXTURE_2D_ARRAY, depthBuffer);
+            //glBindTexture(GL_TEXTURE_2D_ARRAY, depthBuffer);
+            glBindTexture(GL_TEXTURE_2D, depthBuffer);
 
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+            /*
             glTexImage3D(
                 GL_TEXTURE_2D_ARRAY,
                 0,
@@ -402,62 +445,57 @@ class VarianceShadowRenderer : public RenderFeature
                 GL_DEPTH_COMPONENT,
                 GL_FLOAT,
                 nullptr
-            );
+            );*/
             
             glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, shadowMapBuffer0, 0);
             glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthBuffer, 0);
 
 
-            
-
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             {
-                throw BaseRenderer::RendererException("ERROR::FRAMEBUFFER:: shadowMap Framebuffer is incomplete");
+                throw BaseRenderer::RendererException("ERROR::FRAMEBUFFER:: vsm Framebuffer is incomplete");
             }
 
+
+
+
             
+            // Gaussian Blur pass
+            glGenFramebuffers(2, blurPassFBOs);
+            glGenTextures(2, blurredDepthTex);
 
+            for (size_t i = 0; i < 2; i++)
+            {
+                glBindFramebuffer(GL_FRAMEBUFFER, blurPassFBOs[i]);            
+                //THIS NEEDS TO BE REPLACED BY ANOTHER ARRAY TEXTURE, but for now we will only use one single cascade
+                glBindTexture(GL_TEXTURE_2D, blurredDepthTex[i]);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_RG, GL_FLOAT, 0);
 
-            // Gaussian Blur pass output
-            glGenFramebuffers(1, &blurPassFBO);
-            glBindFramebuffer(GL_FRAMEBUFFER, blurPassFBO);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                
+                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
+                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
+                glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 
-            glGenTextures(1, &blurredDepthTex);
-            //THIS NEEDS TO BE REPLACED BY ANOTHER ARRAY TEXTURE, but for now we will only use one single cascade
-            glTexImage2D( GL_TEXTURE_2D, 0, GL_RG32F, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_RG, GL_FLOAT, 0);
+                glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D, blurredDepthTex[i], 0);
+                
 
-            glBindTexture(GL_TEXTURE_2D, blurredDepthTex);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            
-            
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
-            glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+                if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+                {
+                    throw BaseRenderer::RendererException("ERROR::FRAMEBUFFER:: blur Framebuffer is incomplete");
+                }
+            }
             glBindTexture(GL_TEXTURE_2D, 0);
-
-
-
-
-
-
-            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            {
-                throw BaseRenderer::RendererException("ERROR::FRAMEBUFFER:: shadowMap Framebuffer is incomplete");
-            }
-
-
+            
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-
-
-
             // Currently only one of the lights can generate an output target
-            shadowMaps.push_back(blurredDepthTex);
+            shadowMaps.push_back(blurredDepthTex[1]);
+
+
+
             
-
-
-
             for (size_t i = 0; i <= 4; i++)
             {
                 
@@ -473,8 +511,6 @@ class VarianceShadowRenderer : public RenderFeature
                     frustrumCuts[i] = cameraFar * 1.1f;
                 }
             }
-
-
 
 
             glGenBuffers(1, &ShadowsUBO);
@@ -507,7 +543,7 @@ class VarianceShadowRenderer : public RenderFeature
             glBindBufferRange(GL_UNIFORM_BUFFER, GLOBAL_SHADOWS_BINDING, ShadowsUBO, 0, ShadowBufferSize);
 
             //Shadow map generation shader:
-            VSMShadowPass = StandardShader(BASE_DIR"/data/shaders/shadows/shadow_mapping/layeredVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
+            VSMShadowPass = StandardShader(BASE_DIR"/data/shaders/shadows/shadow_mapping/layeredVert.vert", BASE_DIR"/data/shaders/shadows/VSM/vsm.frag");
             {
                 std::string s = "SHADOW_CASCADE_COUNT " + std::to_string(SHADOW_CASCADE_COUNT);
                 VSMShadowPass.AddPreProcessorDefines(&s,1);
@@ -516,8 +552,21 @@ class VarianceShadowRenderer : public RenderFeature
             VSMShadowPass.BuildProgram();
             VSMShadowPass.BindUniformBlock("Shadows", GLOBAL_SHADOWS_BINDING);
 
+
+            glGenVertexArrays(1, &screenQuadVAO);
+            glGenBuffers(1, &screenQuadVBO);
+            glBindVertexArray(screenQuadVAO);
+            glBindBuffer(GL_ARRAY_BUFFER, screenQuadVBO);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
             GaussianBlurPass = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/common/gaussianBlur.frag");
             GaussianBlurPass.BuildProgram();
+            GaussianBlurPass.UseProgram();
+            GaussianBlurPass.SetSamplerBinding("image", 0);
         }
         
         // Add a frameResources as as struct for input!!. ADD the scene reference. viewport reference. Matrices reference
@@ -529,15 +578,10 @@ class VarianceShadowRenderer : public RenderFeature
                 return std::vector<unsigned int>(1, 0);
             }
 
-            glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
-            glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
-            glClear(GL_DEPTH_BUFFER_BIT);
-
             auto mainLight = frameResources.lightData->directionalLights[0];
             glm::vec3 lightDir = glm::normalize(glm::vec3(frameResources.inverseViewMatrix * mainLight.lightDirection));
 
-
-
+            // Filling the shadows UBO:
             glBindBuffer(GL_UNIFORM_BUFFER, ShadowsUBO); 
 
             // Shadow parameters:
@@ -591,15 +635,15 @@ class VarianceShadowRenderer : public RenderFeature
                 glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(glm::mat4), glm::value_ptr(lightMatrix));
                 offset += sizeof(glm::mat4);
             }
-
             glBufferSubData(GL_UNIFORM_BUFFER, offset, 4 * sizeof(float), &frustrumCuts[1]);
             glBindBuffer(GL_UNIFORM_BUFFER, 0); 
             
-
-            // Rendering objects to shadow map:
             
-            //glCullFace(GL_FRONT); //(Front face culling avoids self shadowing/Acne)
-
+            glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+            glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            
+            // Rendering the shadowMap
             VSMShadowPass.UseProgram();
             
             frameResources.scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
@@ -611,20 +655,45 @@ class VarianceShadowRenderer : public RenderFeature
 
                 VSMShadowPass.SetMat4("modelMatrix", objectToWorld);
 
-                //bind VAO
                 mesh->BindBuffers();
-
-                //Indexed drawing
                 glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
             });    
 
 
+            //Blur Pass
+            GLuint kernelSizeIndex = 1;
+
+            glBindFramebuffer(GL_FRAMEBUFFER, blurPassFBOs[0]);
+            glClear(GL_COLOR_BUFFER_BIT);
+            
+            GaussianBlurPass.UseProgram();
+            GaussianBlurPass.SetVec2("direction", 1.0f, 0.0f);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, shadowMapBuffer0);
+            
+            glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &kernelSizeIndex);
+
+            glBindVertexArray(screenQuadVAO);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
 
 
+
+            glBindFramebuffer(GL_FRAMEBUFFER, blurPassFBOs[1]);
+            glClear(GL_COLOR_BUFFER_BIT);
+            
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, blurredDepthTex[0]);
+
+            GaussianBlurPass.UseProgram();
+            GaussianBlurPass.SetVec2("direction", 0.0f, 1.0f);
+
+            glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &kernelSizeIndex);
+
+            glBindVertexArray(screenQuadVAO);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
 
 
             glViewport(0, 0, frameResources.viewportWidth, frameResources.viewportHeight);
-            //glCullFace(GL_BACK);
 
             return shadowMaps;
         }
@@ -637,31 +706,43 @@ class VarianceShadowRenderer : public RenderFeature
         }
 
     private:
+        std::vector<unsigned int> shadowMaps;
+
         float cameraNear;
         float cameraFar;
 
         unsigned int SHADOW_WIDTH, SHADOW_HEIGHT;
         unsigned int SHADOW_CASCADE_COUNT;
 
+        StandardShader VSMShadowPass;
+        StandardShader GaussianBlurPass;
+
         GLuint shadowMapFBO;
         GLuint shadowMapBuffer0;
         GLuint depthBuffer;
 
-        GLuint blurPassFBO;
-        GLuint blurredDepthTex;
-        
-        
+        GLuint blurPassFBOs[2];
+        GLuint blurredDepthTex[2];
 
-        std::vector<unsigned int> shadowMaps;
 
+        unsigned int screenQuadVAO, screenQuadVBO;
+        float quadVertices[24] = 
+        {   // vertex attributes for a quad that fills the entire screen 
+            // positions   // texCoords
+            -1.0f,  1.0f,  0.0f, 1.0f,
+            -1.0f, -1.0f,  0.0f, 0.0f,
+            1.0f, -1.0f,  1.0f, 0.0f,
+
+            -1.0f,  1.0f,  0.0f, 1.0f,
+            1.0f, -1.0f,  1.0f, 0.0f,
+            1.0f,  1.0f,  1.0f, 1.0f
+        };
+        
+    
         GLuint GLOBAL_SHADOWS_BINDING = 4;
         GLuint ShadowsUBO;
         unsigned int ShadowBufferSize;
         float frustrumCuts[5];
-
-        StandardShader VSMShadowPass;
-
-        StandardShader GaussianBlurPass;
 };
 
 
