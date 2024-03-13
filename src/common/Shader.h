@@ -43,11 +43,11 @@ class Shader
             
         }
 
-        void AddPreProcessorDefines(std::unordered_map<std::string, unsigned int> definesMap)
+        void AddPreProcessorDefines(const std::vector<std::string> &definesMap)
         {
             for (auto define : definesMap) 
             {
-                preDefines.push_back(define.first + " " + std::to_string(define.second));
+                preDefines.push_back(define);
             }
             
         }

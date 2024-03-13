@@ -10,12 +10,12 @@
 #include "../BaseRenderer.h"
 
 
-struct CascadedShadowsInput
+struct PCFShadowsInput
 {
     GLuint shadowUBOBinding;
 };
 
-struct CascadedShadowsOutput
+struct PCFShadowsOutput
 {
     GLuint shadowMap0;
 };
@@ -23,7 +23,7 @@ struct CascadedShadowsOutput
 // Cascade partitioning scheme was Based on: https://developer.download.nvidia.com/SDK/10.5/opengl/src/cascaded_shadow_maps/doc/cascaded_shadow_maps.pdf
 //Add enum containing all shadow mapping techniques to select from
 
-class CascadedShadowRenderer
+class PCFShadowRenderer
 {
     public:
         float seamCorrection = 0.4f;
@@ -31,9 +31,9 @@ class CascadedShadowRenderer
         // This parameter multiplies the size of each frustrum in the CSM
         float zMult = 4.0f;
 
-        CascadedShadowRenderer(){}
+        PCFShadowRenderer(){}
 
-        CascadedShadowRenderer(float camNear, float camFar, unsigned int shadowBufferBinding, unsigned int cascadeCount, unsigned int ShadowWidth, unsigned int ShadowHeight)
+        PCFShadowRenderer(float camNear, float camFar, unsigned int shadowBufferBinding, unsigned int cascadeCount, unsigned int ShadowWidth, unsigned int ShadowHeight)
         {
             this->cameraNear = camNear;
             this->cameraFar = camFar;
@@ -196,12 +196,18 @@ class CascadedShadowRenderer
                     center += glm::vec3(frustrumCorners[j]);
                 }
                 center /= frustrumCorners.size();
+                auto camPos = frameResources.camera->GetPosition();
+                
+                auto v0 = glm::vec3(frustrumCorners[0]);
+                auto v1 = glm::vec3(frustrumCorners[7]);
+                
+                float boundingRadius = glm::length(v0 - v1)/1.41421f;
 
-
-                float boundingRadius = glm::length(frustrumCorners[0] - frustrumCorners[7])/2.0f;
-
+                
                 //we must transform the center the light viewport coordinates in order to snap the movements to the closest texels:
                 float texelsPerUnit = ((float)SHADOW_WIDTH)/(boundingRadius * 2.0f);//assuming width = height
+
+                
 
                 glm::mat4 lightViewportMatrix = glm::mat4(1);
                 lightViewportMatrix = glm::scale(lightViewportMatrix, glm::vec3(texelsPerUnit,texelsPerUnit,texelsPerUnit));
@@ -212,9 +218,7 @@ class CascadedShadowRenderer
                 center.x = (float)floor(center.x);   //snap to texel
                 center.y = (float)floor(center.y);   //snap to texel
                 center = invLightViewportMatrix * glm::vec4(center,1.0f);
-
-
-
+                
                 
                 const auto lightView = glm::lookAt(
                     center + lightDir * 2.0f * boundingRadius, //changing the origin for the z buffer values
@@ -259,12 +263,14 @@ class CascadedShadowRenderer
                 {
                     maxZ *= zMult;
                 }
+                */
                 
+                /*
                 glm::mat4 lightProjection = glm::ortho(minX, maxX, minY, maxY, minZ, maxZ);*/
 
 
 
-                glm::mat4 lightProjection = glm::ortho(-boundingRadius, boundingRadius, -boundingRadius, boundingRadius, -boundingRadius * zMult, boundingRadius * zMult);
+                glm::mat4 lightProjection = glm::ortho(-boundingRadius, boundingRadius, -boundingRadius, boundingRadius, -boundingRadius*zMult, boundingRadius * zMult);
 
 
 
@@ -309,12 +315,7 @@ class CascadedShadowRenderer
             return shadowMaps;
         }
 
-
-        //callback used when there are viewport resizes
-        void ViewportUpdate(int vpWidth, int vpHeight)
-        {
-            
-        }
+        
 
     private:
         float cameraNear;
@@ -349,7 +350,10 @@ struct VarianceShadowsOutput
     GLuint shadowMap0;
 };
 
-//Todo: use mipmaps and MSAA for the shadowmap rendering
+/*Todo: 
+    use MSAA, mipmaps and anisotropic filtering  for the shadowmap rendering
+    test shadow map array blurring in: 1) one pass for each layer (more draw calls) or 2) one pass for all layers (more texture samples)
+ */
 
 class VarianceShadowRenderer 
 {
@@ -608,7 +612,7 @@ class VarianceShadowRenderer
                 center /= frustrumCorners.size();
 
 
-                float boundingRadius = glm::length(frustrumCorners[0] - frustrumCorners[7])/2.0f;
+                float boundingRadius = glm::length(frustrumCorners[0] - frustrumCorners[7])/1.41421f;
 
                 //we must transform the center the light viewport coordinates in order to snap the movements to the closest texels:
                 float texelsPerUnit = ((float)SHADOW_WIDTH)/(boundingRadius * 2.0f);//assuming width = height

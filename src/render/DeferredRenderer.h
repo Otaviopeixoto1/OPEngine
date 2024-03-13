@@ -28,15 +28,6 @@ class DeferredRenderer : public BaseRenderer
 
 
 
-
-
-        std::unordered_map<std::string, unsigned int> preprocessorDefines =
-        {
-            {"MAX_DIR_LIGHTS", MAX_DIR_LIGHTS},
-            {"MAX_POINT_LIGHTS", MAX_POINT_LIGHTS},
-            {"SHADOW_CASCADE_COUNT", SHADOW_CASCADE_COUNT}
-        };
-
         enum LightingPassBufferBindings
         {
             COLOR_SPEC_BUFFER_BINDING = 0,
@@ -79,11 +70,18 @@ class DeferredRenderer : public BaseRenderer
             scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
             scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
 
+            preprocessorDefines.push_back("MAX_DIR_LIGHTS " + std::to_string(MAX_DIR_LIGHTS));
+            preprocessorDefines.push_back("MAX_POINT_LIGHTS " + std::to_string(MAX_POINT_LIGHTS));
+            preprocessorDefines.push_back("SHADOW_CASCADE_COUNT " + std::to_string(SHADOW_CASCADE_COUNT));
+
 
             // Shadow maps:
             if (enableShadowMapping)
             {
-                this->shadowRenderer = CascadedShadowRenderer(
+                preprocessorDefines.push_back("DIR_LIGHT_SHADOWS");
+
+
+                this->shadowRenderer = PCFShadowRenderer(
                     camera.Near,
                     camera.Far,
                     UNIFORM_GLOBAL_SHADOWS_BINDING, 
@@ -92,6 +90,7 @@ class DeferredRenderer : public BaseRenderer
                     SHADOW_HEIGHT
                 );
                 this->shadowRenderer.RecreateResources();
+                preprocessorDefines.push_back("PCF_SHADOWS");
             }
 
             this->skyRenderer = SkyRenderer();
@@ -658,11 +657,6 @@ class DeferredRenderer : public BaseRenderer
                 std::string s = "LIGHT_VOLUMES";
                 directionalLightingPass.AddPreProcessorDefines(&s,1);
             }
-            if (enableShadowMapping)
-            {
-                std::string s = "DIR_LIGHT_SHADOWS";
-                directionalLightingPass.AddPreProcessorDefines(&s,1);
-            }
             directionalLightingPass.BuildProgram();
             directionalLightingPass.UseProgram();
             directionalLightingPass.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
@@ -809,7 +803,9 @@ class DeferredRenderer : public BaseRenderer
         }
 
     private:
-        CascadedShadowRenderer shadowRenderer;
+        std::vector<std::string> preprocessorDefines;
+
+        PCFShadowRenderer shadowRenderer;
         SkyRenderer skyRenderer;
 
         unsigned int viewportWidth;

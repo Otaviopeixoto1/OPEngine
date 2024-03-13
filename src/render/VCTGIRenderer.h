@@ -26,7 +26,7 @@ class VCTGIRenderer : public BaseRenderer
         
         const int MAX_DIR_LIGHTS = 5;
         const int MAX_POINT_LIGHTS = 20;
-
+        
 
         float tonemapExposure = 0.3f;
         float FXAAContrastThreshold = 0.0312f;
@@ -37,14 +37,8 @@ class VCTGIRenderer : public BaseRenderer
         float aoDistance = 0.03f;
         float maxConeDistance = 1.5f;
 
-
-
-        std::unordered_map<std::string, unsigned int> preprocessorDefines =
-        {
-            {"MAX_DIR_LIGHTS", MAX_DIR_LIGHTS},
-            {"MAX_POINT_LIGHTS", MAX_POINT_LIGHTS},
-            {"SHADOW_CASCADE_COUNT", SHADOW_CASCADE_COUNT}
-        };
+        
+        
 
         // Adopted naming conventions for the global uniform blocks
         std::string NamedUniformBufferBindings[5] = { // The indexes have to match values in the enum
@@ -89,6 +83,9 @@ class VCTGIRenderer : public BaseRenderer
             UNIFORM_LOCAL_MATRICES_BINDING = 1,
             UNIFORM_MATERIAL_PROPERTIES_BINDING = 2,
             UNIFORM_GLOBAL_LIGHTS_BINDING = 3,
+            //EXTRABUFFERBINDING0
+            //EXTRABUFFERBINDING1
+            // ...
             UNIFORM_GLOBAL_SHADOWS_BINDING = 4,
 
         };
@@ -112,20 +109,30 @@ class VCTGIRenderer : public BaseRenderer
             scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
             scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
 
+            preprocessorDefines.push_back("MAX_DIR_LIGHTS " + std::to_string(MAX_DIR_LIGHTS));
+            preprocessorDefines.push_back("MAX_POINT_LIGHTS " + std::to_string(MAX_POINT_LIGHTS));
+            preprocessorDefines.push_back("SHADOW_CASCADE_COUNT " + std::to_string(SHADOW_CASCADE_COUNT));
 
             // Shadow maps:
             if (enableShadowMapping)
             {
-                this->shadowRenderer = CascadedShadowRenderer(
+                preprocessorDefines.push_back("DIR_LIGHT_SHADOWS");
+
+
+                this->shadowRenderer = PCFShadowRenderer(
                     camera.Near,
                     camera.Far,
-                    UNIFORM_GLOBAL_SHADOWS_BINDING, 
+                    UNIFORM_GLOBAL_SHADOWS_BINDING, //use extraBUFFERBINDINGs for the renderfeatures (add a map with renderfeature bindings ?)
                     SHADOW_CASCADE_COUNT,
                     SHADOW_WIDTH,
                     SHADOW_HEIGHT
                 );
                 this->shadowRenderer.RecreateResources();
 
+                //declare that we will use pcf shadows for the lighting shaders
+                preprocessorDefines.push_back("PCF_SHADOWS");
+
+                /*
                 this->VSMRenderer = VarianceShadowRenderer(
                     camera.Near,
                     camera.Far,
@@ -134,7 +141,10 @@ class VCTGIRenderer : public BaseRenderer
                     SHADOW_WIDTH,
                     SHADOW_HEIGHT
                 );
-                this->VSMRenderer.RecreateResources();
+                this->VSMRenderer.RecreateResources();*/
+                
+                //declare that we will use VSM shadows for the lighting shaders
+                //preprocessorDefines.push_back("VSM_SHADOWS");
             }
 
             this->skyRenderer = SkyRenderer();
@@ -402,7 +412,7 @@ class VCTGIRenderer : public BaseRenderer
             if (enableShadowMapping)
             {
                 shadowMapBuffers = shadowRenderer.Render(frameResources);
-                std::vector<unsigned int> vsmBuffers = VSMRenderer.Render(frameResources);
+                //std::vector<unsigned int> vsmBuffers = VSMRenderer.Render(frameResources);
             }
             shadowTask->End();
 
@@ -828,19 +838,6 @@ class VCTGIRenderer : public BaseRenderer
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
         void ReloadShaders()
         {
             defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
@@ -898,11 +895,6 @@ class VCTGIRenderer : public BaseRenderer
 
             conetraceShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/voxelization/conetraceGI.frag");
             conetraceShader.AddPreProcessorDefines(preprocessorDefines);
-            if (enableShadowMapping)
-            {
-                std::string s = "DIR_LIGHT_SHADOWS";
-                conetraceShader.AddPreProcessorDefines(&s,1);
-            }
             conetraceShader.BuildProgram();
             conetraceShader.UseProgram();
             conetraceShader.SetSamplerBinding("voxel2DTextures", GI_VOXEL2DTEX_BINDING); 
@@ -916,11 +908,6 @@ class VCTGIRenderer : public BaseRenderer
 
             drawVoxelsShader = StandardShader(BASE_DIR"/data/shaders/voxelization/drawVoxels.vert", BASE_DIR"/data/shaders/voxelization/drawVoxels.frag");
             drawVoxelsShader.AddPreProcessorDefines(preprocessorDefines);
-            if (enableShadowMapping)
-            {
-                std::string s = "DIR_LIGHT_SHADOWS";
-                drawVoxelsShader.AddPreProcessorDefines(&s,1);
-            }
             drawVoxelsShader.BuildProgram();
             drawVoxelsShader.UseProgram();
             drawVoxelsShader.SetSamplerBinding("voxel2DTextures", GI_VOXEL2DTEX_BINDING); 
@@ -1055,7 +1042,9 @@ class VCTGIRenderer : public BaseRenderer
         }
 
     private:
-        CascadedShadowRenderer shadowRenderer;
+        std::vector<std::string> preprocessorDefines;
+        
+        PCFShadowRenderer shadowRenderer;
         VarianceShadowRenderer VSMRenderer;
         SkyRenderer skyRenderer;
 

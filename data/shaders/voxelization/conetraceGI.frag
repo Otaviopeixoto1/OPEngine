@@ -333,9 +333,9 @@ void main()
 	s = mix(d.w, s * d.w, 0.9);
 
 	vec4 f = vec4(1.0f);
-	//f.xyz = l.xyz * s * c.xyz + 2.0 * d.xyz * c.xyz;
+	f.xyz = l.xyz * s * c.xyz + 2.0 * d.xyz * c.xyz;
 	//f.xyz = l.xyz * s * c.xyz;
-	f.xyz =  d.xyz;
+	//f.xyz =  d.xyz;
 
 	outColor = f;
 }

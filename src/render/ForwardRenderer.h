@@ -13,7 +13,7 @@ class ForwardRenderer : public BaseRenderer
 {
     public:
         static constexpr unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
-        static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
+        static constexpr unsigned int SHADOW_CASCADE_COUNT = 2; // MAX == 4
         
         static constexpr bool enableShadowMapping = true;
         static constexpr bool enableNormalMaps = true;
@@ -23,14 +23,6 @@ class ForwardRenderer : public BaseRenderer
 
         unsigned int MSAASamples = 4; 
         float tonemapExposure = 1.0f;
-
-
-        std::unordered_map<std::string, unsigned int> preprocessorDefines =
-        {
-            {"MAX_DIR_LIGHTS", MAX_DIR_LIGHTS},
-            {"MAX_POINT_LIGHTS", MAX_POINT_LIGHTS},
-            {"SHADOW_CASCADE_COUNT", SHADOW_CASCADE_COUNT}
-        };
 
 
         enum MainPassBufferBindings
@@ -73,9 +65,16 @@ class ForwardRenderer : public BaseRenderer
             scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
             scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
 
+            preprocessorDefines.push_back("MAX_DIR_LIGHTS " + std::to_string(MAX_DIR_LIGHTS));
+            preprocessorDefines.push_back("MAX_POINT_LIGHTS " + std::to_string(MAX_POINT_LIGHTS));
+            preprocessorDefines.push_back("SHADOW_CASCADE_COUNT " + std::to_string(SHADOW_CASCADE_COUNT));
+
             if (enableShadowMapping)
             {
-                this->shadowRenderer = CascadedShadowRenderer(
+                preprocessorDefines.push_back("DIR_LIGHT_SHADOWS");
+
+
+                this->shadowRenderer = PCFShadowRenderer(
                     camera.Near,
                     camera.Far,
                     UNIFORM_GLOBAL_SHADOWS_BINDING, 
@@ -85,6 +84,7 @@ class ForwardRenderer : public BaseRenderer
 
                 );
                 this->shadowRenderer.RecreateResources();
+                preprocessorDefines.push_back("PCF_SHADOWS");
             }
 
             this->skyRenderer = SkyRenderer();
@@ -415,11 +415,6 @@ class ForwardRenderer : public BaseRenderer
             // For textured materials with an albedo texture
             defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
             defaultVertFrag.AddPreProcessorDefines(preprocessorDefines);
-            if (enableShadowMapping)
-            {
-                std::string s = "DIR_LIGHT_SHADOWS";
-                defaultVertFrag.AddPreProcessorDefines(&s,1);
-            }
             defaultVertFrag.BuildProgram();
             defaultVertFrag.UseProgram();
             defaultVertFrag.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
@@ -429,11 +424,6 @@ class ForwardRenderer : public BaseRenderer
             // For textured materials with an normal map and albedo textures
             defaultVertNormalTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
             defaultVertNormalTexFrag.AddPreProcessorDefines(preprocessorDefines);
-            if (enableShadowMapping)
-            {
-                std::string s = "DIR_LIGHT_SHADOWS";
-                defaultVertNormalTexFrag.AddPreProcessorDefines(&s,1);
-            }
             if (enableNormalMaps)
             {
                 std::string s = "NORMAL_MAPPED";
@@ -573,7 +563,9 @@ class ForwardRenderer : public BaseRenderer
         }
 
     private:
-        CascadedShadowRenderer shadowRenderer;
+        std::vector<std::string> preprocessorDefines;
+
+        PCFShadowRenderer shadowRenderer;
         SkyRenderer skyRenderer;
 
         unsigned int viewportWidth;

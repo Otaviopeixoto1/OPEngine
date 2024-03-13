@@ -136,6 +136,6 @@ void main()
     {
         outFrag +=  albedo * CalcPointLight(i, norm, ViewFragPos, specular.xyz, specular.w);
     }
-
+    
     FragColor = outFrag;
 }
