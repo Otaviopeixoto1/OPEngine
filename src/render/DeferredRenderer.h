@@ -69,7 +69,8 @@ class DeferredRenderer : public BaseRenderer
         {
             scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
             scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
-
+            
+            preprocessorDefines.clear();
             preprocessorDefines.push_back("MAX_DIR_LIGHTS " + std::to_string(MAX_DIR_LIGHTS));
             preprocessorDefines.push_back("MAX_POINT_LIGHTS " + std::to_string(MAX_POINT_LIGHTS));
             preprocessorDefines.push_back("SHADOW_CASCADE_COUNT " + std::to_string(SHADOW_CASCADE_COUNT));
@@ -82,8 +83,6 @@ class DeferredRenderer : public BaseRenderer
 
 
                 this->shadowRenderer = PCFShadowRenderer(
-                    camera.Near,
-                    camera.Far,
                     UNIFORM_GLOBAL_SHADOWS_BINDING, 
                     SHADOW_CASCADE_COUNT,
                     SHADOW_WIDTH,
@@ -293,10 +292,11 @@ class DeferredRenderer : public BaseRenderer
             // -----------------------------
             auto shadowTask = profiler->AddTask("Shadow Pass", Colors::nephritis);
             shadowTask->Start();
-            std::vector<unsigned int> shadowMapBuffers = {0};
+
+            ShadowsOutput shadowOut = {0, GL_TEXTURE_2D};
             if (enableShadowMapping)
             {
-                shadowMapBuffers = shadowRenderer.Render(frameResources);
+                shadowOut = shadowRenderer.Render(frameResources);
             }
             shadowTask->End();
 
@@ -439,7 +439,7 @@ class DeferredRenderer : public BaseRenderer
             glActiveTexture(GL_TEXTURE0 + POSITION_BUFFER_BINDING);
             glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
             glActiveTexture(GL_TEXTURE0 + SHADOW_MAP_BUFFER0_BINDING);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowMapBuffers[0]);
+            glBindTexture(shadowOut.texType0, shadowOut.shadowMap0);
 
             
             

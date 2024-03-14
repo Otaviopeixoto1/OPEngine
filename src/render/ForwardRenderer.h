@@ -65,6 +65,7 @@ class ForwardRenderer : public BaseRenderer
             scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
             scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
 
+            preprocessorDefines.clear();
             preprocessorDefines.push_back("MAX_DIR_LIGHTS " + std::to_string(MAX_DIR_LIGHTS));
             preprocessorDefines.push_back("MAX_POINT_LIGHTS " + std::to_string(MAX_POINT_LIGHTS));
             preprocessorDefines.push_back("SHADOW_CASCADE_COUNT " + std::to_string(SHADOW_CASCADE_COUNT));
@@ -75,13 +76,10 @@ class ForwardRenderer : public BaseRenderer
 
 
                 this->shadowRenderer = PCFShadowRenderer(
-                    camera.Near,
-                    camera.Far,
                     UNIFORM_GLOBAL_SHADOWS_BINDING, 
                     SHADOW_CASCADE_COUNT,
                     SHADOW_WIDTH,
                     SHADOW_HEIGHT
-
                 );
                 this->shadowRenderer.RecreateResources();
                 preprocessorDefines.push_back("PCF_SHADOWS");
@@ -209,10 +207,10 @@ class ForwardRenderer : public BaseRenderer
             auto shadowTask = profiler->AddTask("shadows", Colors::amethyst);
             shadowTask->Start();
 
-            std::vector<unsigned int> shadowMapBuffers = {0};
+            ShadowsOutput shadowOut = {0, GL_TEXTURE_2D};
             if (enableShadowMapping)
             {
-                shadowMapBuffers = shadowRenderer.Render(frameResources);
+                shadowOut = shadowRenderer.Render(frameResources);
             }
             
             shadowTask->End();
@@ -261,7 +259,7 @@ class ForwardRenderer : public BaseRenderer
 
             // -Shadows:
             glActiveTexture(GL_TEXTURE0 + SHADOW_MAP_BUFFER0_BINDING);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowMapBuffers[0]);
+            glBindTexture(shadowOut.texType0, shadowOut.shadowMap0);
 
 
             int shaderCache = -1;

@@ -9,15 +9,18 @@
 #include "../../common/MathUtils.h"
 #include "../BaseRenderer.h"
 
-
+/*
 struct PCFShadowsInput
 {
     GLuint shadowUBOBinding;
-};
+};*/
 
-struct PCFShadowsOutput
+//The same output for all shadow renderers
+struct ShadowsOutput
 {
+    // Currently only one of the lights can generate an output target
     GLuint shadowMap0;
+    GLenum texType0;
 };
 
 // Cascade partitioning scheme was Based on: https://developer.download.nvidia.com/SDK/10.5/opengl/src/cascaded_shadow_maps/doc/cascaded_shadow_maps.pdf
@@ -33,11 +36,8 @@ class PCFShadowRenderer
 
         PCFShadowRenderer(){}
 
-        PCFShadowRenderer(float camNear, float camFar, unsigned int shadowBufferBinding, unsigned int cascadeCount, unsigned int ShadowWidth, unsigned int ShadowHeight)
+        PCFShadowRenderer(unsigned int shadowBufferBinding, unsigned int cascadeCount, unsigned int ShadowWidth, unsigned int ShadowHeight)
         {
-            this->cameraNear = camNear;
-            this->cameraFar = camFar;
-
             this->GLOBAL_SHADOWS_BINDING = shadowBufferBinding;
             
             // MAX CASCADE COUNT = 4 
@@ -89,29 +89,6 @@ class PCFShadowRenderer
                 throw BaseRenderer::RendererException("ERROR::FRAMEBUFFER:: shadowMap Framebuffer is incomplete");
             }
 
-            
-            // Currently only one of the lights can generate an output target
-            shadowMaps.push_back(shadowMapBuffer0);
-            
-
-
-
-            for (size_t i = 0; i <= 4; i++)
-            {
-                
-                if (i < SHADOW_CASCADE_COUNT + 1)
-                {
-                    frustrumCuts[i] = (1-seamCorrection)*cameraNear * pow(cameraFar/cameraNear, i/(float)SHADOW_CASCADE_COUNT)
-                                        + seamCorrection*(cameraNear + (i/(float)SHADOW_CASCADE_COUNT) * (cameraFar - cameraNear));
-                }
-                else 
-                {
-                    // if we have less than 4 cascades, the other frustrum cuts should be outsizde the range of
-                    // the camera (this is for shader calculations)
-                    frustrumCuts[i] = cameraFar * 1.1f;
-                }
-            }
-
 
             glGenBuffers(1, &ShadowsUBO);
 
@@ -133,7 +110,7 @@ class PCFShadowRenderer
             {
                 ShadowBufferSize += 4 * sizeof(float);
                 ShadowBufferSize += SHADOW_CASCADE_COUNT * sizeof(glm::mat4);
-                ShadowBufferSize += sizeof(frustrumCuts);
+                ShadowBufferSize += sizeof(frustumCuts);
             }
 
             glBindBuffer(GL_UNIFORM_BUFFER, ShadowsUBO);
@@ -152,15 +129,38 @@ class PCFShadowRenderer
             shadowDepthPass.BuildProgram();
             shadowDepthPass.BindUniformBlock("Shadows", GLOBAL_SHADOWS_BINDING);
         }
+
+        void SetupFrustumCuts(float camNear, float camFar)
+        {
+            for (size_t i = 0; i <= 4; i++)
+            {
+                
+                if (i < SHADOW_CASCADE_COUNT + 1)
+                {
+                    frustumCuts[i] = (1-seamCorrection)*camNear * pow(camFar/camNear, i/(float)SHADOW_CASCADE_COUNT)
+                                        + seamCorrection*(camNear + (i/(float)SHADOW_CASCADE_COUNT) * (camFar - camNear));
+                }
+                else 
+                {
+                    // if we have less than 4 cascades, the other frustrum cuts should be outsizde the range of
+                    // the camera (this is for shader calculations)
+                    frustumCuts[i] = camFar * 1.1f;
+                }
+            }
+        }
         
         // Add a frameResources as as struct for input!!. ADD the scene reference. viewport reference. Matrices reference
         //Returns a set of output textures
-        std::vector<unsigned int> Render(const BaseRenderer::FrameResources& frameResources)
+        ShadowsOutput Render(const BaseRenderer::FrameResources& frameResources)
         {
+            ShadowsOutput out = {0, GL_TEXTURE_2D};
+
             if (frameResources.lightData->numDirLights == 0)
             {
-                return std::vector<unsigned int>(1, 0);
+                return out;
             }
+
+            SetupFrustumCuts(frameResources.camera->Near,frameResources.camera->Far);
 
             glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
             glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
@@ -188,7 +188,7 @@ class PCFShadowRenderer
             
             for (size_t i = 0; i < SHADOW_CASCADE_COUNT; i++)
             {
-                auto frustrumCorners = frameResources.camera->GetFrustumCornersWorldSpace(frustrumCuts[i], frustrumCuts[i+1]);
+                auto frustrumCorners = frameResources.camera->GetFrustumCornersWorldSpace(frustumCuts[i], frustumCuts[i+1]);
 
                 glm::vec3 center = glm::vec3(0, 0, 0);
                 for (size_t j = 0; j < frustrumCorners.size(); j++)
@@ -267,11 +267,7 @@ class PCFShadowRenderer
                 
                 /*
                 glm::mat4 lightProjection = glm::ortho(minX, maxX, minY, maxY, minZ, maxZ);*/
-
-
-
                 glm::mat4 lightProjection = glm::ortho(-boundingRadius, boundingRadius, -boundingRadius, boundingRadius, -boundingRadius*zMult, boundingRadius * zMult);
-
 
 
                 // multiply by the inverse projection matrix
@@ -281,9 +277,8 @@ class PCFShadowRenderer
                 glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(glm::mat4), glm::value_ptr(lightMatrix));
                 offset += sizeof(glm::mat4);
             }
-            //std::cout << "render start render: " << glGetError() << std::endl; 
-            // these dont have to be set every frame
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, 4 * sizeof(float), &frustrumCuts[1]);
+
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, 4 * sizeof(float), &frustumCuts[1]);
             glBindBuffer(GL_UNIFORM_BUFFER, 0); 
             
 
@@ -311,8 +306,9 @@ class PCFShadowRenderer
 
             glViewport(0, 0, frameResources.viewportWidth, frameResources.viewportHeight);
             //glCullFace(GL_BACK);
-
-            return shadowMaps;
+            out.shadowMap0 = shadowMapBuffer0;
+            out.texType0 = GL_TEXTURE_2D_ARRAY;
+            return out;
         }
 
         
@@ -326,29 +322,16 @@ class PCFShadowRenderer
         GLuint shadowMapFBO;
         GLuint shadowMapBuffer0;
 
-        std::vector<unsigned int> shadowMaps;
 
         GLuint GLOBAL_SHADOWS_BINDING = 4;
         GLuint ShadowsUBO;
         unsigned int ShadowBufferSize;
-        float frustrumCuts[5];
+        float frustumCuts[5];
         StandardShader shadowDepthPass;
 };
 
 
 
-
-
-
-struct VarianceShadowsInput
-{
-    GLuint shadowUBOBinding;
-};
-
-struct VarianceShadowsOutput
-{
-    GLuint shadowMap0;
-};
 
 /*Todo: 
     use MSAA, mipmaps and anisotropic filtering  for the shadowmap rendering
@@ -366,11 +349,8 @@ class VarianceShadowRenderer
 
         VarianceShadowRenderer(){}
 
-        VarianceShadowRenderer(float camNear, float camFar, unsigned int shadowBufferBinding, unsigned int cascadeCount, unsigned int ShadowWidth, unsigned int ShadowHeight)
+        VarianceShadowRenderer(unsigned int shadowBufferBinding, unsigned int cascadeCount, unsigned int ShadowWidth, unsigned int ShadowHeight)
         {
-            this->cameraNear = camNear;
-            this->cameraFar = camFar;
-
             this->GLOBAL_SHADOWS_BINDING = shadowBufferBinding;
             
             // MAX CASCADE COUNT = 4 
@@ -461,8 +441,6 @@ class VarianceShadowRenderer
             }
 
 
-
-
             
             // Gaussian Blur pass
             glGenFramebuffers(2, blurPassFBOs);
@@ -498,25 +476,6 @@ class VarianceShadowRenderer
             shadowMaps.push_back(blurredDepthTex[1]);
 
 
-
-            
-            for (size_t i = 0; i <= 4; i++)
-            {
-                
-                if (i < SHADOW_CASCADE_COUNT + 1)
-                {
-                    frustrumCuts[i] = (1-seamCorrection)*cameraNear * pow(cameraFar/cameraNear, i/(float)SHADOW_CASCADE_COUNT)
-                                        + seamCorrection*(cameraNear + (i/(float)SHADOW_CASCADE_COUNT) * (cameraFar - cameraNear));
-                }
-                else 
-                {
-                    // if we have less than 4 cascades, the other frustrum cuts should be outsizde the range of
-                    // the camera (this is for shader calculations)
-                    frustrumCuts[i] = cameraFar * 1.1f;
-                }
-            }
-
-
             glGenBuffers(1, &ShadowsUBO);
 
             // Shadows buffer setup
@@ -537,7 +496,7 @@ class VarianceShadowRenderer
             {
                 ShadowBufferSize += 4 * sizeof(float);
                 ShadowBufferSize += SHADOW_CASCADE_COUNT * sizeof(glm::mat4);
-                ShadowBufferSize += sizeof(frustrumCuts);
+                ShadowBufferSize += sizeof(frustumCuts);
             }
 
             glBindBuffer(GL_UNIFORM_BUFFER, ShadowsUBO);
@@ -572,15 +531,38 @@ class VarianceShadowRenderer
             GaussianBlurPass.UseProgram();
             GaussianBlurPass.SetSamplerBinding("image", 0);
         }
+
+        void SetupFrustumCuts(float camNear, float camFar)
+        {
+            for (size_t i = 0; i <= 4; i++)
+            {
+                
+                if (i < SHADOW_CASCADE_COUNT + 1)
+                {
+                    frustumCuts[i] = (1-seamCorrection)*camNear * pow(camFar/camNear, i/(float)SHADOW_CASCADE_COUNT)
+                                        + seamCorrection*(camNear + (i/(float)SHADOW_CASCADE_COUNT) * (camFar - camNear));
+                }
+                else 
+                {
+                    // if we have less than 4 cascades, the other frustrum cuts should be outsizde the range of
+                    // the camera (this is for shader calculations)
+                    frustumCuts[i] = camFar * 1.1f;
+                }
+            }
+        }
         
         // Add a frameResources as as struct for input!!. ADD the scene reference. viewport reference. Matrices reference
         //Returns a set of output textures
-        std::vector<unsigned int> Render(const BaseRenderer::FrameResources& frameResources)
+        ShadowsOutput Render(const BaseRenderer::FrameResources& frameResources)
         {
+            ShadowsOutput out = {0, GL_TEXTURE_2D};
+
             if (frameResources.lightData->numDirLights == 0)
             {
-                return std::vector<unsigned int>(1, 0);
+                return out;
             }
+
+            SetupFrustumCuts(frameResources.camera->Near,frameResources.camera->Far);
 
             auto mainLight = frameResources.lightData->directionalLights[0];
             glm::vec3 lightDir = glm::normalize(glm::vec3(frameResources.inverseViewMatrix * mainLight.lightDirection));
@@ -602,7 +584,7 @@ class VarianceShadowRenderer
             
             for (size_t i = 0; i < SHADOW_CASCADE_COUNT; i++)
             {
-                auto frustrumCorners = frameResources.camera->GetFrustumCornersWorldSpace(frustrumCuts[i], frustrumCuts[i+1]);
+                auto frustrumCorners = frameResources.camera->GetFrustumCornersWorldSpace(frustumCuts[i], frustumCuts[i+1]);
 
                 glm::vec3 center = glm::vec3(0, 0, 0);
                 for (size_t j = 0; j < frustrumCorners.size(); j++)
@@ -639,7 +621,7 @@ class VarianceShadowRenderer
                 glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(glm::mat4), glm::value_ptr(lightMatrix));
                 offset += sizeof(glm::mat4);
             }
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, 4 * sizeof(float), &frustrumCuts[1]);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, 4 * sizeof(float), &frustumCuts[1]);
             glBindBuffer(GL_UNIFORM_BUFFER, 0); 
             
             
@@ -699,7 +681,9 @@ class VarianceShadowRenderer
 
             glViewport(0, 0, frameResources.viewportWidth, frameResources.viewportHeight);
 
-            return shadowMaps;
+            out.shadowMap0 = shadowMapBuffer0;
+            out.texType0 = GL_TEXTURE_2D;
+            return out;
         }
 
 
@@ -746,7 +730,7 @@ class VarianceShadowRenderer
         GLuint GLOBAL_SHADOWS_BINDING = 4;
         GLuint ShadowsUBO;
         unsigned int ShadowBufferSize;
-        float frustrumCuts[5];
+        float frustumCuts[5];
 };
 
 

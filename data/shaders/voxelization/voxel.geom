@@ -12,6 +12,7 @@ in vec4 vWorldPos[3];
 flat out uint domInd;
 out vec2 TexCoords;
 out vec4 worldPosition;
+out vec4 viewPosition;
 out vec3 viewNormal;
 out vec3 voxelTexCoord;
 
@@ -59,6 +60,7 @@ void main()
 	for (int i = 0; i < 3; i++)
 	{
 		worldPosition = vWorldPos[i];
+		viewPosition = viewMatrix * worldPosition;
 		TexCoords = vTexCoords[i];
 		voxelTexCoord = (gl_in[i].gl_Position.xyz + vec3(1.0f)) * 0.5f;
 		//viewNormal = vNormal[i].xyz;

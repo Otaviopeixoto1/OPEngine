@@ -225,12 +225,6 @@ vec4 voxelSampleLevel(vec3 position, float level)
 
         VoxelData voxel = unpackARGB8(textureLod(voxel3DData, voxelPos, mip).r);
 		
-		/*
-		//check if voxelpos is out of bounds
-        if(any(greaterThan(voxelPos, vec3(1.0f))) || any(lessThan(voxelPos, vec3(0.0f)))) 
-		{
-            factor = 0.0f;
-        }*/
 
 		total.rgb += voxel.color.rgb * factor * float(sign(int(voxel.light)));
 		total.a += voxel.color.a * factor;
@@ -330,11 +324,12 @@ void main()
 	voxelPos.xyz  = (voxelPos.xyz + vec3(1.0f)) * 0.5f;
     vec4 d = DiffuseTrace(voxelPos.xyz, worldNormal.xyz);
 
-	s = mix(d.w, s * d.w, 0.9);
+	//s = mix(d.w, s * d.w, 0.9);
 
 	vec4 f = vec4(1.0f);
-	f.xyz = l.xyz * s * c.xyz + 2.0 * d.xyz * c.xyz;
-	//f.xyz = l.xyz * s * c.xyz;
+	//f.xyz = l.xyz * s * c.xyz + 2.0 * d.xyz * c.xyz;
+	f.xyz = l.xyz * s * c.xyz;
+	//f.x = s;
 	//f.xyz =  d.xyz;
 
 	outColor = f;

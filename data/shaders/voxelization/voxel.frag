@@ -11,6 +11,7 @@ uniform uint voxelRes;
 
 in vec2 TexCoords;
 in vec4 worldPosition;
+in vec4 viewPosition;
 in vec3 viewNormal;
 in vec3 voxelTexCoord;
 
@@ -130,53 +131,11 @@ layout(location = 0) subroutine uniform GetColor SampleColor;
 
 
 
-float GetMainDirLightShadow(vec3 worldPos, vec3 worldNormal)
-{
-	//use view normal instead of world normal
-	//float bias = max(0.005 * (1.0 - dot(worldNormal, dirLights[lightIndex].direction.xyz)), 0.0005);
-	float bias = 0.00050;
-	vec2 texelSize = 1.0 / textureSize(shadowMap0, 0).xy;  
-	vec3 normalBias = worldNormal * max(texelSize.x, texelSize.y) * 1.4142136f * 100;
-
-
-	vec4 posClipSpace = lightSpaceMatrices[0] * vec4(worldPos.xyz + normalBias, 1);
-
-	// Perspective division is only realy necessary with perspective projection, 
-	// it wont affect ortographic projection be we do it anyway:
-	vec3 ndcPos = posClipSpace.xyz / posClipSpace.w;
-	ndcPos = ndcPos * 0.5 + 0.5; 
-
-	// Depth samples to compare   
-	float currentDepth = ndcPos.z; 
-
-	
-	// One sample:
-	//float closestDepth = texture(shadowMap0, vec3(ndcPos.xy, 0)).r;
-	//float shadow = currentDepth - bias > closestDepth  ? 0.0 : 1.0;
-
-
-
-	// Multiple samples (4x4 kernel):
-	float shadow = 0.0f;
-	for(float x = -1.5; x <= 1.5; ++x)
-	{
-		for(float y = -1.5; y <= 1.5; ++y)
-		{  
-			shadow += texture(shadowMap0, vec4(ndcPos.xy + vec2(x, y) * texelSize, 0, currentDepth - bias));
-		}    
-	}
-	shadow /= 9.0f;
-
-	return shadow;
-}
-
-
-
 
 
 void main()
 {	                           //color, light, count
-	VoxelData data = VoxelData(vec4(0.0f), 0x0, 0x8);
+	VoxelData data = VoxelData(vec4(1.0f), 0x0, 0x8);
 
 	ivec3 voxelCoord = ivec3(voxelTexCoord * voxelRes);	
 	
@@ -184,13 +143,16 @@ void main()
     vec3 vLight = normalize(dirLights[0].direction.xyz);
 
 	vec4 worldNormal = (inverseViewMatrix * vec4(vNormal, 0.0f));
-	float shadow = GetMainDirLightShadow(worldPosition.xyz, worldNormal.xyz);
-	data.light = uint(8.0f * shadow);
+	float shadow = GetDirLightShadow(0, viewPosition.xyz, worldPosition.xyz, worldNormal.xyz);
+	data.light = uint(8.0f * shadow); 
 
 	//simple diffuse lighting
 	float NdotL = dot(vNormal,vLight);
     float diff = max(NdotL, 0.0);
-	data.color = SampleColor() * diff;
+	//data.color = SampleColor() * diff ;
+	data.color.rgba = SampleColor().rgba;
+	data.color.rgb *= diff * shadow;
+	//data.color.rgb = shadow.rrr/4.0f;
 	
 	
 	uint outData = packARGB8(data);

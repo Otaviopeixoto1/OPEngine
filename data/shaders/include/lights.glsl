@@ -58,16 +58,21 @@ layout(std140) uniform Shadows
                              //must be added into this buffer
 };
 
+#if defined(PCF_SHADOWS)
+    uniform sampler2DArrayShadow shadowMap0;
+#elif defined(VSM_SHADOWS)
+    uniform sampler2D shadowMap0; //sampler2DArray
+#endif
 
-uniform sampler2DArrayShadow shadowMap0;
 
 
 //this output should depend on the shadow renderer:
 float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldNormal)
 {
-    #ifndef DIR_LIGHT_SHADOWS
+    #if !defined(DIR_LIGHT_SHADOWS)
         return 1;
-    #else
+
+    #elif defined(PCF_SHADOWS)
 
         float fragDepth = abs(viewPos.z);
 
@@ -117,7 +122,6 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
         //float shadow = currentDepth - bias > closestDepth  ? 0.0 : 1.0;
 
 
-
         // Multiple samples (4x4 kernel):
         float shadow = 0.0f;
         for(float x = -1.5; x <= 1.5; ++x)
@@ -131,10 +135,42 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
                 shadow += texture(shadowMap0, vec4(ndcPos.xy + vec2(x, y) * texelSize, currentLayer, currentDepth - bias));
             }    
         }
-        shadow /= 9.0f;
+        shadow /= 16.0f;
 
         return shadow;
-        
+
+    #elif defined(VSM_SHADOWS)
+
+        vec4 posClipSpace = lightSpaceMatrices[0] * vec4(worldPos.xyz, 1);
+
+        // Perspective division is only realy necessary with perspective projection, 
+        // it wont affect ortographic projection be we do it anyway:
+        vec3 ndcPos = posClipSpace.xyz / posClipSpace.w;
+        ndcPos = ndcPos * 0.5 + 0.5; 
+
+        // Depth samples to compare   
+        float currentDepth = ndcPos.z; 
+
+        vec2 moments = texture2D(shadowMap0, ndcPos.xy).xy;
+
+        // One-tailed inequality valid if currentDepth > moments.x    
+        float p = float(currentDepth <= moments.x);   
+        // Compute variance:
+
+        //add as shader parameter
+        float g_MinVariance = 0.01f;
+
+
+        float variance = moments.y - (moments.x*moments.x);   
+        variance = max(variance, g_MinVariance);   
+        // Compute probabilistic upper bound.    
+        float d = currentDepth - moments.x;   
+        float p_max = variance / (variance + d*d);   
+        return max(p, p_max);
+
+
+    #else
+        return 1.0f;
     #endif
 
 }

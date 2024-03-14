@@ -17,10 +17,9 @@ class VCTGIRenderer : public BaseRenderer
         static constexpr unsigned int MAX_MIP_MAP_LEVELS = 9;
         static constexpr unsigned int MAX_SPARSE_BUFFER_SIZE = 134217728;
 
-        const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
+        const unsigned int SHADOW_WIDTH = 4096, SHADOW_HEIGHT = 4096;
         static constexpr unsigned int SHADOW_CASCADE_COUNT = 1; // MAX == 4
 
-        static constexpr bool enableShadowMapping = true;
         static constexpr bool enableNormalMaps = true;
         static constexpr bool enableLightVolumes = true;
         
@@ -28,17 +27,26 @@ class VCTGIRenderer : public BaseRenderer
         const int MAX_POINT_LIGHTS = 20;
         
 
-        float tonemapExposure = 0.3f;
+        float tonemapExposure = 1.3f;
         float FXAAContrastThreshold = 0.0312f;
         float FXAABrightnessThreshold = 0.063f;
         unsigned int voxelRes = 256;
         bool drawVoxels = false;
 
         float aoDistance = 0.03f;
-        float maxConeDistance = 1.5f;
+        float maxConeDistance = 1.0f;
 
         
-        
+
+
+        enum VCTGIShadowRenderer
+        {
+            NONE,
+            PCF_SHADOW_MAP,
+            VSM_SHADOW_MAP
+        };
+        VCTGIShadowRenderer activeShadowRenderer = PCF_SHADOW_MAP;
+
 
         // Adopted naming conventions for the global uniform blocks
         std::string NamedUniformBufferBindings[5] = { // The indexes have to match values in the enum
@@ -47,8 +55,21 @@ class VCTGIRenderer : public BaseRenderer
             "MaterialProperties",
             "Lights",
             "Shadows",
+        };
+        
+        enum VCTGIUniformBufferBindings
+        {
+            UNIFORM_GLOBAL_MATRICES_BINDING = 0,
+            UNIFORM_LOCAL_MATRICES_BINDING = 1,
+            UNIFORM_MATERIAL_PROPERTIES_BINDING = 2,
+            UNIFORM_GLOBAL_LIGHTS_BINDING = 3,
+            //EXTRABUFFERBINDING0
+            //EXTRABUFFERBINDING1
+            // ...
+            UNIFORM_GLOBAL_SHADOWS_BINDING = 4,
 
         };
+
 
         enum gBufferPassBindings
         {
@@ -56,7 +77,6 @@ class VCTGIRenderer : public BaseRenderer
             G_NORMAL_BUFFER_BINDING = 1,
             G_POSITION_BUFFER_BINDING = 2,
         };
-
 
         enum VoxelizationPassBindings
         {
@@ -77,18 +97,7 @@ class VCTGIRenderer : public BaseRenderer
 
         };
 
-        enum VCTGIUniformBufferBindings
-        {
-            UNIFORM_GLOBAL_MATRICES_BINDING = 0,
-            UNIFORM_LOCAL_MATRICES_BINDING = 1,
-            UNIFORM_MATERIAL_PROPERTIES_BINDING = 2,
-            UNIFORM_GLOBAL_LIGHTS_BINDING = 3,
-            //EXTRABUFFERBINDING0
-            //EXTRABUFFERBINDING1
-            // ...
-            UNIFORM_GLOBAL_SHADOWS_BINDING = 4,
-
-        };
+        
         enum VCTGIShaderStorageBindings 
         {
             DRAW_INDIRECT_BINDING = 0,
@@ -109,43 +118,43 @@ class VCTGIRenderer : public BaseRenderer
             scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
             scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
 
+            preprocessorDefines.clear();
             preprocessorDefines.push_back("MAX_DIR_LIGHTS " + std::to_string(MAX_DIR_LIGHTS));
             preprocessorDefines.push_back("MAX_POINT_LIGHTS " + std::to_string(MAX_POINT_LIGHTS));
             preprocessorDefines.push_back("SHADOW_CASCADE_COUNT " + std::to_string(SHADOW_CASCADE_COUNT));
 
-            // Shadow maps:
-            if (enableShadowMapping)
+
+            switch (activeShadowRenderer)
             {
-                preprocessorDefines.push_back("DIR_LIGHT_SHADOWS");
+                case PCF_SHADOW_MAP:
+                    this->PCFshadowRenderer = PCFShadowRenderer(
+                        UNIFORM_GLOBAL_SHADOWS_BINDING, //Abstract the uniform buffer object and send a pointer to the renderer. 
+                                                        //ITs the renderer responsability to manage UBOs
+                        SHADOW_CASCADE_COUNT,
+                        SHADOW_WIDTH,
+                        SHADOW_HEIGHT
+                    );
+                    this->PCFshadowRenderer.RecreateResources();
+                    preprocessorDefines.push_back("DIR_LIGHT_SHADOWS");
+                    preprocessorDefines.push_back("PCF_SHADOWS");
+                    break;
 
-
-                this->shadowRenderer = PCFShadowRenderer(
-                    camera.Near,
-                    camera.Far,
-                    UNIFORM_GLOBAL_SHADOWS_BINDING, //use extraBUFFERBINDINGs for the renderfeatures (add a map with renderfeature bindings ?)
-                    SHADOW_CASCADE_COUNT,
-                    SHADOW_WIDTH,
-                    SHADOW_HEIGHT
-                );
-                this->shadowRenderer.RecreateResources();
-
-                //declare that we will use pcf shadows for the lighting shaders
-                preprocessorDefines.push_back("PCF_SHADOWS");
-
-                /*
-                this->VSMRenderer = VarianceShadowRenderer(
-                    camera.Near,
-                    camera.Far,
-                    UNIFORM_GLOBAL_SHADOWS_BINDING, 
-                    SHADOW_CASCADE_COUNT,
-                    SHADOW_WIDTH,
-                    SHADOW_HEIGHT
-                );
-                this->VSMRenderer.RecreateResources();*/
+                case VSM_SHADOW_MAP:
+                    this->VSMShadowRenderer = VarianceShadowRenderer(
+                        UNIFORM_GLOBAL_SHADOWS_BINDING, 
+                        SHADOW_CASCADE_COUNT,
+                        SHADOW_WIDTH,
+                        SHADOW_HEIGHT
+                    );
+                    this->VSMShadowRenderer.RecreateResources();
+                    preprocessorDefines.push_back("DIR_LIGHT_SHADOWS");
+                    preprocessorDefines.push_back("VSM_SHADOWS");
+                    break;
                 
-                //declare that we will use VSM shadows for the lighting shaders
-                //preprocessorDefines.push_back("VSM_SHADOWS");
+                default:
+                    break;
             }
+
 
             this->skyRenderer = SkyRenderer();
             this->skyRenderer.RecreateResources();
@@ -237,8 +246,8 @@ class VCTGIRenderer : public BaseRenderer
             SetupCompInd();
 
             numMipLevels = (GLuint)log2(voxelRes);
-            glGenTextures(1, &voxelBuffer);
-            glBindTexture(GL_TEXTURE_3D, voxelBuffer);
+            glGenTextures(1, &voxel3DTex);
+            glBindTexture(GL_TEXTURE_3D, voxel3DTex);
             glTexStorage3D(GL_TEXTURE_3D, numMipLevels + 1, GL_R32UI, voxelRes, voxelRes, voxelRes);
             glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
             glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -253,8 +262,6 @@ class VCTGIRenderer : public BaseRenderer
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-            
 
 
 
@@ -408,12 +415,23 @@ class VCTGIRenderer : public BaseRenderer
             // -----------------------------
             auto shadowTask = profiler->AddTask("Shadow Pass", Colors::sunFlower);
             shadowTask->Start();
-            std::vector<unsigned int> shadowMapBuffers = {0};
-            if (enableShadowMapping)
+
+            ShadowsOutput shadowOut = {0, GL_TEXTURE_2D};
+
+            switch (activeShadowRenderer)
             {
-                shadowMapBuffers = shadowRenderer.Render(frameResources);
-                //std::vector<unsigned int> vsmBuffers = VSMRenderer.Render(frameResources);
+                case PCF_SHADOW_MAP:
+                    shadowOut = PCFshadowRenderer.Render(frameResources);
+                    break;
+
+                case VSM_SHADOW_MAP:
+                    shadowOut = VSMShadowRenderer.Render(frameResources);
+                    break;
+                
+                default:
+                    break;
             }
+        
             shadowTask->End();
 
 
@@ -532,7 +550,7 @@ class VCTGIRenderer : public BaseRenderer
             // 3) Voxelization Pass 
             auto voxelizationTask = profiler->AddTask("voxelization", Colors::belizeHole);
             voxelizationTask->Start();
-
+            glEnable(GL_CONSERVATIVE_RASTERIZATION_NV);
             //these are bound in dispatch indirect and shader storage, since they are first filled in the voxelization (storage) and then read in the mipmap compute shader (indirect)
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndBuffer);     
             glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, compIndBuffer);
@@ -554,7 +572,7 @@ class VCTGIRenderer : public BaseRenderer
             // Clear the last voxelization data
             glClearTexImage(voxel2DTex, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
             for(size_t i = 0; i <= numMipLevels; i++) 
-                glClearTexImage(voxelBuffer, (GLint)i, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+                glClearTexImage(voxel3DTex, (GLint)i, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
 
             // Reset the sparse voxel count
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, drawIndBuffer);
@@ -569,10 +587,10 @@ class VCTGIRenderer : public BaseRenderer
             
 
             glBindImageTexture(VX_VOXEL2DTEX_BINDING, voxel2DTex, 0, GL_TRUE, 0, GL_READ_WRITE, GL_R32UI);
-            glBindImageTexture(VX_VOXEL3DTEX_BINDING, voxelBuffer, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
+            glBindImageTexture(VX_VOXEL3DTEX_BINDING, voxel3DTex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
 
             glActiveTexture(GL_TEXTURE0 + VX_SHADOW_MAP0_BINDING);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowMapBuffers[0]);
+            glBindTexture(shadowOut.texType0, shadowOut.shadowMap0);
 
             
             glDisable(GL_CULL_FACE); // all faces must be rendered
@@ -653,6 +671,7 @@ class VCTGIRenderer : public BaseRenderer
 
             glViewport(origViewportSize[0], origViewportSize[1], origViewportSize[2], origViewportSize[3]);
             glEnable(GL_CULL_FACE);
+            glDisable(GL_CONSERVATIVE_RASTERIZATION_NV);
             voxelizationTask->End();
 
 
@@ -663,8 +682,8 @@ class VCTGIRenderer : public BaseRenderer
             mipmappingShader.UseProgram();
             for(GLuint level = 0; level < numMipLevels; level++) 
             {
-                glBindImageTexture(3, voxelBuffer, level, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
-                glBindImageTexture(4, voxelBuffer, level + 1, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
+                glBindImageTexture(3, voxel3DTex, level, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
+                glBindImageTexture(4, voxel3DTex, level + 1, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
 
                 mipmappingShader.SetUInt("currentLevel", level);
 
@@ -692,7 +711,7 @@ class VCTGIRenderer : public BaseRenderer
                 glEnable(GL_DEPTH_TEST);
 
                 glActiveTexture(GL_TEXTURE0 + GI_VOXEL3DTEX_BINDING);
-                glBindTexture(GL_TEXTURE_3D, voxelBuffer);
+                glBindTexture(GL_TEXTURE_3D, voxel3DTex);
 
                 unsigned int mipLevel = 0;
                 
@@ -724,9 +743,9 @@ class VCTGIRenderer : public BaseRenderer
             glActiveTexture(GL_TEXTURE0 + GI_VOXEL2DTEX_BINDING);
             glBindTexture(GL_TEXTURE_2D_ARRAY, voxel2DTex);
             glActiveTexture(GL_TEXTURE0 + GI_VOXEL3DTEX_BINDING);
-            glBindTexture(GL_TEXTURE_3D, voxelBuffer);
+            glBindTexture(GL_TEXTURE_3D, voxel3DTex);
             glActiveTexture(GL_TEXTURE0 + GI_SHADOW_MAP0_BINDING);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowMapBuffers[0]);
+            glBindTexture(shadowOut.texType0, shadowOut.shadowMap0);
             glActiveTexture(GL_TEXTURE0 + GI_COLOR_SPEC_BINDING); 
             glBindTexture(GL_TEXTURE_2D, gColorBuffer);
             glActiveTexture(GL_TEXTURE0 + GI_NORMAL_BINDING);
@@ -742,7 +761,6 @@ class VCTGIRenderer : public BaseRenderer
 
             glBindVertexArray(screenQuadVAO);
             glDrawArrays(GL_TRIANGLES, 0, 6);
-
             glEnable(GL_DEPTH_TEST);
             conetraceTask->End();
 
@@ -948,7 +966,7 @@ class VCTGIRenderer : public BaseRenderer
             glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
             glBufferData(GL_UNIFORM_BUFFER, 5*sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
 
-            auto voxelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.02,0.02,0.02)); //calculate based on the scene size or the frustrum bounds !!
+            auto voxelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.03,0.03,0.03)); //calculate based on the scene size or the frustrum bounds !!
             auto invVoxelMatrix = glm::inverse(voxelMatrix);
             glBufferSubData(GL_UNIFORM_BUFFER, 3*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(voxelMatrix));
             glBufferSubData(GL_UNIFORM_BUFFER, 4*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(invVoxelMatrix));
@@ -1044,8 +1062,8 @@ class VCTGIRenderer : public BaseRenderer
     private:
         std::vector<std::string> preprocessorDefines;
         
-        PCFShadowRenderer shadowRenderer;
-        VarianceShadowRenderer VSMRenderer;
+        PCFShadowRenderer PCFshadowRenderer;
+        VarianceShadowRenderer VSMShadowRenderer;
         SkyRenderer skyRenderer;
 
         unsigned int viewportWidth;
@@ -1083,7 +1101,7 @@ class VCTGIRenderer : public BaseRenderer
         
         GLuint voxelFBO;
         GLuint sparseListBuffer;
-        GLuint voxelBuffer;
+        GLuint voxel3DTex;
         GLuint voxel2DTex;
         GLuint numMipLevels;
         StandardShader voxelizationShader;

@@ -174,7 +174,7 @@ int main()
     DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight);
     VCTGIRenderer vctgiRenderer = VCTGIRenderer(windowWidth, windowHeight);
 
-    BaseRenderer* renderer = &forwardRenderer;
+    BaseRenderer* renderer = &vctgiRenderer;
 
     
     try

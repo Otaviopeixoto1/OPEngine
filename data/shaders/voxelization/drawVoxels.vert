@@ -27,10 +27,9 @@ layout (std140) uniform GlobalMatrices
     mat4 projectionMatrix;
     mat4 viewMatrix;
     mat4 inverseViewMatrix;
-	mat4 SceneMatrices[3];
+	mat4 voxelMatrix;
 	mat4 inverseVoxelMatrix;
 };
-
 
 
 
@@ -76,7 +75,7 @@ void main(void)
 	vec3 voxelPos = vec3(unpackRG11B10(inVoxelPos)) / size;
 
 	VoxelData data = unpackARGB8(textureLod(voxel3DData, voxelPos, float(mipLevel)).r);
-	data.color.rgb *= float(sign(data.light));
+	//data.color.rgb *= float(sign(data.light));
 	outColor = data.color;
 
 	vec3 temp = inPosition / size + 2.0f * voxelPos - vec3(1.0f);
