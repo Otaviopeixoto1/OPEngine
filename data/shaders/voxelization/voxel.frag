@@ -3,8 +3,7 @@
 
 uniform sampler2D texture_diffuse1;
 layout(r32ui) uniform uimage2DArray voxelTextures;
-layout(r32ui) uniform uimage3D voxelData;
-uniform sampler2DShadow shadowMap;
+layout(r32ui) uniform uimage3D voxel3DData;
 
 uniform uint voxelRes;
 
@@ -80,8 +79,8 @@ layout(std430, binding = 2) writeonly buffer SparseBuffer
 struct VoxelData 
 {
 	vec4 color;
-	uint light; // voxels in shadow have light = 0 and lit voxels have light = 1
-	uint count; // the amount of voxels 
+	uint light; // voxels in shadow have light = 0 and lit voxels have light = 1 (REMOVE)
+	uint count; // the count is used during mipmapping to average the voxel color of the next mip
 };
 
 uint packARGB8(VoxelData dataIn) 
@@ -152,16 +151,48 @@ void main()
 	//data.color = SampleColor() * diff ;
 	data.color.rgba = SampleColor().rgba;
 	data.color.rgb *= diff * shadow;
-	//data.color.rgb = shadow.rrr/4.0f;
+	//data.color.rgb = data.color.aaa;
 	
 	
 	uint outData = packARGB8(data);
 
 	//writes the "most lit" voxel to the 2d texture
 	imageAtomicMax(voxelTextures, ivec3(ivec2(gl_FragCoord.xy), domInd), outData);
-	uint prevData = imageAtomicMax(voxelData, voxelCoord, outData);
+	uint prevData = imageAtomicMax(voxel3DData, voxelCoord, outData);
 
-	// if this voxel was empty before, add it to the sparse list
+	/*
+	//atomic average
+	uint nextUint = packUnorm4x8(vec4(color, 1.0 / 255.0));
+	uint prevUint = 0;
+	uint curUint = 0;
+
+	while(curUint = imageAtomicCompSwap(voxelTexture, coordinate, prevUint, nextUint) != prevUint) 
+	{
+		prevUint = curUint;
+
+		// if this voxel was empty before, add it to the sparse list
+		if(curUint == 0) 
+		{
+			uint prevVoxelCount = atomicAdd(drawCmd[0].instanceCount, 1);
+			
+			// Calculate and store number of workgroups needed
+			// compWorkGroups = (prevVoxelCount + 1)//64 + 1;  each workgroup has a size of 64
+			uint compWorkGroups = ((prevVoxelCount + 1) >> 6) + 1; // 6 = log2(workGroupSize = 64)
+			atomicMax(compCmd[0].workGroupSizeX, compWorkGroups);
+
+			// Write to position buffer (sparse list)
+			sparseList[prevVoxelCount + drawCmd[0].baseInstance] = packRG11B10(uvec3(voxelCoord));
+		}
+
+		// Unpack newly read value, and counter.
+		vec4 average = unpackUnorm4x8(curUint);
+		uint count = uint(avg.a * 255.0);
+		// Calculate and pack new average.
+		average = vec4((average.rgb * count * color) / float(count + 1), float(count + 1) / 255.0);
+		nextUint = packUnorm4x8(average);
+	}*/
+
+	
 	if(prevData == 0) 
 	{
 		uint prevVoxelCount = atomicAdd(drawCmd[0].instanceCount, 1);

@@ -17,7 +17,7 @@ class VCTGIRenderer : public BaseRenderer
         static constexpr unsigned int MAX_MIP_MAP_LEVELS = 9;
         static constexpr unsigned int MAX_SPARSE_BUFFER_SIZE = 134217728;
 
-        const unsigned int SHADOW_WIDTH = 4096, SHADOW_HEIGHT = 4096;
+        const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
         static constexpr unsigned int SHADOW_CASCADE_COUNT = 1; // MAX == 4
 
         static constexpr bool enableNormalMaps = true;
@@ -27,18 +27,6 @@ class VCTGIRenderer : public BaseRenderer
         const int MAX_POINT_LIGHTS = 20;
         
 
-        float tonemapExposure = 1.3f;
-        float FXAAContrastThreshold = 0.0312f;
-        float FXAABrightnessThreshold = 0.063f;
-        unsigned int voxelRes = 256;
-        bool drawVoxels = false;
-
-        float aoDistance = 0.03f;
-        float maxConeDistance = 1.0f;
-
-        
-
-
         enum VCTGIShadowRenderer
         {
             NONE,
@@ -46,6 +34,20 @@ class VCTGIRenderer : public BaseRenderer
             VSM_SHADOW_MAP
         };
         VCTGIShadowRenderer activeShadowRenderer = PCF_SHADOW_MAP;
+
+        float tonemapExposure = 1.3f;
+        float FXAAContrastThreshold = 0.0312f;
+        float FXAABrightnessThreshold = 0.063f;
+        unsigned int voxelRes = 256;
+
+        bool drawVoxels = false;
+        int mipLevel = 0;
+
+        float aoDistance = 0.03f;
+        float maxConeDistance = 1.0f;
+        float accumThr = 1.0f;
+
+        
 
 
         // Adopted naming conventions for the global uniform blocks
@@ -712,8 +714,6 @@ class VCTGIRenderer : public BaseRenderer
 
                 glActiveTexture(GL_TEXTURE0 + GI_VOXEL3DTEX_BINDING);
                 glBindTexture(GL_TEXTURE_3D, voxel3DTex);
-
-                unsigned int mipLevel = 0;
                 
                 drawVoxelsShader.UseProgram();
                 drawVoxelsShader.SetUInt("mipLevel", mipLevel);
@@ -758,6 +758,7 @@ class VCTGIRenderer : public BaseRenderer
             conetraceShader.SetUInt("voxelRes", voxelRes);
             conetraceShader.SetFloat("aoDistance", aoDistance);
             conetraceShader.SetFloat("maxConeDistance", maxConeDistance);
+            conetraceShader.SetFloat("accumThr", accumThr);
 
             glBindVertexArray(screenQuadVAO);
             glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -901,7 +902,7 @@ class VCTGIRenderer : public BaseRenderer
             voxelizationShader.UseProgram();
             voxelizationShader.SetSamplerBinding("texture_diffuse1", VX_COLOR_SPEC_BINDING);
             voxelizationShader.SetSamplerBinding("voxelTextures", VX_VOXEL2DTEX_BINDING);
-            voxelizationShader.SetSamplerBinding("voxelData", VX_VOXEL3DTEX_BINDING);
+            voxelizationShader.SetSamplerBinding("voxel3DData", VX_VOXEL3DTEX_BINDING);
             voxelizationShader.SetSamplerBinding("shadowMap0", VX_SHADOW_MAP0_BINDING); // do the binding properly
             voxelizationShader.BindUniformBlocks(NamedUniformBufferBindings, 5);
 
@@ -966,7 +967,7 @@ class VCTGIRenderer : public BaseRenderer
             glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
             glBufferData(GL_UNIFORM_BUFFER, 5*sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
 
-            auto voxelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.03,0.03,0.03)); //calculate based on the scene size or the frustrum bounds !!
+            auto voxelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.025,0.025,0.025)); //calculate based on the scene size or the frustrum bounds !!
             auto invVoxelMatrix = glm::inverse(voxelMatrix);
             glBufferSubData(GL_UNIFORM_BUFFER, 3*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(voxelMatrix));
             glBufferSubData(GL_UNIFORM_BUFFER, 4*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(invVoxelMatrix));
@@ -1055,7 +1056,18 @@ class VCTGIRenderer : public BaseRenderer
         void RenderGUI()
         {
             ImGui::Begin("VCTGI");
-            ImGui::Text("VCTGI");
+            ImGui::SeparatorText("Postprocessing");
+            ImGui::SliderFloat("Tonemap Exposure", &tonemapExposure, 0.0f, 10.0f, "exposure = %.3f");
+
+            ImGui::SeparatorText("Voxelization");
+            ImGui::Checkbox("Draw Voxels", &drawVoxels);
+            ImGui::SliderInt("Mipmap Level", &mipLevel, 0, MAX_MIP_MAP_LEVELS);
+
+            ImGui::SeparatorText("Cone Tracing");
+            ImGui::SliderFloat("AO Distance", &aoDistance, 0.01f, 0.5f, "AO = %.003f");
+            ImGui::SliderFloat("Max Cone Distance", &maxConeDistance, 0.0f, 2.0f, "Cone Distance = %.3f");
+            ImGui::SliderFloat("Accumulation Threshold", &accumThr, 0.0f, 1.0f, "threshold = %.3f");
+            
             ImGui::End();
         }
 

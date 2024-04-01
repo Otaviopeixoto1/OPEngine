@@ -76,8 +76,8 @@ uint packARGB8(VoxelData dataIn)
 
 	uvec3 uiColor = uvec3(dataIn.color.rgb * 31.0f * float(dataIn.count));
 
-	result |= (dataIn.light & 0xF) << 28;
-	result |= (dataIn.count & 0xF) << 24;
+	result |= (dataIn.light & 0x0F) << 28;
+	result |= (dataIn.count & 0x0F) << 24;
 	result |= (uiColor.r & 0xFF) << 16;
 	result |= (uiColor.g & 0xFF) << 8;
 	result |= (uiColor.b & 0xFF);

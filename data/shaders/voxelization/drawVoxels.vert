@@ -45,7 +45,6 @@ VoxelData unpackARGB8(uint bytesIn)
 	VoxelData data;
 	uvec3 uiColor;
 
-	// Put a first to improve max operation but it should not be very noticable
 	data.light = (bytesIn & 0xF0000000) >> 28;
 	data.count = (bytesIn & 0x0F000000) >> 24;
 	uiColor.r =  (bytesIn & 0x00FF0000) >> 16;
@@ -57,6 +56,7 @@ VoxelData unpackARGB8(uint bytesIn)
 
 	return data;
 }
+
 
 uvec3 unpackRG11B10(uint bytesIn) 
 {
@@ -75,7 +75,6 @@ void main(void)
 	vec3 voxelPos = vec3(unpackRG11B10(inVoxelPos)) / size;
 
 	VoxelData data = unpackARGB8(textureLod(voxel3DData, voxelPos, float(mipLevel)).r);
-	//data.color.rgb *= float(sign(data.light));
 	outColor = data.color;
 
 	vec3 temp = inPosition / size + 2.0f * voxelPos - vec3(1.0f);

@@ -167,8 +167,6 @@ int main()
     sceneParser.Parse(scene, &mainCamera, "/data/scenes/sponza_scene.json", OP_OBJ);
     
     auto profiler = OPProfiler::OPProfiler(); 
-    
-    //An extremely weird problem happens to the shadow renderer when passing the profiler pointer to the forward renderer constructor !!!!!
 
     ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight);
     DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight);

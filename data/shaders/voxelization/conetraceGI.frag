@@ -18,6 +18,7 @@ uniform sampler2D gPosition;
 uniform uint voxelRes;
 uniform float maxConeDistance;
 uniform float aoDistance;
+uniform float accumThr;
 
 
 layout (std140) uniform GlobalMatrices
@@ -245,7 +246,7 @@ vec4 ConeTrace60(vec3 startPos, vec3 dir, float aoDist, float voxelSize)
 	float sampleLOD = 0.0f;
 
 	
-	for(float dist = voxelSize; dist < maxConeDistance && accum.a < 1.0f;) 
+	for(float dist = voxelSize; dist < maxConeDistance && accum.a < accumThr;) 
 	{
 		samplePos = startPos + dir * dist;
 		sampleValue = voxelSampleLevel(samplePos, sampleLOD);
@@ -327,8 +328,8 @@ void main()
 	//s = mix(d.w, s * d.w, 0.9);
 
 	vec4 f = vec4(1.0f);
-	//f.xyz = l.xyz * s * c.xyz + 2.0 * d.xyz * c.xyz;
-	f.xyz = l.xyz * s * c.xyz;
+	f.xyz = l.xyz * s * c.xyz + 2.0 * d.xyz * c.xyz;
+	//f.xyz = l.xyz * s * c.xyz;
 	//f.x = s;
 	//f.xyz =  d.xyz;
 
