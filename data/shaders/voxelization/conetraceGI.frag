@@ -13,13 +13,11 @@ uniform sampler2D gPosition;
 #include "lights.glsl"
 
 
-
-
 uniform uint voxelRes;
 uniform float maxConeDistance;
 uniform float aoDistance;
 uniform float accumThr;
-
+uniform float maxLOD;
 
 layout (std140) uniform GlobalMatrices
 {
@@ -37,7 +35,7 @@ layout (std140) uniform GlobalMatrices
 
 struct VoxelData {
 	vec4 color;
-	uint light;
+	//uint light;
 	uint count;
 };
 
@@ -47,9 +45,7 @@ VoxelData unpackARGB8(uint bytesIn)
 	VoxelData data;
 	uvec3 uiColor;
 
-	// Put a first to improve max operation but it should not be very noticable
-	data.light = (bytesIn & 0xF0000000) >> 28;
-	data.count = (bytesIn & 0x0F000000) >> 24;
+	data.count = (bytesIn & 0xFF000000) >> 24;
 	uiColor.r =  (bytesIn & 0x00FF0000) >> 16;
 	uiColor.g =  (bytesIn & 0x0000FF00) >> 8;
 	uiColor.b =  (bytesIn & 0x000000FF);
@@ -63,16 +59,6 @@ VoxelData unpackARGB8(uint bytesIn)
 
 	return data;
 }
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -227,7 +213,7 @@ vec4 voxelSampleLevel(vec3 position, float level)
         VoxelData voxel = unpackARGB8(textureLod(voxel3DData, voxelPos, mip).r);
 		
 
-		total.rgb += voxel.color.rgb * factor * float(sign(int(voxel.light)));
+		total.rgb += voxel.color.rgb * factor;// * float(sign(int(voxel.light)));
 		total.a += voxel.color.a * factor;
 	}
 
@@ -246,7 +232,7 @@ vec4 ConeTrace60(vec3 startPos, vec3 dir, float aoDist, float voxelSize)
 	float sampleLOD = 0.0f;
 
 	
-	for(float dist = voxelSize; dist < maxConeDistance && accum.a < accumThr;) 
+	for(float dist = voxelSize; dist < maxConeDistance && accum.a < accumThr && sampleLOD <= maxLOD;) 
 	{
 		samplePos = startPos + dir * dist;
 		sampleValue = voxelSampleLevel(samplePos, sampleLOD);
@@ -288,7 +274,7 @@ vec4 DiffuseTrace(vec3 voxelPos, vec3 worldNormal)
 	voxelPos += worldNormal * voxelSize;
 
 	//constructing a vector basis using the world normal:
-	vec3 U = (abs(worldNormal.y) < 0.7) ? vec3(0.0f, 1.0f, 0.0f) : vec3(0.0f, 0.0f, 1.0f); 
+	vec3 U = (abs(worldNormal.y) < 0.9) ? vec3(0.0f, 1.0f, 0.0f) : vec3(0.0f, 0.0f, 1.0f); 
 	vec3 R = normalize(cross(U, worldNormal));
 	U = normalize(cross(worldNormal, R)); 
 

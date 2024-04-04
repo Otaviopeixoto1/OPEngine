@@ -46,6 +46,7 @@ class VCTGIRenderer : public BaseRenderer
         float aoDistance = 0.03f;
         float maxConeDistance = 1.0f;
         float accumThr = 1.0f;
+        int maxLOD = 10;
 
         
 
@@ -759,6 +760,7 @@ class VCTGIRenderer : public BaseRenderer
             conetraceShader.SetFloat("aoDistance", aoDistance);
             conetraceShader.SetFloat("maxConeDistance", maxConeDistance);
             conetraceShader.SetFloat("accumThr", accumThr);
+            conetraceShader.SetFloat("maxLOD", maxLOD);
 
             glBindVertexArray(screenQuadVAO);
             glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -1067,6 +1069,7 @@ class VCTGIRenderer : public BaseRenderer
             ImGui::SliderFloat("AO Distance", &aoDistance, 0.01f, 0.5f, "AO = %.003f");
             ImGui::SliderFloat("Max Cone Distance", &maxConeDistance, 0.0f, 2.0f, "Cone Distance = %.3f");
             ImGui::SliderFloat("Accumulation Threshold", &accumThr, 0.0f, 1.0f, "threshold = %.3f");
+            ImGui::SliderInt("Max LOD Level", &maxLOD, 0, MAX_MIP_MAP_LEVELS +1);
             
             ImGui::End();
         }

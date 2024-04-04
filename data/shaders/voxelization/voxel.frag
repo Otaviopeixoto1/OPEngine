@@ -79,7 +79,7 @@ layout(std430, binding = 2) writeonly buffer SparseBuffer
 struct VoxelData 
 {
 	vec4 color;
-	uint light; // voxels in shadow have light = 0 and lit voxels have light = 1 (REMOVE)
+	//uint light; // voxels in shadow have light = 0 and lit voxels have light = 1 (REMOVED)
 	uint count; // the count is used during mipmapping to average the voxel color of the next mip
 };
 
@@ -89,8 +89,9 @@ uint packARGB8(VoxelData dataIn)
 
 	uvec3 uiColor = uvec3(dataIn.color.rgb * 31.0f * float(dataIn.count));
 
-	result |= (dataIn.light & 0x0F) << 28;
-	result |= (dataIn.count & 0x0F) << 24;
+	//result |= (dataIn.light & 0x0F) << 28;
+	//result |= (dataIn.count & 0x0F) << 24;
+	result |= (dataIn.count & 0xFF) << 24;
 	result |= (uiColor.r & 0xFF) << 16;
 	result |= (uiColor.g & 0xFF) << 8;
 	result |= (uiColor.b & 0xFF);
@@ -134,7 +135,7 @@ layout(location = 0) subroutine uniform GetColor SampleColor;
 
 void main()
 {	                           //color, light, count
-	VoxelData data = VoxelData(vec4(1.0f), 0x0, 0x8);
+	VoxelData data = VoxelData(vec4(1.0f), 0x8);
 
 	ivec3 voxelCoord = ivec3(voxelTexCoord * voxelRes);	
 	
@@ -143,57 +144,35 @@ void main()
 
 	vec4 worldNormal = (inverseViewMatrix * vec4(vNormal, 0.0f));
 	float shadow = GetDirLightShadow(0, viewPosition.xyz, worldPosition.xyz, worldNormal.xyz);
-	data.light = uint(8.0f * shadow); 
 
 	//simple diffuse lighting
 	float NdotL = dot(vNormal,vLight);
     float diff = max(NdotL, 0.0);
-	//data.color = SampleColor() * diff ;
-	data.color.rgba = SampleColor().rgba;
-	data.color.rgb *= diff * shadow;
+
+	//data.color.rgba = SampleColor().rgba;
+	//data.color.rgb *= diff * shadow;
 	//data.color.rgb = data.color.aaa;
+
+	vec4 color = SampleColor().rgba;
+	//color.rgb *= shadow;
+	color.rgb *= diff * shadow;
 	
 	
 	uint outData = packARGB8(data);
 
 	//writes the "most lit" voxel to the 2d texture
 	imageAtomicMax(voxelTextures, ivec3(ivec2(gl_FragCoord.xy), domInd), outData);
-	uint prevData = imageAtomicMax(voxel3DData, voxelCoord, outData);
 
-	/*
-	//atomic average
-	uint nextUint = packUnorm4x8(vec4(color, 1.0 / 255.0));
-	uint prevUint = 0;
-	uint curUint = 0;
 
-	while(curUint = imageAtomicCompSwap(voxelTexture, coordinate, prevUint, nextUint) != prevUint) 
-	{
-		prevUint = curUint;
-
-		// if this voxel was empty before, add it to the sparse list
-		if(curUint == 0) 
-		{
-			uint prevVoxelCount = atomicAdd(drawCmd[0].instanceCount, 1);
-			
-			// Calculate and store number of workgroups needed
-			// compWorkGroups = (prevVoxelCount + 1)//64 + 1;  each workgroup has a size of 64
-			uint compWorkGroups = ((prevVoxelCount + 1) >> 6) + 1; // 6 = log2(workGroupSize = 64)
-			atomicMax(compCmd[0].workGroupSizeX, compWorkGroups);
-
-			// Write to position buffer (sparse list)
-			sparseList[prevVoxelCount + drawCmd[0].baseInstance] = packRG11B10(uvec3(voxelCoord));
-		}
-
-		// Unpack newly read value, and counter.
-		vec4 average = unpackUnorm4x8(curUint);
-		uint count = uint(avg.a * 255.0);
-		// Calculate and pack new average.
-		average = vec4((average.rgb * count * color) / float(count + 1), float(count + 1) / 255.0);
-		nextUint = packUnorm4x8(average);
-	}*/
-
+	//uint prevData = imageAtomicMax(voxel3DData, voxelCoord, outData);
 	
-	if(prevData == 0) 
+	//atomic average
+	uint nextUint = packUnorm4x8(vec4(color.rgb, 1.0 / 255.0f));
+	uint prevUint = 0;
+	uint curUint = imageAtomicCompSwap(voxel3DData, voxelCoord, prevUint, nextUint);
+
+	// if this voxel was empty before, add it to the sparse list
+	if(curUint == 0) 
 	{
 		uint prevVoxelCount = atomicAdd(drawCmd[0].instanceCount, 1);
 		
@@ -205,4 +184,35 @@ void main()
 		// Write to position buffer (sparse list)
 		sparseList[prevVoxelCount + drawCmd[0].baseInstance] = packRG11B10(uvec3(voxelCoord));
 	}
+
+	while(curUint != prevUint) 
+	{
+		prevUint = curUint;
+
+		// Unpack newly read value, and counter.
+		vec4 avg = unpackUnorm4x8(curUint);
+		uint count = uint(avg.a * 255.0f);
+		// Calculate and pack new average.
+		avg = vec4((avg.rgb * count + color.rgb) / float(count + 1), float(count + 1) / 255.0f);
+		nextUint = packUnorm4x8(avg);
+
+		curUint = imageAtomicCompSwap(voxel3DData, voxelCoord, prevUint, nextUint);
+	}
+	
+	
+	/**/
+
+	/*
+	if(prevData == 0) 
+	{
+		uint prevVoxelCount = atomicAdd(drawCmd[0].instanceCount, 1);
+		
+		// Calculate and store number of workgroups needed
+		// compWorkGroups = (prevVoxelCount + 1)//64 + 1;  each workgroup has a size of 64
+		uint compWorkGroups = ((prevVoxelCount + 1) >> 6) + 1; // 6 = log2(workGroupSize = 64)
+		atomicMax(compCmd[0].workGroupSizeX, compWorkGroups);
+
+		// Write to position buffer (sparse list)
+		sparseList[prevVoxelCount + drawCmd[0].baseInstance] = packRG11B10(uvec3(voxelCoord));
+	}*/
 }

@@ -49,17 +49,30 @@ layout(std430, binding = 2) buffer SparseBuffer {
 struct VoxelData 
 {
 	vec4 color;
-	uint light;
+	//uint light;
 	uint count;
 };
+
+uint packARGB8(VoxelData dataIn) 
+{
+	uint result = 0;
+
+	uvec3 uiColor = uvec3(dataIn.color.rgb * 31.0f * float(dataIn.count));
+
+	result |= (dataIn.count & 0xFF) << 24;
+	result |= (uiColor.r & 0xFF) << 16;
+	result |= (uiColor.g & 0xFF) << 8;
+	result |= (uiColor.b & 0xFF);
+
+	return result;
+}
 
 VoxelData unpackARGB8(uint bytesIn) 
 {
 	VoxelData data;
 	uvec3 uiColor;
 
-	data.light = (bytesIn & 0xF0000000) >> 28;
-	data.count = (bytesIn & 0x0F000000) >> 24;
+	data.count = (bytesIn & 0xFF000000) >> 24;
 	uiColor.r =  (bytesIn & 0x00FF0000) >> 16;
 	uiColor.g =  (bytesIn & 0x0000FF00) >> 8;
 	uiColor.b =  (bytesIn & 0x000000FF);
@@ -70,19 +83,16 @@ VoxelData unpackARGB8(uint bytesIn)
 	return data;
 }
 
-uint packARGB8(VoxelData dataIn) 
+VoxelData unpackRGBA8(uint bytesIn) 
 {
-	uint result = 0;
+	VoxelData data;
 
-	uvec3 uiColor = uvec3(dataIn.color.rgb * 31.0f * float(dataIn.count));
+	vec4 v = unpackUnorm4x8(bytesIn);
+	data.color.rgb = v.rgb;
+	data.color.a = 1.0f;
+	data.count = 1;
 
-	result |= (dataIn.light & 0x0F) << 28;
-	result |= (dataIn.count & 0x0F) << 24;
-	result |= (uiColor.r & 0xFF) << 16;
-	result |= (uiColor.g & 0xFF) << 8;
-	result |= (uiColor.b & 0xFF);
-
-	return result;
+	return data;
 }
 
 uint packRG11B10(uvec3 dataIn) 
@@ -128,12 +138,16 @@ void main(void)
 		uvec3 voxelCoord = unpackRG11B10(sparseList[voxelPos]);
 
 		//the total color is divided by data.count during unpacking
-		VoxelData data = unpackARGB8(imageLoad(voxelData, ivec3(voxelCoord)).r);
+		uint voxelBytes = imageLoad(voxelData, ivec3(voxelCoord)).r;
+		//VoxelData data = unpackARGB8(voxelBytes);
+		VoxelData data = unpackARGB8(voxelBytes);
+
+		if (currentLevel == 0)
+		{
+			data = unpackRGBA8(voxelBytes);
+			imageAtomicExchange(voxelData, ivec3(voxelCoord), packARGB8(data));
+		}
 		
-		//Normalize the light counter: 
-		//if currentlight > counter/2 : nextlight = 1
-		//else : nextlight = 0
-		data.light = (data.light > (data.count >> 1)) ? 1 : 0;
 		//reset the counter:
 		data.count = 1;
 
