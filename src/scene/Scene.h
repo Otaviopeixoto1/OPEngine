@@ -142,7 +142,6 @@ class Scene
 
      
     private:
-        
         //maps texture (file) paths to each texture object
         std::unordered_map<std::string, Texture> loadedTextures;
         

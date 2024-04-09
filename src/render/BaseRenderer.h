@@ -6,7 +6,10 @@
 #include "../scene/Camera.h"
 #include "../scene/lights.h"
 #include "../common/MathUtils.h"
+#include "../common/ShaderMemoryPool.h"
 #include "../debug/OPProfiler.h"
+
+
 
 //excpecting glfwWindow to be included in the main.cpp
 class GLFWwindow;
@@ -24,26 +27,7 @@ class BaseRenderer
 
         //callback used when there are viewport resizes
         virtual void ViewportUpdate(int vpWidth, int vpHeight){}
-
-
-        struct FrameResources
-        {
-            unsigned int viewportWidth;
-            unsigned int viewportHeight;
-
-            Scene *scene;
-            Camera *camera;
-            GlobalLightData *lightData;
-
-            glm::mat4 projectionMatrix;
-            glm::mat4 viewMatrix;
-            glm::mat4 inverseViewMatrix;
-
-
-        }; 
-
         
-
         class RendererException: public std::exception
         {
             std::string message;
@@ -57,6 +41,25 @@ class BaseRenderer
                     return message.c_str();
                 }
         };
+        
+        struct FrameResources
+        {
+            unsigned int viewportWidth;
+            unsigned int viewportHeight;
+
+            Scene *scene;
+            Camera *camera;
+            GlobalLightData *lightData;
+
+            glm::mat4 projectionMatrix;
+            glm::mat4 viewMatrix;
+            glm::mat4 inverseViewMatrix;
+        }; 
+        
+
+    protected:
+        ShaderMemoryPool shaderMemoryPool;
+        
 };
 
 

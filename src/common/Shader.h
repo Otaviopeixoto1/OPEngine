@@ -14,6 +14,7 @@
 #include <exception>
 #include "env.h"
 
+#include "../common/ShaderMemoryPool.h"
 //Todo:
 /*
 - add support for spir-v compilation and separate shader objects
@@ -58,6 +59,15 @@ class Shader
             for (size_t i = 0; i < size; i++)
             {
                 BindUniformBlock(namedBindings[i], i + bindingOffset);
+            }
+            
+        }
+
+        void BindUniformBlocks(const std::unordered_map<std::string, ShaderMemoryPool::UniformBufferBinding> &namedUniformBindings)
+        {
+            for (auto& b: namedUniformBindings)
+            {
+                BindUniformBlock(b.first, b.second.asInt);
             }
             
         }

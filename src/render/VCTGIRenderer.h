@@ -23,8 +23,8 @@ class VCTGIRenderer : public BaseRenderer
         static constexpr bool enableNormalMaps = true;
         static constexpr bool enableLightVolumes = true;
         
-        const int MAX_DIR_LIGHTS = 5;
-        const int MAX_POINT_LIGHTS = 20;
+        static constexpr int MAX_DIR_LIGHTS = 5;
+        static constexpr int MAX_POINT_LIGHTS = 20;
         
 
         enum VCTGIShadowRenderer
@@ -118,6 +118,8 @@ class VCTGIRenderer : public BaseRenderer
 
         void RecreateResources(Scene &scene, Camera &camera)
         {
+            screenQuad = Mesh::QuadMesh();
+
             scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
             scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
 
@@ -158,24 +160,10 @@ class VCTGIRenderer : public BaseRenderer
                     break;
             }
 
-
             this->skyRenderer = SkyRenderer();
             this->skyRenderer.RecreateResources();
 
-
-
-            glGenVertexArrays(1, &screenQuadVAO);
-            glGenBuffers(1, &screenQuadVBO);
-            glBindVertexArray(screenQuadVAO);
-            glBindBuffer(GL_ARRAY_BUFFER, screenQuadVBO);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-            glEnableVertexAttribArray(1);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
-
-
+            
             // gBuffer:
             glGenFramebuffers(1, &gBufferFBO);
             glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
@@ -226,7 +214,6 @@ class VCTGIRenderer : public BaseRenderer
                 GL_COLOR_ATTACHMENT0 + G_POSITION_BUFFER_BINDING
             };
             glDrawBuffers(3, attachments);
-
 
 
             // Voxelization:
@@ -762,7 +749,7 @@ class VCTGIRenderer : public BaseRenderer
             conetraceShader.SetFloat("accumThr", accumThr);
             conetraceShader.SetFloat("maxLOD", maxLOD);
 
-            glBindVertexArray(screenQuadVAO);
+            screenQuad->BindBuffers();
             glDrawArrays(GL_TRIANGLES, 0, 6);
             glEnable(GL_DEPTH_TEST);
             conetraceTask->End();
@@ -827,7 +814,7 @@ class VCTGIRenderer : public BaseRenderer
 
             postProcessShader.UseProgram();
             postProcessShader.SetFloat("exposure", tonemapExposure);
-            glBindVertexArray(screenQuadVAO);
+            screenQuad->BindBuffers();
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture); 
             glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -847,7 +834,7 @@ class VCTGIRenderer : public BaseRenderer
             FXAAShader.SetVec2("pixelSize", 1.0f/(float)viewportWidth, 1.0f/(float)viewportHeight);
             FXAAShader.SetFloat("contrastThreshold", FXAAContrastThreshold);
             FXAAShader.SetFloat("brightnessThreshold", FXAABrightnessThreshold);
-            glBindVertexArray(screenQuadVAO);
+            screenQuad->BindBuffers();
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, postProcessColorBuffer); 
             glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -861,6 +848,13 @@ class VCTGIRenderer : public BaseRenderer
 
         void ReloadShaders()
         {
+
+
+
+            ////////////////////////////////////////////////////////////////////////////////////////////
+            //NamedUniformBufferBindings must be dynamically constructed after creating all the buffers
+            ////////////////////////////////////////////////////////////////////////////////////////////
+
             defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
             defaultVertFrag.BuildProgram();
             defaultVertFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
@@ -983,7 +977,7 @@ class VCTGIRenderer : public BaseRenderer
             glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_GLOBAL_MATRICES_BINDING, GlobalMatricesUBO, 0, 5 * sizeof(glm::mat4));
             glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_LOCAL_MATRICES_BINDING, LocalMatricesUBO, 0, 2 * sizeof(glm::mat4));
 
-
+            //shaderMemoryPool.AddUniformBuffer
 
 
 
@@ -1008,8 +1002,6 @@ class VCTGIRenderer : public BaseRenderer
              *    int pad;
              *    DirLight dirLights[MAX_DIR_LIGHTS];
              *    PointLight pointLights[MAX_POINT_LIGHTS];
-             *    
-             *     
              * }
              */
             
@@ -1094,6 +1086,34 @@ class VCTGIRenderer : public BaseRenderer
         GLuint postProcessFBO;
         GLuint postProcessColorBuffer;
 
+        #pragma pack(push, 1)
+        struct GlobalMatrices
+        {
+            glm::mat4 projectionMatrix; 
+            glm::mat4 viewMatrix;       
+            glm::mat4 inverseViewMatrix;
+            glm::mat4 voxelMatrix;
+            glm::mat4 inverseVoxelMatrix;
+        };
+        struct LocalMatrices 
+        {
+           glm::mat4 modelMatrix;     
+           glm::mat4 normalMatrix;    
+        };
+        struct Lights
+        {
+            glm::vec4 ambientLight;
+            int numDirLights;
+            int numPointLights;
+            int pad;
+            int pad2;
+            DirectionalLight::DirectionalLightData dirLights[MAX_DIR_LIGHTS];
+            PointLight::PointLightData pointLights[MAX_POINT_LIGHTS];
+        };
+        
+        #pragma pack(pop)
+        
+
         GLuint LightBufferSize = 0;
         GLuint MaterialBufferSize = 0;
 
@@ -1126,19 +1146,7 @@ class VCTGIRenderer : public BaseRenderer
 
 
 
-        unsigned int screenQuadVAO, screenQuadVBO;
-        float quadVertices[24] = 
-        {   // vertex attributes for a quad that fills the entire screen 
-            // positions   // texCoords
-            -1.0f,  1.0f,  0.0f, 1.0f,
-            -1.0f, -1.0f,  0.0f, 0.0f,
-            1.0f, -1.0f,  1.0f, 0.0f,
-
-            -1.0f,  1.0f,  0.0f, 1.0f,
-            1.0f, -1.0f,  1.0f, 0.0f,
-            1.0f,  1.0f,  1.0f, 1.0f
-        };
-    
+        std::unique_ptr<Mesh> screenQuad;
         
         
         StandardShader postProcessShader;

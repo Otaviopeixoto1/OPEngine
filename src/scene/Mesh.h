@@ -137,32 +137,57 @@ class Mesh
         unsigned int verticesCount;
         unsigned int indicesCount;
 
-        std::vector<MeshData::Vertex> vertices;
-        std::vector<unsigned int> indices;
+        Mesh(){}
 
         Mesh(MeshData &meshData)
         {
-            this->vertices = meshData.vertices;
-            this->indices = meshData.indices;
             this->flags = meshData.flags;
-
-            InitBuffers();
-            vertices.clear();
-            indices.clear();
+            InitBuffers(meshData.vertices, meshData.indices);
         }
 
         // Generates a default mesh. Expects normals and texcoords to be filled in vertex data
         Mesh(std::vector<MeshData::Vertex> &mVertices, std::vector<unsigned int> &mIndices)
         {
             this->flags = OP_MESH_COORDS | OP_MESH_NORMALS | OP_MESH_TANGENTS | OP_MESH_TEXCOORDS ;
-            this->vertices = mVertices;
-            this->indices = mIndices;
+            InitBuffers(mVertices, mIndices);
+        }
 
-            InitBuffers();
-            vertices.clear();
-            indices.clear();
+        ~Mesh()
+        {   
+            glDeleteVertexArrays(1, &VAO);
+            glDeleteBuffers(1, &VBO);      
+            glDeleteBuffers(1, &EBO);
         }
         
+        static std::unique_ptr<Mesh> QuadMesh()
+        {
+            Mesh* quad = new Mesh();
+            float quadVertices[24] = 
+            {   // vertex attributes for a quad that fills the entire screen 
+                // positions   // texCoords
+                -1.0f,  1.0f,  0.0f, 1.0f,
+                -1.0f, -1.0f,  0.0f, 0.0f,
+                1.0f, -1.0f,  1.0f, 0.0f,
+
+                -1.0f,  1.0f,  0.0f, 1.0f,
+                1.0f, -1.0f,  1.0f, 0.0f,
+                1.0f,  1.0f,  1.0f, 1.0f
+            };
+
+            glGenVertexArrays(1, &quad->VAO);
+            glGenBuffers(1, &quad->VBO);
+            glGenBuffers(1, &quad->EBO);
+
+            glBindVertexArray(quad->VAO);
+            glBindBuffer(GL_ARRAY_BUFFER, quad->VBO);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+            return std::unique_ptr<Mesh>(quad);
+        }
 
         bool HasFlags(unsigned int flag)
         {
@@ -191,8 +216,6 @@ class Mesh
             
         }
 
-
-        
         void BindBuffers()
         {
             glBindVertexArray(VAO);
@@ -207,7 +230,7 @@ class Mesh
         GLuint VAO, VBO, EBO;
         unsigned int flags;
 
-        void InitBuffers()
+        void InitBuffers(std::vector<MeshData::Vertex> &vertices, std::vector<unsigned int> &indices)
         {
             glGenVertexArrays(1, &VAO);
             glGenVertexArrays(1, &VAO);
@@ -261,6 +284,8 @@ class Mesh
             glBindVertexArray(0);
             verticesCount = vertices.size();
             indicesCount = indices.size();
+            vertices.clear();
+            indices.clear();
         }
 
 };
