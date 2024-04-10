@@ -36,9 +36,8 @@ class PCFShadowRenderer
 
         PCFShadowRenderer(){}
 
-        PCFShadowRenderer(unsigned int shadowBufferBinding, unsigned int cascadeCount, unsigned int ShadowWidth, unsigned int ShadowHeight)
+        PCFShadowRenderer(unsigned int cascadeCount, unsigned int ShadowWidth, unsigned int ShadowHeight)
         {
-            this->GLOBAL_SHADOWS_BINDING = shadowBufferBinding;
             
             // MAX CASCADE COUNT = 4 
             this->SHADOW_CASCADE_COUNT = std::min(cascadeCount, 4u);
@@ -46,7 +45,7 @@ class PCFShadowRenderer
             this->SHADOW_HEIGHT = ShadowHeight;
         }
         
-        void RecreateResources()
+        void RecreateResources(ShaderMemoryPool *shaderMemoryPool)
         {
             
             glGenFramebuffers(1, &shadowMapFBO);
@@ -90,34 +89,8 @@ class PCFShadowRenderer
             }
 
 
-            glGenBuffers(1, &ShadowsUBO);
 
-            // Shadows buffer setup
-            // --------------------
-            /* Shadows Uniform buffer structure:
-             *layout(std140) uniform Shadows
-             *{
-             *    float shadowBias;
-             *    float shadowSamples;
-             *    float numShadowCasters;
-             *    float spad3;
-             *    float frustrumDistances[SHADOW_CASCADE_COUNT + 1];
-             *    mat4 lightSpaceMatrices[SHADOW_CASCADE_COUNT];
-             *    
-             *}; 
-             */
-            ShadowBufferSize = 0;
-            {
-                ShadowBufferSize += 4 * sizeof(float);
-                ShadowBufferSize += SHADOW_CASCADE_COUNT * sizeof(glm::mat4);
-                ShadowBufferSize += sizeof(frustumCuts);
-            }
-
-            glBindBuffer(GL_UNIFORM_BUFFER, ShadowsUBO);
-            glBufferData(GL_UNIFORM_BUFFER, ShadowBufferSize, NULL, GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
-            
-            glBindBufferRange(GL_UNIFORM_BUFFER, GLOBAL_SHADOWS_BINDING, ShadowsUBO, 0, ShadowBufferSize);
+            shaderMemoryPool->AddUniformBuffer(sizeof(ShadowData), "ShadowData");
 
             //Shadow map generation shader:
             shadowDepthPass = StandardShader(BASE_DIR"/data/shaders/shadows/shadow_mapping/layeredVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
@@ -127,7 +100,7 @@ class PCFShadowRenderer
             }
             shadowDepthPass.AddShaderStage(BASE_DIR"/data/shaders/shadows/shadow_mapping/layeredGeom.geom",GL_GEOMETRY_SHADER);
             shadowDepthPass.BuildProgram();
-            shadowDepthPass.BindUniformBlock("Shadows", GLOBAL_SHADOWS_BINDING);
+            shadowDepthPass.BindUniformBlock("ShadowData", shaderMemoryPool->GetUniformBufferBinding("ShadowData"));
         }
 
         void SetupFrustumCuts(float camNear, float camFar)
@@ -169,118 +142,80 @@ class PCFShadowRenderer
             auto mainLight = frameResources.lightData->directionalLights[0];
             glm::vec3 lightDir = glm::normalize(glm::vec3(frameResources.inverseViewMatrix * mainLight.lightDirection));
 
-            // Setting Shadow propeties:
-            glBindBuffer(GL_UNIFORM_BUFFER, ShadowsUBO); 
+            glm::mat4 lightMatrices[SHADOW_CASCADE_COUNT];
 
-            // Shadow parameters:
-            // 0 -> float shadowBias;
-            // 1 -> float shadowSamples;
-            // 2 -> float numShadowCasters;
-            // 3 -> float spad3;
-            float shadowParams[4] = {0.1,1.0,2.0,12.0};
-
-            //these dont have to be set every frame
-            glBufferSubData(GL_UNIFORM_BUFFER, 0, 4 * sizeof(float), &shadowParams);
-            
-
-            int offset = 0;
-            offset += 4 * sizeof(float);
-            
             for (size_t i = 0; i < SHADOW_CASCADE_COUNT; i++)
-            {
-                auto frustrumCorners = frameResources.camera->GetFrustumCornersWorldSpace(frustumCuts[i], frustumCuts[i+1]);
-
-                glm::vec3 center = glm::vec3(0, 0, 0);
-                for (size_t j = 0; j < frustrumCorners.size(); j++)
                 {
-                    center += glm::vec3(frustrumCorners[j]);
-                }
-                center /= frustrumCorners.size();
-                auto camPos = frameResources.camera->GetPosition();
-                
-                auto v0 = glm::vec3(frustrumCorners[0]);
-                auto v1 = glm::vec3(frustrumCorners[7]);
-                
-                float boundingRadius = glm::length(v0 - v1)/1.41421f;
+                    auto frustrumCorners = frameResources.camera->GetFrustumCornersWorldSpace(frustumCuts[i], frustumCuts[i+1]);
 
-                
-                //we must transform the center the light viewport coordinates in order to snap the movements to the closest texels:
-                float texelsPerUnit = ((float)SHADOW_WIDTH)/(boundingRadius * 2.0f);//assuming width = height
+                    glm::vec3 center = glm::vec3(0, 0, 0);
+                    for (size_t j = 0; j < frustrumCorners.size(); j++)
+                    {
+                        center += glm::vec3(frustrumCorners[j]);
+                    }
+                    center /= frustrumCorners.size();
+                    auto camPos = frameResources.camera->GetPosition();
+                    
+                    auto v0 = glm::vec3(frustrumCorners[0]);
+                    auto v1 = glm::vec3(frustrumCorners[7]);
+                    
+                    float boundingRadius = glm::length(v0 - v1)/1.41421f;
 
-                
+                    
+                    //we must transform the center the light viewport coordinates in order to snap the movements to the closest texels:
+                    float texelsPerUnit = ((float)SHADOW_WIDTH)/(boundingRadius * 2.0f);//assuming width = height
 
-                glm::mat4 lightViewportMatrix = glm::mat4(1);
-                lightViewportMatrix = glm::scale(lightViewportMatrix, glm::vec3(texelsPerUnit,texelsPerUnit,texelsPerUnit));
-                lightViewportMatrix = glm::lookAt(glm::vec3(0.0f), lightDir, glm::vec3(0.0f, 1.0f, 0.0f)) * lightViewportMatrix;
-                glm::mat4 invLightViewportMatrix = glm::inverse(lightViewportMatrix);
+                    
 
-                center = lightViewportMatrix * glm::vec4(center,1.0f);
-                center.x = (float)floor(center.x);   //snap to texel
-                center.y = (float)floor(center.y);   //snap to texel
-                center = invLightViewportMatrix * glm::vec4(center,1.0f);
-                
-                
-                const auto lightView = glm::lookAt(
-                    center + lightDir * 2.0f * boundingRadius, //changing the origin for the z buffer values
-                    center,
-                    glm::vec3(0.0f, 1.0f, 0.0f)
-                );
+                    glm::mat4 lightViewportMatrix = glm::mat4(1);
+                    lightViewportMatrix = glm::scale(lightViewportMatrix, glm::vec3(texelsPerUnit,texelsPerUnit,texelsPerUnit));
+                    lightViewportMatrix = glm::lookAt(glm::vec3(0.0f), lightDir, glm::vec3(0.0f, 1.0f, 0.0f)) * lightViewportMatrix;
+                    glm::mat4 invLightViewportMatrix = glm::inverse(lightViewportMatrix);
 
-                // Simple bounding box:
-                /*
-                float minX = std::numeric_limits<float>::max();
-                float maxX = std::numeric_limits<float>::lowest();
-                float minY = std::numeric_limits<float>::max();
-                float maxY = std::numeric_limits<float>::lowest();
-                float minZ = std::numeric_limits<float>::max();
-                float maxZ = std::numeric_limits<float>::lowest();
+                    center = lightViewportMatrix * glm::vec4(center,1.0f);
+                    center.x = (float)floor(center.x);   //snap to texel
+                    center.y = (float)floor(center.y);   //snap to texel
+                    center = invLightViewportMatrix * glm::vec4(center,1.0f);
+                    
+                    
+                    const auto lightView = glm::lookAt(
+                        center + lightDir * 2.0f * boundingRadius, //changing the origin for the z buffer values
+                        center,
+                        glm::vec3(0.0f, 1.0f, 0.0f)
+                    );
 
-                for (const auto& v : frustrumCorners)
-                {
-                    const auto trf = lightView * v;
-                    minX = std::min(minX, trf.x);
-                    maxX = std::max(maxX, trf.x);
-                    minY = std::min(minY, trf.y);
-                    maxY = std::max(maxY, trf.y);
-                    minZ = std::min(minZ, trf.z);
-                    maxZ = std::max(maxZ, trf.z);
+                    glm::mat4 lightProjection = glm::ortho(-boundingRadius, boundingRadius, -boundingRadius, boundingRadius, -boundingRadius*zMult, boundingRadius * zMult);
+                    
+                    glm::mat4 lightMatrix = lightProjection * lightView;
+                    
+                    lightMatrices[i] = lightMatrix;
                 }
 
 
-                if (minZ < 0)
-                {
-                    minZ *= zMult;
-                }
-                else
-                {
-                    minZ /= zMult;
-                }
-                if (maxZ < 0)
-                {
-                    maxZ /= zMult;
-                }
-                else
-                {
-                    maxZ *= zMult;
-                }
-                */
-                
-                /*
-                glm::mat4 lightProjection = glm::ortho(minX, maxX, minY, maxY, minZ, maxZ);*/
-                glm::mat4 lightProjection = glm::ortho(-boundingRadius, boundingRadius, -boundingRadius, boundingRadius, -boundingRadius*zMult, boundingRadius * zMult);
-
-
-                // multiply by the inverse projection matrix
-                glm::mat4 lightMatrix = lightProjection * lightView;
-
-                //std::cout << "render shadows set parameter: " << glGetError() << std::endl; 
-                glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(glm::mat4), glm::value_ptr(lightMatrix));
-                offset += sizeof(glm::mat4);
-            }
-
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, 4 * sizeof(float), &frustumCuts[1]);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+            // Filling shadowData buffer:
+            auto shadowDataBuffer = frameResources.shaderMemoryPool->GetUniformBuffer("ShadowData");
             
+            ShadowData *shadowData = shadowDataBuffer->BeginSetData<ShadowData>();
+            {
+                shadowDataBuffer->Clear();
+                shadowData->shadowBias = 0.1f;
+                shadowData->shadowSamples = 1.0f;
+                shadowData->numLights = 2.0f;
+                shadowData->pad = 12.0f;
+                
+                
+                for (size_t i = 0; i < SHADOW_CASCADE_COUNT; i++)
+                {   
+                    shadowData->lightSpaceMatrices0[i] = lightMatrices[i];
+                }
+
+                shadowData->frustrumDistances0[0] = frustumCuts[1];
+                shadowData->frustrumDistances0[1] = frustumCuts[2];
+                shadowData->frustrumDistances0[2] = frustumCuts[3];
+                shadowData->frustrumDistances0[3] = frustumCuts[4];
+            }
+            shadowDataBuffer->EndSetData();
+
 
             // Rendering objects to shadow map:
             
@@ -306,11 +241,24 @@ class PCFShadowRenderer
 
             glViewport(0, 0, frameResources.viewportWidth, frameResources.viewportHeight);
             //glCullFace(GL_BACK);
+
             out.shadowMap0 = shadowMapBuffer0;
             out.texType0 = GL_TEXTURE_2D_ARRAY;
             return out;
         }
 
+
+        #pragma pack(push, 1)
+        struct ShadowData
+        {
+            float shadowBias;
+            float shadowSamples;
+            float numLights;
+            float pad;
+            glm::mat4 lightSpaceMatrices0[4];
+            float frustrumDistances0[4];
+        }; 
+        #pragma pack(pop)
         
 
     private:
@@ -322,10 +270,6 @@ class PCFShadowRenderer
         GLuint shadowMapFBO;
         GLuint shadowMapBuffer0;
 
-
-        GLuint GLOBAL_SHADOWS_BINDING = 4;
-        GLuint ShadowsUBO;
-        unsigned int ShadowBufferSize;
         float frustumCuts[5];
         StandardShader shadowDepthPass;
 };

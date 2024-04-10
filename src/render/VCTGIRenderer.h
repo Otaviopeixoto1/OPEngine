@@ -123,6 +123,12 @@ class VCTGIRenderer : public BaseRenderer
             scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
             scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
 
+            shaderMemoryPool.Clear();
+            shaderMemoryPool.AddUniformBuffer(sizeof(GlobalMatrices), "GlobalMatrices");
+            shaderMemoryPool.AddUniformBuffer(sizeof(LocalMatrices), "LocalMatrices");
+            shaderMemoryPool.AddUniformBuffer(sizeof(MaterialProperties), "MaterialProperties");
+            shaderMemoryPool.AddUniformBuffer(sizeof(LightData), "LightData");
+
             preprocessorDefines.clear();
             preprocessorDefines.push_back("MAX_DIR_LIGHTS " + std::to_string(MAX_DIR_LIGHTS));
             preprocessorDefines.push_back("MAX_POINT_LIGHTS " + std::to_string(MAX_POINT_LIGHTS));
@@ -133,13 +139,11 @@ class VCTGIRenderer : public BaseRenderer
             {
                 case PCF_SHADOW_MAP:
                     this->PCFshadowRenderer = PCFShadowRenderer(
-                        UNIFORM_GLOBAL_SHADOWS_BINDING, //Abstract the uniform buffer object and send a pointer to the renderer. 
-                                                        //ITs the renderer responsability to manage UBOs
                         SHADOW_CASCADE_COUNT,
                         SHADOW_WIDTH,
                         SHADOW_HEIGHT
                     );
-                    this->PCFshadowRenderer.RecreateResources();
+                    this->PCFshadowRenderer.RecreateResources(&shaderMemoryPool);
                     preprocessorDefines.push_back("DIR_LIGHT_SHADOWS");
                     preprocessorDefines.push_back("PCF_SHADOWS");
                     break;
@@ -163,7 +167,7 @@ class VCTGIRenderer : public BaseRenderer
             this->skyRenderer = SkyRenderer();
             this->skyRenderer.RecreateResources();
 
-            
+
             // gBuffer:
             glGenFramebuffers(1, &gBufferFBO);
             glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
@@ -362,8 +366,6 @@ class VCTGIRenderer : public BaseRenderer
             glm::mat4 projectionMatrix = camera.GetProjectionMatrix();
             glm::mat4 viewMatrix = camera.GetViewMatrix();
             glm::mat4 inverseViewMatrix = glm::inverse(viewMatrix);
-
-            // Get light data in view space:
             GlobalLightData lights = scene->GetLightData(viewMatrix);
 
 
@@ -376,29 +378,48 @@ class VCTGIRenderer : public BaseRenderer
             frameResources.inverseViewMatrix = inverseViewMatrix;
             frameResources.projectionMatrix = projectionMatrix;
             frameResources.lightData = &lights;
-
-            glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
-            glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(projectionMatrix));
-            glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(viewMatrix));
-            glBufferSubData(GL_UNIFORM_BUFFER, 2*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(inverseViewMatrix));
-            glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+            frameResources.shaderMemoryPool = &shaderMemoryPool;
 
 
-            int offset = 0;
-            glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, 4* sizeof(float), glm::value_ptr(lights.ambientLight));
-            offset = 4* sizeof(float);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numDirLights);
-            offset += sizeof(int);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numPointLights);
-            offset += sizeof(int);
-            offset += 2 * sizeof(int);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData), lights.directionalLights.data());
-            offset += MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData), lights.pointLights.data());
-            offset += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
+            auto globalMatricesBuffer = shaderMemoryPool.GetUniformBuffer("GlobalMatrices");
+            
+            GlobalMatrices *globalMatrices = globalMatricesBuffer->BeginSetData<GlobalMatrices>();
+            {
+                globalMatricesBuffer->Clear();
+                auto voxelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.025,0.025,0.025)); //calculate based on the scene size or the frustrum bounds !!
+                auto invVoxelMatrix = glm::inverse(voxelMatrix);
 
+                globalMatrices->projectionMatrix = projectionMatrix;
+                globalMatrices->viewMatrix = viewMatrix;
+                globalMatrices->inverseViewMatrix = inverseViewMatrix;
+                globalMatrices->voxelMatrix = voxelMatrix;
+                globalMatrices->inverseVoxelMatrix = invVoxelMatrix;
+            }
+            globalMatricesBuffer->EndSetData();
+
+            //use memcpy instead !!!!! this is reading and writing data !!
+            auto lightDataBuffer = shaderMemoryPool.GetUniformBuffer("LightData");
+            LightData *lightData = lightDataBuffer->BeginSetData<LightData>();
+            {
+                lightData->ambientLight = lights.ambientLight;
+                lightData->numDirLights = lights.numDirLights;
+                lightData->numPointLights = lights.numPointLights;
+                lightData->pad = 0;
+                lightData->pad2 = 0;
+
+                for (size_t i = 0; i < MAX_DIR_LIGHTS; i++)
+                {
+                    if (lights.numDirLights < i + 1) {break;}
+                    lightData->dirLights[i] = lights.directionalLights[i];
+                }
+                for (size_t i = 0; i < MAX_POINT_LIGHTS; i++)
+                {
+                    if (lights.numPointLights < i + 1) {break;}
+                    lightData->pointLights[i] = lights.pointLights[i];
+                }
+                
+            }
+            lightDataBuffer->EndSetData();
             
 
             // 1) Shadow Map Rendering Pass:
@@ -421,7 +442,6 @@ class VCTGIRenderer : public BaseRenderer
                 default:
                     break;
             }
-        
             shadowTask->End();
 
 
@@ -473,16 +493,29 @@ class VCTGIRenderer : public BaseRenderer
 
                 // Setting object-related properties
                 // ---------------------------------
-                glBindBuffer(GL_UNIFORM_BUFFER, MaterialUBO);
-                glBufferSubData(GL_UNIFORM_BUFFER, 0, MaterialBufferSize, &(materialInstance->properties));
-                glBindBuffer(GL_UNIFORM_BUFFER, 0);   
 
+                auto materialPropertiesBuffer = shaderMemoryPool.GetUniformBuffer("MaterialProperties");
+                /*MaterialProperties *materialProperties = materialPropertiesBuffer->BeginSetData<MaterialProperties>();
+                {
+                    materialPropertiesBuffer->Clear();
+                    materialProperties->albedoColor = materialInstance->properties.albedoColor;
+                    materialProperties->emissiveColor = materialInstance->properties.emissiveColor;
+                    materialProperties->specular = materialInstance->properties.specular;
+                } 
+                materialPropertiesBuffer->EndSetData();*/
+                materialPropertiesBuffer->SetData(0, sizeof(MaterialProperties), &(materialInstance->properties));
 
                 // Update model and normal matrices:
-                glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
-                glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(objectToWorld));
-                glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)));
-                glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+                auto localMatricesBuffer = shaderMemoryPool.GetUniformBuffer("LocalMatrices");
+                /*LocalMatrices *localMatrices = localMatricesBuffer->BeginSetData<LocalMatrices>();
+                {
+                    localMatricesBuffer->Clear();
+                    localMatrices->modelMatrix = objectToWorld;
+                    localMatrices->normalMatrix = MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld);
+                }
+                localMatricesBuffer->EndSetData();*/
+                localMatricesBuffer->SetData( 0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
+                localMatricesBuffer->SetData( sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
 
 
                 //Bind all textures
@@ -611,16 +644,29 @@ class VCTGIRenderer : public BaseRenderer
 
                 // Setting object-related properties
                 // ---------------------------------
-                glBindBuffer(GL_UNIFORM_BUFFER, MaterialUBO);
-                glBufferSubData(GL_UNIFORM_BUFFER, 0, MaterialBufferSize, &(materialInstance->properties));
-                glBindBuffer(GL_UNIFORM_BUFFER, 0);   
-
+                auto materialPropertiesBuffer = shaderMemoryPool.GetUniformBuffer("MaterialProperties");
+                /*MaterialProperties *materialProperties = materialPropertiesBuffer->BeginSetData<MaterialProperties>();
+                {
+                    materialPropertiesBuffer->Clear();
+                    materialProperties->albedoColor = materialInstance->properties.albedoColor;
+                    materialProperties->emissiveColor = materialInstance->properties.emissiveColor;
+                    materialProperties->specular = materialInstance->properties.specular;
+                } 
+                materialPropertiesBuffer->EndSetData();*/
+                materialPropertiesBuffer->SetData(0, sizeof(MaterialProperties), &(materialInstance->properties));
 
                 // Update model and normal matrices:
-                glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
-                glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(objectToWorld));
-                glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)));
-                glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+                auto localMatricesBuffer = shaderMemoryPool.GetUniformBuffer("LocalMatrices");
+                /*LocalMatrices *localMatrices = localMatricesBuffer->BeginSetData<LocalMatrices>();
+                {
+                    localMatricesBuffer->Clear();
+                    localMatrices->modelMatrix = objectToWorld;
+                    localMatrices->normalMatrix = MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld);
+                }
+                localMatricesBuffer->EndSetData();*/
+                localMatricesBuffer->SetData( 0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
+                localMatricesBuffer->SetData( sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
+
 
 
                 //Bind all textures
@@ -785,14 +831,29 @@ class VCTGIRenderer : public BaseRenderer
                     shaderCache = activeShader.ID; 
                 }
 
-                glBindBuffer(GL_UNIFORM_BUFFER, MaterialUBO);
-                glBufferSubData(GL_UNIFORM_BUFFER, 0, MaterialBufferSize, &(materialInstance->properties));
-                glBindBuffer(GL_UNIFORM_BUFFER, 0);   
+                auto materialPropertiesBuffer = shaderMemoryPool.GetUniformBuffer("MaterialProperties");
+                /*MaterialProperties *materialProperties = materialPropertiesBuffer->BeginSetData<MaterialProperties>();
+                {
+                    materialPropertiesBuffer->Clear();
+                    materialProperties->albedoColor = materialInstance->properties.albedoColor;
+                    materialProperties->emissiveColor = materialInstance->properties.emissiveColor;
+                    materialProperties->specular = materialInstance->properties.specular;
+                } 
+                materialPropertiesBuffer->EndSetData();*/
+                materialPropertiesBuffer->SetData(0, sizeof(MaterialProperties), &(materialInstance->properties));
 
-                glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
-                glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(objectToWorld));
-                glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)));
-                glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+                // Update model and normal matrices:
+                auto localMatricesBuffer = shaderMemoryPool.GetUniformBuffer("LocalMatrices");
+                /*LocalMatrices *localMatrices = localMatricesBuffer->BeginSetData<LocalMatrices>();
+                {
+                    localMatricesBuffer->Clear();
+                    localMatrices->modelMatrix = objectToWorld;
+                    localMatrices->normalMatrix = MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld);
+                }
+                localMatricesBuffer->EndSetData();*/
+                localMatricesBuffer->SetData( 0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
+                localMatricesBuffer->SetData( sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
+
 
                 mesh->BindBuffers();
                 glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
@@ -842,23 +903,14 @@ class VCTGIRenderer : public BaseRenderer
             FXAATask->End();       
         }
 
-
-
-
-
         void ReloadShaders()
-        {
+        {   
+            auto bufferBindings = shaderMemoryPool.GetNamedBindings();
 
-
-
-            ////////////////////////////////////////////////////////////////////////////////////////////
-            //NamedUniformBufferBindings must be dynamically constructed after creating all the buffers
-            ////////////////////////////////////////////////////////////////////////////////////////////
 
             defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
             defaultVertFrag.BuildProgram();
-            defaultVertFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
-
+            defaultVertFrag.BindUniformBlocks(bufferBindings);
 
 
             defaultVertNormalTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
@@ -868,14 +920,12 @@ class VCTGIRenderer : public BaseRenderer
                 defaultVertNormalTexFrag.AddPreProcessorDefines(&s,1);
             }
             defaultVertNormalTexFrag.BuildProgram();
-            defaultVertNormalTexFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
-            
+            defaultVertNormalTexFrag.BindUniformBlocks(bufferBindings);
 
 
             defaultVertUnlitFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
             defaultVertUnlitFrag.BuildProgram();
-            defaultVertUnlitFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
-
+            defaultVertUnlitFrag.BindUniformBlocks(bufferBindings);
 
 
             postProcessShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemapLum.frag");
@@ -884,11 +934,8 @@ class VCTGIRenderer : public BaseRenderer
             postProcessShader.SetSamplerBinding("screenTexture", 0);
 
 
-
             FXAAShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadFXAA.frag");
             FXAAShader.BuildProgram();
-
-
 
 
             voxelizationShader = StandardShader(BASE_DIR"/data/shaders/voxelization/voxel.vert", BASE_DIR"/data/shaders/voxelization/voxel.frag");
@@ -900,12 +947,13 @@ class VCTGIRenderer : public BaseRenderer
             voxelizationShader.SetSamplerBinding("voxelTextures", VX_VOXEL2DTEX_BINDING);
             voxelizationShader.SetSamplerBinding("voxel3DData", VX_VOXEL3DTEX_BINDING);
             voxelizationShader.SetSamplerBinding("shadowMap0", VX_SHADOW_MAP0_BINDING); // do the binding properly
-            voxelizationShader.BindUniformBlocks(NamedUniformBufferBindings, 5);
+            voxelizationShader.BindUniformBlocks(bufferBindings);
+
 
             mipmappingShader = ComputeShader(BASE_DIR"/data/shaders/voxelization/mipmap.comp");
             mipmappingShader.AddPreProcessorDefines(preprocessorDefines);
             mipmappingShader.BuildProgram();
-            mipmappingShader.BindUniformBlocks(NamedUniformBufferBindings, 5);
+            mipmappingShader.BindUniformBlocks(bufferBindings);
 
 
             conetraceShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/voxelization/conetraceGI.frag");
@@ -918,7 +966,7 @@ class VCTGIRenderer : public BaseRenderer
             conetraceShader.SetSamplerBinding("gColorSpec", GI_COLOR_SPEC_BINDING); 
             conetraceShader.SetSamplerBinding("gNormal", GI_NORMAL_BINDING);
             conetraceShader.SetSamplerBinding("gPosition", GI_POSITION_BINDING);
-            conetraceShader.BindUniformBlocks(NamedUniformBufferBindings, 5);
+            conetraceShader.BindUniformBlocks(bufferBindings);
 
 
             drawVoxelsShader = StandardShader(BASE_DIR"/data/shaders/voxelization/drawVoxels.vert", BASE_DIR"/data/shaders/voxelization/drawVoxels.frag");
@@ -927,124 +975,7 @@ class VCTGIRenderer : public BaseRenderer
             drawVoxelsShader.UseProgram();
             drawVoxelsShader.SetSamplerBinding("voxel2DTextures", GI_VOXEL2DTEX_BINDING); 
             drawVoxelsShader.SetSamplerBinding("voxel3DData", GI_VOXEL3DTEX_BINDING);
-            drawVoxelsShader.BindUniformBlocks(NamedUniformBufferBindings, 5);
-
-
-
-
-
-
-            // Setting UBOs to the correct binding points
-            // ------------------------------------------
-
-            glGenBuffers(1, &GlobalMatricesUBO);
-            glGenBuffers(1, &LocalMatricesUBO);
-
-            // Matrix buffers setup
-            // -------------------
-            /* GlobalMatrices Uniform buffer structure:
-             * {
-             *    mat4 projectionMatrix; 
-             *    mat4 viewMatrix;       
-             *    mat4 inverseViewMatrix
-             *    mat4 voxelMatrix;
-             *    mat4 inverseVoxelMatrix;
-             * }
-             * 
-             * LocalMatrices Uniform buffer structure:
-             * {
-             *    mat4 modelMatrix;     
-             *    mat4 normalMatrix;    
-             * }
-             */
-            
-            // Create the buffer and specify its size:
-
-            glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
-            glBufferData(GL_UNIFORM_BUFFER, 5*sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
-
-            auto voxelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.025,0.025,0.025)); //calculate based on the scene size or the frustrum bounds !!
-            auto invVoxelMatrix = glm::inverse(voxelMatrix);
-            glBufferSubData(GL_UNIFORM_BUFFER, 3*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(voxelMatrix));
-            glBufferSubData(GL_UNIFORM_BUFFER, 4*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(invVoxelMatrix));
-            
-            glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
-            glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
-            
-            // Bind a certain range of the buffer to the uniform block: this allows to use multiple UBOs 
-            // per uniform block
-            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_GLOBAL_MATRICES_BINDING, GlobalMatricesUBO, 0, 5 * sizeof(glm::mat4));
-            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_LOCAL_MATRICES_BINDING, LocalMatricesUBO, 0, 2 * sizeof(glm::mat4));
-
-            //shaderMemoryPool.AddUniformBuffer
-
-
-
-            glGenBuffers(1, &LightsUBO);
-
-            // Light buffer setup
-            // ------------------
-            /* DirLight struct structure:
-             * {
-             *    vec4 lightColor; 
-             *    mat4 lightMatrix;
-             *    vec4 direction; 
-             * }
-             */
-
-            /* Lights Uniform buffer structure:
-             * {
-             *    vec4 ambientLight;
-             *    int numDirLights;
-             *    int numPointLights;
-             *    int pad;
-             *    int pad;
-             *    DirLight dirLights[MAX_DIR_LIGHTS];
-             *    PointLight pointLights[MAX_POINT_LIGHTS];
-             * }
-             */
-            
-            LightBufferSize = 0;
-            {
-                LightBufferSize += sizeof(glm::vec4);
-                LightBufferSize += 4 * sizeof(int);
-                LightBufferSize += MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData);
-                LightBufferSize += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
-            }
-
-            glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
-            glBufferData(GL_UNIFORM_BUFFER, LightBufferSize, NULL, GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
-            
-            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_GLOBAL_LIGHTS_BINDING, LightsUBO, 0, LightBufferSize);
-
-
-
-
-            glGenBuffers(1, &MaterialUBO);
-
-            // Material buffer setup
-            // -------------------
-            /* MaterialProperties Uniform buffer structure:
-             * {
-             *    vec4 albedoColor; 
-             *    vec4 emissiveColor; 
-             *    vec4 specular;      
-             * }
-             */
-            MaterialBufferSize = 0;
-            {
-                MaterialBufferSize += 3 * sizeof(glm::vec4);
-            }
-
-            glBindBuffer(GL_UNIFORM_BUFFER, MaterialUBO);
-            glBufferData(GL_UNIFORM_BUFFER, MaterialBufferSize, NULL, GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_MATERIAL_PROPERTIES_BINDING, MaterialUBO, 0, MaterialBufferSize);
-
-
+            drawVoxelsShader.BindUniformBlocks(bufferBindings);
         }
 
         void RenderGUI()
@@ -1100,7 +1031,7 @@ class VCTGIRenderer : public BaseRenderer
            glm::mat4 modelMatrix;     
            glm::mat4 normalMatrix;    
         };
-        struct Lights
+        struct LightData
         {
             glm::vec4 ambientLight;
             int numDirLights;
@@ -1110,17 +1041,14 @@ class VCTGIRenderer : public BaseRenderer
             DirectionalLight::DirectionalLightData dirLights[MAX_DIR_LIGHTS];
             PointLight::PointLightData pointLights[MAX_POINT_LIGHTS];
         };
-        
+        struct MaterialProperties 
+        {
+            glm::vec4 albedoColor; 
+            glm::vec4 emissiveColor; 
+            glm::vec4 specular;      
+        };
         #pragma pack(pop)
         
-
-        GLuint LightBufferSize = 0;
-        GLuint MaterialBufferSize = 0;
-
-        GLuint GlobalMatricesUBO;
-        GLuint LocalMatricesUBO;
-        GLuint LightsUBO;
-        GLuint MaterialUBO;
 
 
 

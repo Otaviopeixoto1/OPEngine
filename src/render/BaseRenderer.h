@@ -54,6 +54,8 @@ class BaseRenderer
             glm::mat4 projectionMatrix;
             glm::mat4 viewMatrix;
             glm::mat4 inverseViewMatrix;
+
+            ShaderMemoryPool *shaderMemoryPool;
         }; 
         
 

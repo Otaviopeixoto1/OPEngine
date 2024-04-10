@@ -76,12 +76,11 @@ class ForwardRenderer : public BaseRenderer
 
 
                 this->shadowRenderer = PCFShadowRenderer(
-                    UNIFORM_GLOBAL_SHADOWS_BINDING, 
                     SHADOW_CASCADE_COUNT,
                     SHADOW_WIDTH,
                     SHADOW_HEIGHT
                 );
-                this->shadowRenderer.RecreateResources();
+                this->shadowRenderer.RecreateResources(&shaderMemoryPool);
                 preprocessorDefines.push_back("PCF_SHADOWS");
             }
 

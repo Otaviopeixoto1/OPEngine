@@ -26,9 +26,9 @@ struct PointLight
     float radius;
 }; 
 
-layout(std140) uniform Lights
+layout(std140) uniform LightData
 {
-    vec4 ambientLight; //(vec3 color, float intensity)
+    vec4 ambientLight; 
     int numDirLights;
     int numPointLights;
     int lpad2;
@@ -47,13 +47,13 @@ layout(std140) uniform Lights
     #define SHADOW_MAP_COUNT 1
 #endif
 
-layout(std140) uniform Shadows
+layout(std140) uniform ShadowData
 {
     float shadowBias;
     float shadowSamples;
-    float numShadowCasters;
+    float numLights;
     float spad3;
-    mat4 lightSpaceMatrices[SHADOW_CASCADE_COUNT];
+    mat4 lightSpaceMatrices0[4];
     vec4 frustrumDistances0; //this only allows for 4 cascades. To add more, a second vec4 of frustrum distances 
                              //must be added into this buffer
 };
@@ -77,9 +77,9 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
         float fragDepth = abs(viewPos.z);
 
         vec4 res = step(frustrumDistances0, vec4(fragDepth,fragDepth,fragDepth,fragDepth));
+        int index = int(res.x + res.y + res.z); //returns a value between 0 and 3
 
-        // the w component is not useful and could cause invalid indexing
-        int currentLayer = int(res.x + res.y + res.z); //returns a value between 0 and 3
+
 
         //use view normal instead of world normal
         //float bias = max(0.005 * (1.0 - dot(worldNormal, dirLights[lightIndex].direction.xyz)), 0.0005);
@@ -106,7 +106,7 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
 
 
 
-        vec4 posClipSpace = lightSpaceMatrices[currentLayer] * vec4(worldPos.xyz + normalBias, 1);
+        vec4 posClipSpace = lightSpaceMatrices0[index] * vec4(worldPos.xyz + normalBias, 1);
 
         // Perspective division is only realy necessary with perspective projection, 
         // it wont affect ortographic projection be we do it anyway:
@@ -118,7 +118,7 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
 
         
         // One sample:
-        //float closestDepth = texture(shadowMap0, vec3(ndcPos.xy, currentLayer)).r;
+        //float closestDepth = texture(shadowMap0, vec3(ndcPos.xy, index)).r;
         //float shadow = currentDepth - bias > closestDepth  ? 0.0 : 1.0;
 
 
@@ -128,11 +128,11 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
         {
             for(float y = -1.5; y <= 1.5; ++y)
             {
-                //float pcfDepth = texture(shadowMap0, vec3(ndcPos.xy + vec2(x, y) * texelSize, currentLayer) ).r; 
+                //float pcfDepth = texture(shadowMap0, vec3(ndcPos.xy + vec2(x, y) * texelSize, index) ).r; 
                 //shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0; 
                 
                 //for hardware pcf       
-                shadow += texture(shadowMap0, vec4(ndcPos.xy + vec2(x, y) * texelSize, currentLayer, currentDepth - bias));
+                shadow += texture(shadowMap0, vec4(ndcPos.xy + vec2(x, y) * texelSize, index, currentDepth - bias));
             }    
         }
         shadow /= 16.0f;
@@ -141,7 +141,7 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
 
     #elif defined(VSM_SHADOWS)
 
-        vec4 posClipSpace = lightSpaceMatrices[0] * vec4(worldPos.xyz, 1);
+        vec4 posClipSpace = lightSpaceMatrices0[0] * vec4(worldPos.xyz, 1);
 
         // Perspective division is only realy necessary with perspective projection, 
         // it wont affect ortographic projection be we do it anyway:

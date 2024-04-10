@@ -18,17 +18,17 @@ class ShaderMemoryPool
         {
             GLUniformBuffer buffer(size, name);
             namedUniformBindings[name] = uniformBuffers.Add(std::move(buffer));
-            GetUniformBuffer(name).BindBufferFull(namedUniformBindings[name].asInt);
+            GetUniformBuffer(name)->BindBufferFull(namedUniformBindings[name].asInt);
         }
 
-        GLUniformBuffer &GetUniformBuffer(const std::string &name)
+        GLUniformBuffer *GetUniformBuffer(const std::string &name)
         {
-            return uniformBuffers.Get(namedUniformBindings[name]);
+            return &uniformBuffers.Get(namedUniformBindings[name]);
         }
 
-        GLUniformBuffer &GetUniformBufferBinding(const std::string &name)
+        GLuint GetUniformBufferBinding(const std::string &name)
         {
-            return uniformBuffers.Get(namedUniformBindings[name]);
+            return namedUniformBindings[name].asInt;
         }
 
         std::unordered_map<std::string, UniformBufferBinding> GetNamedBindings()
@@ -39,6 +39,11 @@ class ShaderMemoryPool
         void DeleteBuffer(UniformBufferBinding bufferBinding)
         {
             uniformBuffers.Release(bufferBinding);
+        }
+
+        void Clear()
+        {
+
         }
 
 

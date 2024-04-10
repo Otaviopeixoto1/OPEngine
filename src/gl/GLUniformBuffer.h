@@ -10,7 +10,7 @@ class GLUniformBuffer
         {
             glGenBuffers(1, &GLId);
             glBindBuffer(GL_UNIFORM_BUFFER, GLId);
-            glBufferData(GL_UNIFORM_BUFFER, size, NULL, GL_DYNAMIC_DRAW);
+            glBufferData(GL_UNIFORM_BUFFER, size, NULL, GL_STREAM_DRAW);
             this->size = size;
             this->name = name;
             glBindBuffer(GL_UNIFORM_BUFFER, 0);
@@ -79,6 +79,10 @@ class GLUniformBuffer
             return (BufferData*)(bufferData);
         }
 
+        void Clear()
+        {
+            glInvalidateBufferData(GLId);
+        }
         void EndSetData()
         {
             glUnmapBuffer(GL_UNIFORM_BUFFER);
