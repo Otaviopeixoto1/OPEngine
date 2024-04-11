@@ -258,8 +258,6 @@ class VCTGIRenderer : public BaseRenderer
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 
-
-
             // Light Accumulation (conetracing):
             glGenFramebuffers(1, &lightAccumulationFBO);
             glBindFramebuffer(GL_FRAMEBUFFER, lightAccumulationFBO);
@@ -281,8 +279,6 @@ class VCTGIRenderer : public BaseRenderer
                 throw RendererException("ERROR::FRAMEBUFFER:: Intermediate Framebuffer is incomplete");
             }
             glDrawBuffer(GL_COLOR_ATTACHMENT0);
-
-
 
 
             // Postprocessing Pass (Tonemapping): 
@@ -322,20 +318,17 @@ class VCTGIRenderer : public BaseRenderer
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindTexture(GL_TEXTURE_2D, 0); 
 
-
             glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, vpWidth, vpHeight, 0, GL_RGBA, GL_FLOAT, NULL);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindTexture(GL_TEXTURE_2D, 0); 
 
-
             glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, vpWidth, vpHeight, 0, GL_RGBA, GL_FLOAT, NULL);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindTexture(GL_TEXTURE_2D, 0); 
-
 
             glBindRenderbuffer(GL_RENDERBUFFER, depthStencilBuffer);
             glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, vpWidth, vpHeight);
@@ -381,11 +374,11 @@ class VCTGIRenderer : public BaseRenderer
             frameResources.shaderMemoryPool = &shaderMemoryPool;
 
 
+            //use memcpy instead !!!!! this is reading (?) and writing data !!
+
             auto globalMatricesBuffer = shaderMemoryPool.GetUniformBuffer("GlobalMatrices");
-            
             GlobalMatrices *globalMatrices = globalMatricesBuffer->BeginSetData<GlobalMatrices>();
             {
-                globalMatricesBuffer->Clear();
                 auto voxelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.025,0.025,0.025)); //calculate based on the scene size or the frustrum bounds !!
                 auto invVoxelMatrix = glm::inverse(voxelMatrix);
 
@@ -397,7 +390,7 @@ class VCTGIRenderer : public BaseRenderer
             }
             globalMatricesBuffer->EndSetData();
 
-            //use memcpy instead !!!!! this is reading and writing data !!
+            
             auto lightDataBuffer = shaderMemoryPool.GetUniformBuffer("LightData");
             LightData *lightData = lightDataBuffer->BeginSetData<LightData>();
             {
@@ -495,25 +488,10 @@ class VCTGIRenderer : public BaseRenderer
                 // ---------------------------------
 
                 auto materialPropertiesBuffer = shaderMemoryPool.GetUniformBuffer("MaterialProperties");
-                /*MaterialProperties *materialProperties = materialPropertiesBuffer->BeginSetData<MaterialProperties>();
-                {
-                    materialPropertiesBuffer->Clear();
-                    materialProperties->albedoColor = materialInstance->properties.albedoColor;
-                    materialProperties->emissiveColor = materialInstance->properties.emissiveColor;
-                    materialProperties->specular = materialInstance->properties.specular;
-                } 
-                materialPropertiesBuffer->EndSetData();*/
                 materialPropertiesBuffer->SetData(0, sizeof(MaterialProperties), &(materialInstance->properties));
 
                 // Update model and normal matrices:
-                auto localMatricesBuffer = shaderMemoryPool.GetUniformBuffer("LocalMatrices");
-                /*LocalMatrices *localMatrices = localMatricesBuffer->BeginSetData<LocalMatrices>();
-                {
-                    localMatricesBuffer->Clear();
-                    localMatrices->modelMatrix = objectToWorld;
-                    localMatrices->normalMatrix = MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld);
-                }
-                localMatricesBuffer->EndSetData();*/
+                auto localMatricesBuffer = shaderMemoryPool.GetUniformBuffer("LocalMatrices"); 
                 localMatricesBuffer->SetData( 0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
                 localMatricesBuffer->SetData( sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
 
@@ -645,25 +623,10 @@ class VCTGIRenderer : public BaseRenderer
                 // Setting object-related properties
                 // ---------------------------------
                 auto materialPropertiesBuffer = shaderMemoryPool.GetUniformBuffer("MaterialProperties");
-                /*MaterialProperties *materialProperties = materialPropertiesBuffer->BeginSetData<MaterialProperties>();
-                {
-                    materialPropertiesBuffer->Clear();
-                    materialProperties->albedoColor = materialInstance->properties.albedoColor;
-                    materialProperties->emissiveColor = materialInstance->properties.emissiveColor;
-                    materialProperties->specular = materialInstance->properties.specular;
-                } 
-                materialPropertiesBuffer->EndSetData();*/
                 materialPropertiesBuffer->SetData(0, sizeof(MaterialProperties), &(materialInstance->properties));
 
                 // Update model and normal matrices:
                 auto localMatricesBuffer = shaderMemoryPool.GetUniformBuffer("LocalMatrices");
-                /*LocalMatrices *localMatrices = localMatricesBuffer->BeginSetData<LocalMatrices>();
-                {
-                    localMatricesBuffer->Clear();
-                    localMatrices->modelMatrix = objectToWorld;
-                    localMatrices->normalMatrix = MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld);
-                }
-                localMatricesBuffer->EndSetData();*/
                 localMatricesBuffer->SetData( 0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
                 localMatricesBuffer->SetData( sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
 
@@ -832,25 +795,10 @@ class VCTGIRenderer : public BaseRenderer
                 }
 
                 auto materialPropertiesBuffer = shaderMemoryPool.GetUniformBuffer("MaterialProperties");
-                /*MaterialProperties *materialProperties = materialPropertiesBuffer->BeginSetData<MaterialProperties>();
-                {
-                    materialPropertiesBuffer->Clear();
-                    materialProperties->albedoColor = materialInstance->properties.albedoColor;
-                    materialProperties->emissiveColor = materialInstance->properties.emissiveColor;
-                    materialProperties->specular = materialInstance->properties.specular;
-                } 
-                materialPropertiesBuffer->EndSetData();*/
                 materialPropertiesBuffer->SetData(0, sizeof(MaterialProperties), &(materialInstance->properties));
 
                 // Update model and normal matrices:
                 auto localMatricesBuffer = shaderMemoryPool.GetUniformBuffer("LocalMatrices");
-                /*LocalMatrices *localMatrices = localMatricesBuffer->BeginSetData<LocalMatrices>();
-                {
-                    localMatricesBuffer->Clear();
-                    localMatrices->modelMatrix = objectToWorld;
-                    localMatrices->normalMatrix = MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld);
-                }
-                localMatricesBuffer->EndSetData();*/
                 localMatricesBuffer->SetData( 0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
                 localMatricesBuffer->SetData( sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
 

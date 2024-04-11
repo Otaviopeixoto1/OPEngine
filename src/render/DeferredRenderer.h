@@ -81,7 +81,6 @@ class DeferredRenderer : public BaseRenderer
             {
                 preprocessorDefines.push_back("DIR_LIGHT_SHADOWS");
 
-
                 this->shadowRenderer = PCFShadowRenderer(
                     SHADOW_CASCADE_COUNT,
                     SHADOW_WIDTH,

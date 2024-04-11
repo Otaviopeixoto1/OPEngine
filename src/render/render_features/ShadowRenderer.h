@@ -191,13 +191,13 @@ class PCFShadowRenderer
                     lightMatrices[i] = lightMatrix;
                 }
 
-
+            //////////////////////////////////////////////////
+            //very inefficient, FIX THE WRITING SPEED
+            /////////////////////////////////////////////////
             // Filling shadowData buffer:
             auto shadowDataBuffer = frameResources.shaderMemoryPool->GetUniformBuffer("ShadowData");
-            
             ShadowData *shadowData = shadowDataBuffer->BeginSetData<ShadowData>();
             {
-                shadowDataBuffer->Clear();
                 shadowData->shadowBias = 0.1f;
                 shadowData->shadowSamples = 1.0f;
                 shadowData->numLights = 2.0f;
