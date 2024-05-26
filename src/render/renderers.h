@@ -3,7 +3,7 @@
 
 #include "ForwardRenderer.h"
 #include "DeferredRenderer.h"
-#include "VCTGIRenderer.h"
+#include "VoxelConeTracing/VCTGIRenderer.h"
 
 
 #endif

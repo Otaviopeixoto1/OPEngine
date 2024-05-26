@@ -2,16 +2,19 @@
 #define SHADER_MEMORY_POOL_H
 
 #include "../common/Pool.h"
-#include "../gl/GLUniformBuffer.h"
+#include "../gl/GLBuffer.h"
+
 
 
 //template this as well to use different kinds of buffers
+
 class ShaderMemoryPool
 {
     public:
         using UniformBufferPool = Pool<GLUniformBuffer>;
         using UniformBufferBinding = UniformBufferPool::Id;
-
+        //ADD SHADER STORAGE BUFFERS SUPPORT
+        
         ShaderMemoryPool(){}
 
         void AddUniformBuffer(GLuint size, const std::string &name)

@@ -1,7 +1,9 @@
 #ifndef UNIFORM_BUFFER_H
 #define UNIFORM_BUFFER_H
 
-
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <string>
 
 /*
  * this buffer implementation uses the concept of buffer object streaming: https://www.khronos.org/opengl/wiki/Buffer_Object_Streaming
@@ -110,7 +112,8 @@ class GLUniformBuffer
         GLuint GLId;
         GLuint size;
         std::string name;
-        // this is to prevent the destructor from deleting the buffer unintentionally by calling the destructor on a copy of the object
+
+        // this is to prevent the  being unintentionally deleted by calling the destructor on copies of the object with the same id
         GLUniformBuffer(const GLUniformBuffer&) = delete; // no copy constructor
         GLUniformBuffer &operator = (const GLUniformBuffer &other) = delete; // no copy assignement 
 };

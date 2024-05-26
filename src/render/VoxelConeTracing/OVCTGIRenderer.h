@@ -4,14 +4,14 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "BaseRenderer.h"
-#include "render_features/ShadowRenderer.h"
-#include "render_features/SkyRenderer.h"
-#include "../debug/OPProfiler.h"
-#include "../common/Colors.h"
+#include "../BaseRenderer.h"
+#include "../render_features/ShadowRenderer.h"
+#include "../render_features/SkyRenderer.h"
+#include "../../debug/OPProfiler.h"
+#include "../../common/Colors.h"
 
 
-class VCTGIRenderer : public BaseRenderer
+class OVCTGIRenderer : public BaseRenderer
 {
     public:
         static constexpr unsigned int MAX_MIP_MAP_LEVELS = 9;
@@ -110,7 +110,7 @@ class VCTGIRenderer : public BaseRenderer
         
         
         
-        VCTGIRenderer(unsigned int vpWidth, unsigned int vpHeight)
+        OVCTGIRenderer(unsigned int vpWidth, unsigned int vpHeight)
         {
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
@@ -552,6 +552,7 @@ class VCTGIRenderer : public BaseRenderer
             auto voxelizationTask = profiler->AddTask("voxelization", Colors::belizeHole);
             voxelizationTask->Start();
             glEnable(GL_CONSERVATIVE_RASTERIZATION_NV);
+            
             //these are bound in dispatch indirect and shader storage, since they are first filled in the voxelization (storage) and then read in the mipmap compute shader (indirect)
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndBuffer);     
             glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, compIndBuffer);
