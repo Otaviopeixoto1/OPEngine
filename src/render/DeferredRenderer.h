@@ -65,7 +65,7 @@ class DeferredRenderer : public BaseRenderer
             this->viewportHeight = vpHeight;
         }
 
-        void RecreateResources(Scene &scene, Camera &camera)
+        void RecreateResources(Scene &scene, Camera &camera, GLFWwindow *window)
         {
             scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
             scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;

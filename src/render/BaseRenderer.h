@@ -19,7 +19,7 @@ class BaseRenderer
     public:
         BaseRenderer(){}
         virtual ~BaseRenderer() {}
-        virtual void RecreateResources(Scene &scene, Camera &camera){}
+        virtual void RecreateResources(Scene &scene, Camera &camera, GLFWwindow *window){}
         virtual void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window, OPProfiler::OPProfiler *profiler){}
         virtual void RenderGUI(){}
         virtual void ReloadShaders(){}

@@ -4,6 +4,7 @@
 #include "ForwardRenderer.h"
 #include "DeferredRenderer.h"
 #include "VoxelConeTracing/VCTGIRenderer.h"
+#include "RadianceCascades/Radiance2DRenderer.h"
 
 
 #endif

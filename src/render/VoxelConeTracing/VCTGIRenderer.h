@@ -91,7 +91,7 @@ class VCTGIRenderer : public BaseRenderer
             this->viewportHeight = vpHeight;
         }
 
-        void RecreateResources(Scene &scene, Camera &camera)
+        void RecreateResources(Scene &scene, Camera &camera, GLFWwindow *window)
         {
             screenQuad = Mesh::QuadMesh();
 

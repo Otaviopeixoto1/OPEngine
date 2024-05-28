@@ -1,0 +1,31 @@
+{
+   "renderer" : 
+   {
+      "Camera" : 
+      {
+         "Aspect" : 1.3333333730697632,
+         "Far" : 100,
+         "Front" : [ -0.22367016971111298, 0.16160507500171661, -0.96117401123046875 ],
+         "MouseSensitivity" : 0.10000000149011612,
+         "MovementSpeed" : 5,
+         "Near" : 0.10000000149011612,
+         "Pitch" : 9.3000726699829102,
+         "Position" : [ 0.43152680993080139, 4.8200807571411133, 6.6883549690246582 ],
+         "RotationLocked" : true,
+         "Up" : [ 0, 1, 0 ],
+         "Yaw" : -463.09988403320312,
+         "Zoom" : 60
+      },
+      "ForwardRenderer" : 
+      {
+         "downscale" : 1,
+         "interleavedPatternSize" : 4
+      },
+      "ambientLight" : [ 0.01, 0.01, 0.01 ]
+   },
+   "scene" : 
+   {
+      "meshes" : [],
+      "objects" : []
+   }
+}
