@@ -14,23 +14,8 @@ layout (std140) uniform MouseData
 
 uniform float brushRadius;
 uniform sampler2D prev;
-uniform float time;
+uniform vec4 brushColor;
 
-
-vec3 hsv2rgb(vec3 c) 
-{
-    vec3 rgb = clamp(
-        abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0,
-        0.0,
-        1.0
-    );
-	return c.z * mix(vec3(1.0), rgb, c.y);
-}
-
-vec3 getEmissivity() 
-{
-    return  pow(hsv2rgb(vec3(time * 0.2, 1.0, 0.8)), vec3(2.2));
-}
 
 
 // solveQuadratic(), solveCubic(), solve() and sdBezier() are from
@@ -162,7 +147,7 @@ void main()
     if (d < max(0.0, sd)) 
     {
         sd = min(d, sd);
-        emissivity = getEmissivity();
+        emissivity = brushColor.rgb;
     }
     
     FragColor =  vec4(sd, emissivity);

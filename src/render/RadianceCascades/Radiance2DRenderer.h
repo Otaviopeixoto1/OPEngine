@@ -34,26 +34,17 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         mouseJustClicked = true;
         mouseClicked = true;
 
-        //getting cursor position
         glfwGetCursorPos(window, &mouseClickXPos, &mouseClickYPos);
-        //std::cout << "Cursor Position at (" << mouseClickXPos << ", " << mouseClickYPos <<")" << std::endl;
     }
     if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) 
     {
         mouseJustReleased = true;
         mouseClicked = false;
 
-        //getting cursor position
         glfwGetCursorPos(window, &mouseClickXPos, &mouseClickYPos);
-        //std::cout << "Cursor Position at (" << mouseClickXPos << ", " << mouseClickYPos <<")" << std::endl;
     }
 }
 
-
-// Also make a wrapper arround time functions
-#include <chrono>
-#include <ctime> 
-std::chrono::_V2::system_clock::time_point startTime;
 
 
 class Radiance2DRenderer : public BaseRenderer
@@ -70,10 +61,10 @@ class Radiance2DRenderer : public BaseRenderer
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
 
-            //size of the area filled by cascades
-            //this will be a square area that always fits the rendered area inside. 
-            //it to simply the process of cascade creation but generates some wasted area in memory
-            raymarchRegionSize = std::max(vpWidth, vpHeight);
+            raymarchRegionSize = std::max(vpWidth, vpHeight);   //size of the area filled by cascades
+                                                                //this will be a square area that always fits the rendered area inside. 
+                                                                //it to simply the process of cascade creation but generates some wasted area in memory
+            
             c0Angular  = 4; // angular resolution or initial rays per probe in cascade 0. (keep power of 4 for simplicity)
             c0Interval = 4; // radiance interval or raymarch distance in cascade 0.           
             c0Spacing  = 2; // Initial probe spacing in cascade 0.                        (keep power of 2 for simplicity)
@@ -95,11 +86,10 @@ class Radiance2DRenderer : public BaseRenderer
         void RecreateResources(Scene &scene, Camera &camera, GLFWwindow *window)
         {
             //////////////////////////////////////////////////////////////////////////////////////
-            // Add this to a special camera type of even
+            // Add this to a custom window event manager 
             glfwSetMouseButtonCallback(window, mouse_button_callback);
             //////////////////////////////////////////////////////////////////////////////////////
 
-            startTime = std::chrono::system_clock::now();
             
 
             screenQuad = Mesh::QuadMesh();
@@ -198,19 +188,36 @@ class Radiance2DRenderer : public BaseRenderer
             glBindTexture(GL_TEXTURE_2D, 0);
 
             // RESIZE CASCADES
+            raymarchRegionSize = std::max(vpWidth, vpHeight);
+            cascadeStorageSize =  floor(raymarchRegionSize / c0Spacing) * sqrt(c0Angular);
+            cascadeCount = std::max((unsigned int)ceil(log2(cascadeStorageSize / sqrt(c0Angular))), MAX_CASCADES);
+            float diagonal = sqrt(2) * raymarchRegionSize;
+            cascadeCount = std::min((unsigned int)floor(log2(4.0 * diagonal)/2.0f) - 1, cascadeCount);
+
+            for (size_t i = 0; i < cascadeCount + 1; i++)
+            {
+                glBindFramebuffer(GL_FRAMEBUFFER, cascadeIntervalFBOs[i]);
+
+                glBindTexture(GL_TEXTURE_2D, cascadeBuffers[i]);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, cascadeStorageSize, cascadeStorageSize, 0, GL_RGBA, GL_FLOAT, NULL);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glBindTexture(GL_TEXTURE_2D, 0);
+
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, cascadeBuffers[i], 0);
+
+                // no depth buffer needed
+                if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+                {
+                    throw RendererException("ERROR::FRAMEBUFFER:: Intermediate Framebuffer is incomplete");
+                }
+            }
+
         }
 
 
         void RenderFrame(Camera &camera, Scene *scene, GLFWwindow *window, OPProfiler::OPProfiler *profiler)
         {
-
-            auto currentTime = std::chrono::system_clock::now();
-            auto duration = currentTime - startTime;
-            auto d = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
-            elapsedTime = (d.count())/1000.0;
-
-            
-
 
             // Lazy mouse brush, based on: https://lazybrush.dulnan.net/
             if (mouseClicked)
@@ -253,7 +260,6 @@ class Radiance2DRenderer : public BaseRenderer
 
                     
                 }
-                //std::cout << "Cursor Position at (" << mouseA.x  << ", " << mouseA.y  <<")" << "  (" << mouseB.x  << ", " << mouseB.y  <<")" << "  (" << mouseC.x  << ", " << mouseC.y  <<")"<< std::endl;
             }
             else if (drawing)
             {
@@ -281,7 +287,7 @@ class Radiance2DRenderer : public BaseRenderer
             
             genSDFShader.UseProgram();
             genSDFShader.SetFloat("brushRadius", brushRadius);
-            genSDFShader.SetFloat("time", elapsedTime);
+            genSDFShader.SetVec4("brushColor", brushColor);
             screenQuad->BindBuffers();
 
             glActiveTexture(GL_TEXTURE0);
@@ -293,7 +299,6 @@ class Radiance2DRenderer : public BaseRenderer
             } 
             
             captureMouseTask->End();
-
 
 
 
@@ -335,7 +340,6 @@ class Radiance2DRenderer : public BaseRenderer
             mergeCascadeShader.SetFloat("cascadeStorageSize", cascadeStorageSize);
             mergeCascadeShader.SetFloat("c0Angular", c0Angular);
             mergeCascadeShader.SetFloat("cascadeCount", cascadeCount);
-            /**/
 
             for (size_t i = cascadeCount - 1; i >= 1; i--)
             {
@@ -369,21 +373,14 @@ class Radiance2DRenderer : public BaseRenderer
             mergeCascades->End();
 
 
-            auto drawSDFTask = profiler->AddTask("Draw SDF", Colors::alizarin);
+
+            auto drawSDFTask = profiler->AddTask("Integrate Radiance", Colors::alizarin);
 
             drawSDFTask->Start();
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glViewport(origViewportSize[0], origViewportSize[1], origViewportSize[2], origViewportSize[3]);
-            //glClearColor(0.0, 0.0, 0.0, 0.0);
             glClear(GL_COLOR_BUFFER_BIT);
-
-            /*
-            drawSDFShader.UseProgram();
-            screenQuad->BindBuffers();
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, sdfBufferTextures[1 - currentBuffer]); 
-            glDrawArrays(GL_TRIANGLES, 0, 6);*/
 
             RenderRadianceShader.UseProgram();
             RenderRadianceShader.SetVec2("sceneDimensions", glm::vec2(viewportWidth,viewportHeight));
@@ -398,7 +395,16 @@ class Radiance2DRenderer : public BaseRenderer
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
             drawSDFTask->End();  
-  
+
+            // For rendering just the input sdf:
+            /*
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glClear(GL_COLOR_BUFFER_BIT);
+            drawSDFShader.UseProgram();
+            screenQuad->BindBuffers();
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, sdfBufferTextures[1 - currentBuffer]); 
+            glDrawArrays(GL_TRIANGLES, 0, 6);*/
         }
 
         void ReloadShaders()
@@ -417,7 +423,7 @@ class Radiance2DRenderer : public BaseRenderer
             drawSDFShader.UseProgram();
             drawSDFShader.SetSamplerBinding("sdf", 0);
 
-            /**/
+
             marchCascadeShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/RadianceCascades/2D/MarchCascade.frag");
             marchCascadeShader.BuildProgram();
             marchCascadeShader.UseProgram();
@@ -441,7 +447,7 @@ class Radiance2DRenderer : public BaseRenderer
         {
             ImGui::Begin("Radiance 2D");
 
-            ImGui::ColorEdit4("Brush Color", (float*)&brushColor);
+            ImGui::ColorPicker4("Brush Color", (float*)&brushColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_NoDragDrop);
             ImGui::End();
         }
 
@@ -468,7 +474,6 @@ class Radiance2DRenderer : public BaseRenderer
         float brushRadius = 0.015f;
         float friction = 0.05f;
         
-        double elapsedTime; //REMOVE FROM THIS CLASS
         glm::vec4 mouseA, mouseB, mouseC = glm::vec4(0.0f);
         std::unique_ptr<Mesh> screenQuad;
         std::vector<std::string> preprocessorDefines;
