@@ -53,34 +53,30 @@ void main()
 	ProbeInfo probeInfoUpper = CascadeProbeInfo(cascadeCoord, cascadeIndex + 1);
 	
 	vec2 texelIndexUpper = floor((vec2(probeInfoCurrent.probePos) - 1.0) / 2.0);
-	vec2 texelLowerLeftUpper = floor((texelIndexUpper * 2.0) + 1.0);
-	
+	vec2 texelTopLeftUpper = floor((texelIndexUpper * 2.0) + 1.0);
+
+
 	vec4 radiance = texture2D(currentCascade, TexCoords);
-	radiance.a = 1.0 - radiance.a;
 
     // if there was a hit in the current cascade, dont merge with upper
-	if (radiance.a != 0.0) 
+	if (radiance.a != 1.0) 
     {
-		vec4 TL = vec4(0.0), TR = vec4(0.0), BL = vec4(0.0), BR = vec4(0.0);
+		vec4 ProbeRadianceBL = vec4(0.0), ProbeRadianceTR = vec4(0.0), ProbeRadianceTL = vec4(0.0), ProbeRadianceBR = vec4(0.0);
 		
-		for(float i = 0.0; i < 4; i++) {
-			float rayIndexUpper = (probeInfoCurrent.rayIndex * 4.0) + i; //default is 4x ray branch scaling factor between cascades.
+		for(float i = 0.0; i < 4.0; i++) 
+		{
+			float rayIndexUpper = (probeInfoCurrent.rayIndex * 4.0) + i ; //default is 4x ray branch scaling factor between cascades.
 
-			TL += FetchUpperCascade(probeInfoUpper.probeSize, texelIndexUpper + vec2(0.0,0.0), rayIndexUpper);
-			TR += FetchUpperCascade(probeInfoUpper.probeSize, texelIndexUpper + vec2(1.0,0.0), rayIndexUpper);
-			BL += FetchUpperCascade(probeInfoUpper.probeSize, texelIndexUpper + vec2(0.0,1.0), rayIndexUpper);
-			BR += FetchUpperCascade(probeInfoUpper.probeSize, texelIndexUpper + vec2(1.0,1.0), rayIndexUpper);
+			ProbeRadianceBL += FetchUpperCascade(probeInfoUpper.probeSize, texelIndexUpper + vec2(0.0,0.0), rayIndexUpper)/ 4.0;
+			ProbeRadianceBR += FetchUpperCascade(probeInfoUpper.probeSize, texelIndexUpper + vec2(1.0,0.0), rayIndexUpper)/ 4.0;
+			ProbeRadianceTL += FetchUpperCascade(probeInfoUpper.probeSize, texelIndexUpper + vec2(0.0,1.0), rayIndexUpper)/ 4.0;
+			ProbeRadianceTR += FetchUpperCascade(probeInfoUpper.probeSize, texelIndexUpper + vec2(1.0,1.0), rayIndexUpper)/ 4.0;
 		}
 		
-		// Per Specification:
-		//vec2 weight = vec2(0.25) + (vec2(probeInfoCurrent.probePos) - texelLowerLeftUpper) * vec2(0.5);
+		vec2 weight = vec2(0.25) + (probeInfoCurrent.probePos - texelTopLeftUpper) * vec2(0.5);
 		
-		// Smoother Weights:
-		vec2 weight = vec2(0.33) + (vec2(probeInfoCurrent.probePos) - texelLowerLeftUpper) * vec2(0.33);
-		
-		vec4 interpolated = mix(mix(TL, TR, weight.x), mix(BL, BR, weight.x), weight.y) / 4.0;
-		interpolated.a = 1.0 - interpolated.a;
-		radiance += radiance.a * interpolated;
+		vec4 interpolated = mix(mix(ProbeRadianceBL, ProbeRadianceBR, weight.x), mix(ProbeRadianceTL, ProbeRadianceTR, weight.x), weight.y);
+		radiance += interpolated;
 	}
 	
 	FragColor = vec4(radiance.rgb, 1.0);

@@ -23,6 +23,12 @@ double mouseClickXPos, mouseClickYPos;
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
+    //Forward the mouse input to the imgui window
+    ImGuiIO& io = ImGui::GetIO();
+    io.AddMouseButtonEvent(button, action);
+    if (io.WantCaptureMouse) {return;}
+
+    
     if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) 
     {
         mouseJustClicked = true;
@@ -54,6 +60,9 @@ class Radiance2DRenderer : public BaseRenderer
 {
     public:
         static constexpr unsigned int MAX_CASCADES = 10;
+
+        glm::vec4 brushColor = glm::vec4(1.0f,0.0f,0.0f,1.0f);
+        
 
         Radiance2DRenderer(unsigned int vpWidth, unsigned int vpHeight)
         {
@@ -153,8 +162,8 @@ class Radiance2DRenderer : public BaseRenderer
 
                 glBindTexture(GL_TEXTURE_2D, cascadeBuffers[i]);
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, cascadeStorageSize, cascadeStorageSize, 0, GL_RGBA, GL_FLOAT, NULL);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 glBindTexture(GL_TEXTURE_2D, 0);
 
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, cascadeBuffers[i], 0);
@@ -166,8 +175,6 @@ class Radiance2DRenderer : public BaseRenderer
                 }
             }
             
-
-        
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             
 
@@ -202,7 +209,7 @@ class Radiance2DRenderer : public BaseRenderer
             auto d = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
             elapsedTime = (d.count())/1000.0;
 
-            glm::vec4 brushColor = glm::vec4(0.0f);
+            
 
 
             // Lazy mouse brush, based on: https://lazybrush.dulnan.net/
@@ -362,11 +369,6 @@ class Radiance2DRenderer : public BaseRenderer
             mergeCascades->End();
 
 
-            
-
-
-
-
             auto drawSDFTask = profiler->AddTask("Draw SDF", Colors::alizarin);
 
             drawSDFTask->Start();
@@ -439,7 +441,7 @@ class Radiance2DRenderer : public BaseRenderer
         {
             ImGui::Begin("Radiance 2D");
 
-            
+            ImGui::ColorEdit4("Brush Color", (float*)&brushColor);
             ImGui::End();
         }
 
@@ -490,7 +492,6 @@ class Radiance2DRenderer : public BaseRenderer
         StandardShader marchCascadeShader;
         StandardShader mergeCascadeShader;
         StandardShader RenderRadianceShader;
-
 
 
         

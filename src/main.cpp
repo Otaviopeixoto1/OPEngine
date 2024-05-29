@@ -40,7 +40,7 @@ float lastFrame = 0.0f;
 
 //starting window size
 unsigned int windowWidth = 800;
-unsigned int windowHeight = 600;
+unsigned int windowHeight = 800;
 
 //mouse position
 float lastMouseX, lastMouseY;

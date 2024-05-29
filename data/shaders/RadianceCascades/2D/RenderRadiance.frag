@@ -13,25 +13,8 @@ uniform float c0Spacing;  // Cascade 0 probePos spacing.
 uniform float c0Interval; // Cascade 0 radiance interval.
 uniform float c0Angular;  // Cascade angular resolution.
 
-//uniform int cascadeIndex; //for rendering different cascades thant c0
-
-/*
-
-struct ProbeTexel {
-	float count;
-	float size;
-	float probes;
-};
-
-ProbeTexel cascadeProbeTexel(float cascadeIndex) {
-	float count = in_CascadeAngular * pow(4.0, cascadeIndex);
-	float size = sqrt(count);
-	float probes = in_CascadeExtent / size;
-	return ProbeTexel(count, size, probes);
-}*/
-
-// We fetch radiance intervals within the cascade by angle (thetaIndex) and probe (texelIndex).
-vec4 cascadeFetch(float probeSize, vec2 texelIndex, float rayIndex) {
+vec4 CascadeFetch(float probeSize, vec2 texelIndex, float rayIndex) 
+{
 	vec2 probeTexel = texelIndex * probeSize;
 	probeTexel += vec2(mod(rayIndex, probeSize), (rayIndex / probeSize));  //DO THE SAME BUT FOR CASCADES INSTEAD OF RAYS ?
 	vec2 cascadeTexelPosition = probeTexel / cascadeStorageSize;
@@ -40,47 +23,48 @@ vec4 cascadeFetch(float probeSize, vec2 texelIndex, float rayIndex) {
 
 void main() 
 {
-
     vec2 sceneCoord = TexCoords * sceneDimensions;
+
+	float rayCount = c0Angular;
+	float probeSize = sqrt(rayCount);
+
     float c0ProbeCount = ceil(raymarchRegionSize / c0Spacing);
 
+	vec2 probePosBL = floor(sceneCoord/(c0Spacing) - 0.5);
+    vec2 probePos = (sceneCoord/(c0Spacing) - 0.5) ; 
 
-    vec2 probePos = floor(sceneCoord/(c0Spacing)); //coord of the closest probe
-    //mod(floor(sceneCoord), c0Spacing) // coords inside the probe (maybe sum + 1 and this gives offsets into closest probes ??)
-
-    //vec2 probePos = floor(sceneCoord/(c0Spacing)); //coord of the closest probe
-
-    //mod(probePos, 2.0) //loops probes between 0 and 1
-
-    //probePos/(c0ProbeCount - 1) probe uvs
-    
-    
-    //FragColor = vec4(probePos, 0.0, 1.0);
-    
+    vec4 radianceTL = vec4(0.0), radianceTR = vec4(0.0), radianceBL = vec4(0.0), radianceBR = vec4(0.0);
 
 
-    vec4 radiance = vec4(0.0, 0.0, 0.0, 0.0);
-	for(float i = 0.0; i < 4.0; i ++)
-		// cascadeFetch uses the probe's cell index, which is the same as the mipmap's pixel position.
-		radiance += cascadeFetch(2.0, probePos, i);
+	radianceBL += CascadeFetch(probeSize, probePosBL + vec2(0.0,0.0), 0);
+	radianceBL += CascadeFetch(probeSize, probePosBL + vec2(0.0,0.0), 1);
+	radianceBL += CascadeFetch(probeSize, probePosBL + vec2(0.0,0.0), 2);
+	radianceBL += CascadeFetch(probeSize, probePosBL + vec2(0.0,0.0), 3);
+	radianceBL /= 4.0;
+
+	radianceBR += CascadeFetch(probeSize, probePosBL + vec2(1.0,0.0), 0);
+	radianceBR += CascadeFetch(probeSize, probePosBL + vec2(1.0,0.0), 1);
+	radianceBR += CascadeFetch(probeSize, probePosBL + vec2(1.0,0.0), 2);
+	radianceBR += CascadeFetch(probeSize, probePosBL + vec2(1.0,0.0), 3);
+	radianceBR /= 4.0;
+
+	radianceTL += CascadeFetch(probeSize, probePosBL + vec2(0.0,1.0), 0);
+	radianceTL += CascadeFetch(probeSize, probePosBL + vec2(0.0,1.0), 1);
+	radianceTL += CascadeFetch(probeSize, probePosBL + vec2(0.0,1.0), 2);
+	radianceTL += CascadeFetch(probeSize, probePosBL + vec2(0.0,1.0), 3);
+	radianceTL /= 4.0;
+
+	radianceTR += CascadeFetch(probeSize, probePosBL + vec2(1.0,1.0), 0);
+	radianceTR += CascadeFetch(probeSize, probePosBL + vec2(1.0,1.0), 1);
+	radianceTR += CascadeFetch(probeSize, probePosBL + vec2(1.0,1.0), 2);
+	radianceTR += CascadeFetch(probeSize, probePosBL + vec2(1.0,1.0), 3);
+	radianceTR /= 4.0;
+
+	vec2 weight = (probePos - probePosBL);
+
+	vec4 integratedRadiance = mix(mix(radianceBL, radianceBR, weight.x), mix(radianceTL, radianceTR, weight.x), weight.y);
+
+    FragColor = vec4(integratedRadiance.rgb , 1.0);
 
 
-    FragColor = vec4(radiance.rgb / 4.0, 1.0);
-
-
-
-    //maybe just do simple and apply hardware filter ?
-
-    /*
-	// Get the mipmap's cascade texel info based on the cascade being rendered.
-	ProbeTexel probeInfo = cascadeProbeTexel(in_CascadeIndex);
-	vec2 mipmapCoord = vec2(in_TextCoord * in_MipMapExtent);
-	
-	// Loops through all of the radiance intervals for this mip-map and accumulate.
-	vec4 radiance = vec4(0.0, 0.0, 0.0, 0.0);
-	for(float i = 0.0; i < probeInfo.count; i ++)
-		// cascadeFetch uses the probe's cell index, which is the same as the mipmap's pixel position.
-		radiance += cascadeFetch(probeInfo, mipmapCoord, i);
-	
-	FragColor = vec4(radiance.rgb / probeInfo.count, 1.0);*/
 }

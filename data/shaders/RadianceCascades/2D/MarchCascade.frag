@@ -19,12 +19,12 @@ uniform int cascadeIndex;
 
 
 
-vec4 marchInterval(float rayCount, vec2 probePos, vec2 spacing, float rayIndex, float minimum, float range) 
+vec4 MarchInterval(float rayCount, vec2 probePos, vec2 spacing, float rayIndex, float minimum, float range) 
 {
 	vec2 probeUVPos = vec2((probePos+0.5) * spacing) / sceneDimensions;// multiply by the inverse viewport sizes (convert to global uvs)
 	//           world coords                                      convert to uvs (0 .. 1)
 	
-	float theta = 2 * PI * ((rayIndex + 0.5) / rayCount);
+	float theta = 2.0 * PI * ((rayIndex + 0.5) / rayCount);
 	vec2 dir = vec2(cos(theta), -sin(theta));
 	vec2 start = probeUVPos + ((dir * minimum) / raymarchRegionSize);
 	
@@ -68,6 +68,6 @@ void main()
 	minimum -= range / 4.0 * sign(cascadeIndex - 1);
 	range = maximum - minimum;
 
-	FragColor = marchInterval(rayCount, probePos, spacing, rayIndex, minimum, range);
+	FragColor = MarchInterval(rayCount, probePos, spacing, rayIndex, minimum, range);
 
 }
