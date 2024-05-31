@@ -17,15 +17,12 @@ class DeferredRenderer : public BaseRenderer
         static constexpr bool enableNormalMaps = true;
         static constexpr bool enableLightVolumes = true;
         
-        const int MAX_DIR_LIGHTS = 5;
-        const int MAX_POINT_LIGHTS = 20;
+        static constexpr int MAX_DIR_LIGHTS = 5;
+        static constexpr int MAX_POINT_LIGHTS = 20;
         
-
         float tonemapExposure = 1.0f;
         float FXAAContrastThreshold = 0.0312f;
         float FXAABrightnessThreshold = 0.063f;
-
-
 
 
         enum LightingPassBufferBindings
@@ -36,28 +33,6 @@ class DeferredRenderer : public BaseRenderer
             SHADOW_MAP_BUFFER0_BINDING = 3,
         };
 
-        // Adopted naming conventions for the global uniform blocks
-        std::string NamedUniformBufferBindings[5] = { // The indexes have to match values in the enum
-            "GlobalMatrices",
-            "LocalMatrices",
-            "MaterialProperties",
-            "Lights",
-            "Shadows",
-
-        };
-
-        //ADD UNIFORM AS PREFIX TO MAKE CLEAR THAT THESE ARE NOT TEXTURE BINDINGS BUT UNIFORM BUFFER BINDINGS
-        enum DRUniformBufferBindings
-        {
-            UNIFORM_GLOBAL_MATRICES_BINDING = 0,
-            UNIFORM_LOCAL_MATRICES_BINDING = 1,
-            UNIFORM_MATERIAL_PROPERTIES_BINDING = 2,
-            UNIFORM_GLOBAL_LIGHTS_BINDING = 3,
-            UNIFORM_GLOBAL_SHADOWS_BINDING = 4,
-
-        };
-        
-        
         
         DeferredRenderer(unsigned int vpWidth, unsigned int vpHeight)
         {
@@ -67,8 +42,16 @@ class DeferredRenderer : public BaseRenderer
 
         void RecreateResources(Scene &scene, Camera &camera, GLFWwindow *window)
         {
+            screenQuad = Mesh::QuadMesh();
+
             scene.MAX_DIR_LIGHTS = MAX_DIR_LIGHTS;
             scene.MAX_POINT_LIGHTS = MAX_POINT_LIGHTS;
+
+            shaderMemoryPool.Clear();
+            shaderMemoryPool.AddUniformBuffer(sizeof(GlobalMatrices), "GlobalMatrices");
+            shaderMemoryPool.AddUniformBuffer(sizeof(LocalMatrices), "LocalMatrices");
+            shaderMemoryPool.AddUniformBuffer(sizeof(MaterialProperties), "MaterialProperties");
+            shaderMemoryPool.AddUniformBuffer(sizeof(LightData), "LightData");
             
             preprocessorDefines.clear();
             preprocessorDefines.push_back("MAX_DIR_LIGHTS " + std::to_string(MAX_DIR_LIGHTS));
@@ -92,18 +75,6 @@ class DeferredRenderer : public BaseRenderer
 
             this->skyRenderer = SkyRenderer();
             this->skyRenderer.RecreateResources();
-
-
-
-            glGenVertexArrays(1, &screenQuadVAO);
-            glGenBuffers(1, &screenQuadVBO);
-            glBindVertexArray(screenQuadVAO);
-            glBindBuffer(GL_ARRAY_BUFFER, screenQuadVBO);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-            glEnableVertexAttribArray(1);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
 
             MeshData PointVolData = MeshData::LoadMeshDataFromFile(BASE_DIR "/data/models/light_volumes/pointLightVolume.obj");
@@ -284,6 +255,48 @@ class DeferredRenderer : public BaseRenderer
             frameResources.inverseViewMatrix = inverseViewMatrix;
             frameResources.projectionMatrix = projectionMatrix;
             frameResources.lightData = &lights;
+            frameResources.shaderMemoryPool = &shaderMemoryPool;
+
+
+
+            auto globalMatricesBuffer = shaderMemoryPool.GetUniformBuffer("GlobalMatrices");
+            GlobalMatrices *globalMatrices = globalMatricesBuffer->BeginSetData<GlobalMatrices>();
+            {
+                auto voxelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.025,0.025,0.025)); //calculate based on the scene size or the frustrum bounds !!
+                auto invVoxelMatrix = glm::inverse(voxelMatrix);
+
+                globalMatrices->projectionMatrix = projectionMatrix;
+                globalMatrices->viewMatrix = viewMatrix;
+                globalMatrices->inverseViewMatrix = inverseViewMatrix;
+            }
+            globalMatricesBuffer->EndSetData();
+
+            
+            auto lightDataBuffer = shaderMemoryPool.GetUniformBuffer("LightData");
+            LightData *lightData = lightDataBuffer->BeginSetData<LightData>();
+            {
+                lightData->ambientLight = lights.ambientLight;
+                lightData->numDirLights = lights.numDirLights;
+                lightData->numPointLights = lights.numPointLights;
+                lightData->pad = 0;
+                lightData->pad2 = 0;
+
+                for (size_t i = 0; i < MAX_DIR_LIGHTS; i++)
+                {
+                    if (lights.numDirLights < i + 1) {break;}
+                    lightData->dirLights[i] = lights.directionalLights[i];
+                }
+                for (size_t i = 0; i < MAX_POINT_LIGHTS; i++)
+                {
+                    if (lights.numPointLights < i + 1) {break;}
+                    lightData->pointLights[i] = lights.pointLights[i];
+                }
+                
+            }
+            lightDataBuffer->EndSetData();
+
+
+
             
 
             // 1) Shadow Map Rendering Pass:
@@ -307,13 +320,6 @@ class DeferredRenderer : public BaseRenderer
 
             glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-
-            glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
-            glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(projectionMatrix));
-            glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(viewMatrix));
-            glBufferSubData(GL_UNIFORM_BUFFER, 2*sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(inverseViewMatrix));
-            glBindBuffer(GL_UNIFORM_BUFFER, 0); 
 
 
             int shaderCache = -1;
@@ -354,18 +360,13 @@ class DeferredRenderer : public BaseRenderer
                 glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &activeRoutine);
 
 
-                // Setting object-related properties
-                // ---------------------------------
-                glBindBuffer(GL_UNIFORM_BUFFER, MaterialUBO);
-                glBufferSubData(GL_UNIFORM_BUFFER, 0, MaterialBufferSize, &(materialInstance->properties));
-                glBindBuffer(GL_UNIFORM_BUFFER, 0);   
+                auto materialPropertiesBuffer = shaderMemoryPool.GetUniformBuffer("MaterialProperties");
+                materialPropertiesBuffer->SetData(0, sizeof(MaterialProperties), &(materialInstance->properties));
 
+                auto localMatricesBuffer = shaderMemoryPool.GetUniformBuffer("LocalMatrices"); 
+                localMatricesBuffer->SetData( 0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
+                localMatricesBuffer->SetData( sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
 
-                // Update model and normal matrices:
-                glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
-                glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(objectToWorld));
-                glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)));
-                glBindBuffer(GL_UNIFORM_BUFFER, 0); 
 
 
                 //Bind all textures
@@ -440,29 +441,6 @@ class DeferredRenderer : public BaseRenderer
             glBindTexture(shadowOut.texType0, shadowOut.shadowMap0);
 
             
-            
-            // Setting LightsUBO:
-            glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
-            int offset = 0;
-
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, 4* sizeof(float), glm::value_ptr(lights.ambientLight));
-            offset = 4* sizeof(float);
-
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numDirLights);
-            offset += sizeof(int);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &lights.numPointLights);
-            offset += sizeof(int);
-
-            offset += 2 * sizeof(int);
-
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData), lights.directionalLights.data());
-            offset += MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData), lights.pointLights.data());
-            offset += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
-
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-            
             // Light Volumes: Render all point light volumes
             if (enableLightVolumes)
             {
@@ -530,7 +508,7 @@ class DeferredRenderer : public BaseRenderer
             
             // Directional Lights:
             directionalLightingPass.UseProgram();
-            glBindVertexArray(screenQuadVAO);
+            screenQuad->BindBuffers();
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
             lightAccTask->End();
@@ -562,14 +540,13 @@ class DeferredRenderer : public BaseRenderer
                     shaderCache = activeShader.ID; 
                 }
 
-                glBindBuffer(GL_UNIFORM_BUFFER, MaterialUBO);
-                glBufferSubData(GL_UNIFORM_BUFFER, 0, MaterialBufferSize, &(materialInstance->properties));
-                glBindBuffer(GL_UNIFORM_BUFFER, 0);   
+                auto materialPropertiesBuffer = shaderMemoryPool.GetUniformBuffer("MaterialProperties");
+                materialPropertiesBuffer->SetData(0, sizeof(MaterialProperties), &(materialInstance->properties));
 
-                glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
-                glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(objectToWorld));
-                glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)));
-                glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+                auto localMatricesBuffer = shaderMemoryPool.GetUniformBuffer("LocalMatrices"); 
+                localMatricesBuffer->SetData( 0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
+                localMatricesBuffer->SetData( sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
+
 
                 mesh->BindBuffers();
                 glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
@@ -591,7 +568,7 @@ class DeferredRenderer : public BaseRenderer
 
             postProcessShader.UseProgram();
             postProcessShader.SetFloat("exposure", tonemapExposure);
-            glBindVertexArray(screenQuadVAO);
+            screenQuad->BindBuffers();
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture); 
             glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -612,7 +589,7 @@ class DeferredRenderer : public BaseRenderer
             FXAAShader.SetVec2("pixelSize", 1.0f/(float)viewportWidth, 1.0f/(float)viewportHeight);
             FXAAShader.SetFloat("contrastThreshold", FXAAContrastThreshold);
             FXAAShader.SetFloat("brightnessThreshold", FXAABrightnessThreshold);
-            glBindVertexArray(screenQuadVAO);
+            screenQuad->BindBuffers();
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, postProcessColorBuffer); 
             glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -626,9 +603,12 @@ class DeferredRenderer : public BaseRenderer
 
         void ReloadShaders()
         {   
+            auto bufferBindings = shaderMemoryPool.GetNamedBindings();
+
+
             defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
             defaultVertFrag.BuildProgram();
-            defaultVertFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
+            defaultVertFrag.BindUniformBlocks(bufferBindings);
 
 
             defaultVertNormalTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
@@ -638,13 +618,13 @@ class DeferredRenderer : public BaseRenderer
                 defaultVertNormalTexFrag.AddPreProcessorDefines(&s,1);
             }
             defaultVertNormalTexFrag.BuildProgram();
-            defaultVertNormalTexFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
+            defaultVertNormalTexFrag.BindUniformBlocks(bufferBindings);
             
 
 
             defaultVertUnlitFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
             defaultVertUnlitFrag.BuildProgram();
-            defaultVertUnlitFrag.BindUniformBlocks(NamedUniformBufferBindings,3);
+            defaultVertUnlitFrag.BindUniformBlocks(bufferBindings);
             
 
 
@@ -661,10 +641,7 @@ class DeferredRenderer : public BaseRenderer
             directionalLightingPass.SetInt("gNormal", NORMAL_BUFFER_BINDING);
             directionalLightingPass.SetInt("gPosition", POSITION_BUFFER_BINDING);
             directionalLightingPass.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
-            directionalLightingPass.BindUniformBlock(NamedUniformBufferBindings[UNIFORM_GLOBAL_MATRICES_BINDING], UNIFORM_GLOBAL_MATRICES_BINDING);
-            directionalLightingPass.BindUniformBlock(NamedUniformBufferBindings[UNIFORM_GLOBAL_LIGHTS_BINDING], UNIFORM_GLOBAL_LIGHTS_BINDING);
-            directionalLightingPass.BindUniformBlock(NamedUniformBufferBindings[UNIFORM_GLOBAL_SHADOWS_BINDING], UNIFORM_GLOBAL_SHADOWS_BINDING);
-
+            directionalLightingPass.BindUniformBlocks(bufferBindings);
 
 
             simpleDepthPass = StandardShader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
@@ -679,7 +656,7 @@ class DeferredRenderer : public BaseRenderer
             pointLightVolShader.SetInt("gAlbedoSpec", COLOR_SPEC_BUFFER_BINDING); 
             pointLightVolShader.SetInt("gNormal", NORMAL_BUFFER_BINDING);
             pointLightVolShader.SetInt("gPosition", POSITION_BUFFER_BINDING);
-            pointLightVolShader.BindUniformBlock(NamedUniformBufferBindings[UNIFORM_GLOBAL_LIGHTS_BINDING],UNIFORM_GLOBAL_LIGHTS_BINDING);
+            pointLightVolShader.BindUniformBlocks(bufferBindings);
 
 
 
@@ -691,113 +668,6 @@ class DeferredRenderer : public BaseRenderer
 
             FXAAShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadFXAA.frag");
             FXAAShader.BuildProgram();
-
-
-            // Setting UBOs to the correct binding points
-            // ------------------------------------------
-
-            glGenBuffers(1, &GlobalMatricesUBO);
-            glGenBuffers(1, &LocalMatricesUBO);
-
-            // Matrix buffers setup
-            // -------------------
-            /* GlobalMatrices Uniform buffer structure:
-             * {
-             *    mat4 projectionMatrix; 
-             *    mat4 viewMatrix;       
-             *    mat4 inverseViewMatrix
-             * }
-             * 
-             * LocalMatrices Uniform buffer structure:
-             * {
-             *    mat4 modelMatrix;     
-             *    mat4 normalMatrix;    
-             * }
-             */
-            
-            // Create the buffer and specify its size:
-
-            glBindBuffer(GL_UNIFORM_BUFFER, GlobalMatricesUBO);
-            glBufferData(GL_UNIFORM_BUFFER, 3 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_UNIFORM_BUFFER, LocalMatricesUBO);
-            glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
-            
-            // Bind a certain range of the buffer to the uniform block: this allows to use multiple UBOs 
-            // per uniform block
-            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_GLOBAL_MATRICES_BINDING, GlobalMatricesUBO, 0, 3 * sizeof(glm::mat4));
-            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_LOCAL_MATRICES_BINDING, LocalMatricesUBO, 0, 2 * sizeof(glm::mat4));
-
-
-
-
-
-            glGenBuffers(1, &LightsUBO);
-
-            // Light buffer setup
-            // ------------------
-            /* DirLight struct structure:
-             * {
-             *    vec4 lightColor; 
-             *    mat4 lightMatrix;
-             *    vec4 direction; 
-             * }
-             */
-
-            /* Lights Uniform buffer structure:
-             * {
-             *    vec4 ambientLight;
-             *    int numDirLights;
-             *    int numPointLights;
-             *    int pad;
-             *    int pad;
-             *    DirLight dirLights[MAX_DIR_LIGHTS];
-             *    PointLight pointLights[MAX_POINT_LIGHTS];
-             *    
-             *     
-             * }
-             */
-            
-            LightBufferSize = 0;
-            {
-                LightBufferSize += sizeof(glm::vec4);
-                LightBufferSize += 4 * sizeof(int);
-                LightBufferSize += MAX_DIR_LIGHTS * sizeof(DirectionalLight::DirectionalLightData);
-                LightBufferSize += MAX_POINT_LIGHTS * sizeof(PointLight::PointLightData);
-            }
-
-            glBindBuffer(GL_UNIFORM_BUFFER, LightsUBO);
-            glBufferData(GL_UNIFORM_BUFFER, LightBufferSize, NULL, GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
-            
-            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_GLOBAL_LIGHTS_BINDING, LightsUBO, 0, LightBufferSize);
-
-
-
-
-            glGenBuffers(1, &MaterialUBO);
-
-            // Material buffer setup
-            // -------------------
-            /* MaterialProperties Uniform buffer structure:
-             * {
-             *    vec4 albedoColor; 
-             *    vec4 emissiveColor; 
-             *    vec4 specular;      
-             * }
-             */
-            MaterialBufferSize = 0;
-            {
-                MaterialBufferSize += 3 * sizeof(glm::vec4);
-            }
-
-            glBindBuffer(GL_UNIFORM_BUFFER, MaterialUBO);
-            glBufferData(GL_UNIFORM_BUFFER, MaterialBufferSize, NULL, GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-            glBindBufferRange(GL_UNIFORM_BUFFER, UNIFORM_MATERIAL_PROPERTIES_BINDING, MaterialUBO, 0, MaterialBufferSize);
-
-
         }
 
     private:
@@ -819,43 +689,56 @@ class DeferredRenderer : public BaseRenderer
         unsigned int postProcessFBO;
         unsigned int postProcessColorBuffer;
 
-        unsigned int LightBufferSize = 0;
-        unsigned int MaterialBufferSize = 0;
-
-        unsigned int GlobalMatricesUBO;
-        unsigned int LocalMatricesUBO;
-        unsigned int LightsUBO;
-        unsigned int MaterialUBO;
-
         StandardShader defaultVertFrag;
         StandardShader defaultVertNormalTexFrag;
         StandardShader defaultVertUnlitFrag;
 
-
-
-        StandardShader directionalLightingPass;
-        unsigned int screenQuadVAO, screenQuadVBO;
-        float quadVertices[24] = 
-        {   // vertex attributes for a quad that fills the entire screen 
-            // positions   // texCoords
-            -1.0f,  1.0f,  0.0f, 1.0f,
-            -1.0f, -1.0f,  0.0f, 0.0f,
-            1.0f, -1.0f,  1.0f, 0.0f,
-
-            -1.0f,  1.0f,  0.0f, 1.0f,
-            1.0f, -1.0f,  1.0f, 0.0f,
-            1.0f,  1.0f,  1.0f, 1.0f
-        };
         
-
+        StandardShader directionalLightingPass;
+        
         StandardShader simpleDepthPass; 
-
         StandardShader pointLightVolShader;
         std::shared_ptr<Mesh> pointLightVolume;
         
         
         StandardShader postProcessShader;
         StandardShader FXAAShader;
+
+
+
+        std::unique_ptr<Mesh> screenQuad;
+
+
+
+        #pragma pack(push, 1)
+        struct GlobalMatrices
+        {
+            glm::mat4 projectionMatrix; 
+            glm::mat4 viewMatrix;       
+            glm::mat4 inverseViewMatrix;
+        };
+        struct LocalMatrices 
+        {
+           glm::mat4 modelMatrix;     
+           glm::mat4 normalMatrix;    
+        };
+        struct LightData
+        {
+            glm::vec4 ambientLight;
+            int numDirLights;
+            int numPointLights;
+            int pad;
+            int pad2;
+            DirectionalLight::DirectionalLightData dirLights[MAX_DIR_LIGHTS];
+            PointLight::PointLightData pointLights[MAX_POINT_LIGHTS];
+        };
+        struct MaterialProperties 
+        {
+            glm::vec4 albedoColor; 
+            glm::vec4 emissiveColor; 
+            glm::vec4 specular;      
+        };
+        #pragma pack(pop)
 };
 
 #endif

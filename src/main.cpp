@@ -164,8 +164,10 @@ int main()
        
     Scene scene = Scene();
     auto sceneParser = JsonHelpers::SceneParser();
-    sceneParser.Parse(scene, &mainCamera, "/data/scenes/2D/RadianceCascadeTest.json", OP_OBJ); 
+    //sceneParser.Parse(scene, &mainCamera, "/data/scenes/2D/RadianceCascadeTest.json", OP_OBJ); 
     //sceneParser.Parse(scene, &mainCamera, "/data/scenes/sponza_scene.json", OP_OBJ);
+    sceneParser.Parse(scene, &mainCamera, "/data/scenes/Cornell_scene.json", OP_OBJ);
+
 
     auto profiler = OPProfiler::OPProfiler(); 
 
@@ -174,7 +176,7 @@ int main()
     VCTGIRenderer vctgiRenderer = VCTGIRenderer(windowWidth, windowHeight);
     Radiance2DRenderer radiance2DRenderer = Radiance2DRenderer(windowWidth, windowHeight);
 
-    BaseRenderer* renderer = &radiance2DRenderer;
+    BaseRenderer* renderer = &deferredRenderer;
 
     
     try

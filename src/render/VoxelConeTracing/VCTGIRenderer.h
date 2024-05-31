@@ -349,8 +349,6 @@ class VCTGIRenderer : public BaseRenderer
             frameResources.shaderMemoryPool = &shaderMemoryPool;
 
 
-            //use memcpy instead !!!!! this is reading (?) and writing data !!
-
             auto globalMatricesBuffer = shaderMemoryPool.GetUniformBuffer("GlobalMatrices");
             GlobalMatrices *globalMatrices = globalMatricesBuffer->BeginSetData<GlobalMatrices>();
             {

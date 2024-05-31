@@ -1,0 +1,103 @@
+{
+   "renderer" : 
+   {
+      "Camera" : 
+      {
+         "Aspect" : 1,
+         "Far" : 60,
+         "Front" : [ 0.073859341442584991, -0.062789522111415863, 0.99529004096984863 ],
+         "MouseSensitivity" : 0.10000000149011612,
+         "MovementSpeed" : 5,
+         "Near" : 0.10000000149011612,
+         "Pitch" : -3.5999424457550049,
+         "Position" : [ -1.4129626750946045, 2.3841006755828857, -8.3330774307250977 ],
+         "RotationLocked" : false,
+         "Up" : [ 0, 1, 0 ],
+         "Yaw" : -27274.244140625,
+         "Zoom" : 50
+      },
+      "ForwardRenderer" : 
+      {
+         "aaaa" : 1
+      },
+      "ambientLight" : [ 0.01, 0.01, 0.01 ],
+      "isCameraLocked" : false
+   },
+   "scene" : 
+   {
+      "meshes" : 
+      [
+         {
+            "filename" : "/data/models/cornell/whiteWalls.obj",
+            "name" : "whiteWalls"
+         },
+         {
+            "filename" : "/data/models/cornell/wallL.obj",
+            "name" : "lwall"
+         },
+         {
+            "filename" : "/data/models/cornell/wallR.obj",
+            "name" : "rwall"
+         },
+         {
+            "filename" : "/data/models/sphere.obj",
+            "name" : "sphere"
+         }
+      ],
+      "objects" : 
+      [
+         {
+            "Material" : 
+            {
+               "albedoColor" : [ 1, 1, 1 ],
+               "specularPower" : 1,
+               "specularStrength" : [ 0.10000000000000001, 0.10000000000000001, 0.10000000000000001 ],
+               "type" : "default"
+            },
+            "mesh" : "whiteWalls",
+            "pos" : [ 0, 0, 0 ],
+            "scale" : [ 0.059999999999999998, 0.059999999999999998, 0.059999999999999998 ]
+         },
+         {
+            "Material" : 
+            {
+               "albedoColor" : [ 1, 0, 0 ],
+               "specularPower" : 1,
+               "specularStrength" : [ 0.10000000000000001, 0.10000000000000001, 0.10000000000000001 ],
+               "type" : "default"
+            },
+            "mesh" : "lwall",
+            "pos" : [ 0, 0, 0 ],
+            "scale" : [ 0.059999999999999998, 0.059999999999999998, 0.059999999999999998 ]
+         },
+         {
+            "Material" : 
+            {
+               "albedoColor" : [ 0, 1, 0 ],
+               "specularPower" : 1,
+               "specularStrength" : [ 0.10000000000000001, 0.10000000000000001, 0.10000000000000001 ],
+               "type" : "default"
+            },
+            "mesh" : "rwall",
+            "pos" : [ 0, 0, 0 ],
+            "scale" : [ 0.059999999999999998, 0.059999999999999998, 0.059999999999999998 ]
+         },
+         {
+            "Light" : 
+            {
+               "direction" : [ 0.10000000000000001, 3, 0.40000000000000002 ],
+               "lightColor" : [ 1, 1, 1 ],
+               "type" : "directional"
+            },
+            "Material" : 
+            {
+               "albedoColor" : [ 1, 1, 1 ],
+               "type" : "unlit"
+            },
+            "mesh" : "sphere",
+            "pos" : [ 5, 100, 20 ],
+            "scale" : [ 10, 10, 10 ]
+         }
+      ]
+   }
+}

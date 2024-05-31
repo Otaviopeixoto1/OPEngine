@@ -125,7 +125,6 @@ namespace JsonHelpers
 
                 //use the blueprints to build the objects
                 Json::Value objectArray = sceneFileRoot["scene"]["objects"];
-                
 
                 for (Json::ArrayIndex objectIndex = 0; objectIndex < objectArray.size(); objectIndex++)
                 {
