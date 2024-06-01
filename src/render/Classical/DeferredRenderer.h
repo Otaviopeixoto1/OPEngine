@@ -1,24 +1,24 @@
 #ifndef DEFERRED_RENDERER_H
 #define DEFERRED_RENDERER_H
 
-#include "BaseRenderer.h"
-#include "render_features/ShadowRenderer.h"
-#include "render_features/SkyRenderer.h"
-#include "../debug/OPProfiler.h"
-#include "../common/Colors.h"
+#include "../BaseRenderer.h"
+#include "../render_features/ShadowRenderer.h"
+#include "../render_features/SkyRenderer.h"
+#include "../../debug/OPProfiler.h"
+#include "../../common/Colors.h"
 
 class DeferredRenderer : public BaseRenderer
 {
     public:
         const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
-        static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
+        static constexpr unsigned int SHADOW_CASCADE_COUNT = 2; // MAX == 4
 
         static constexpr bool enableShadowMapping = true;
         static constexpr bool enableNormalMaps = true;
-        static constexpr bool enableLightVolumes = true;
+        static constexpr bool enableLightVolumes = false;
         
         static constexpr int MAX_DIR_LIGHTS = 5;
-        static constexpr int MAX_POINT_LIGHTS = 20;
+        static constexpr int MAX_POINT_LIGHTS = 40;
         
         float tonemapExposure = 1.0f;
         float FXAAContrastThreshold = 0.0312f;
@@ -77,7 +77,7 @@ class DeferredRenderer : public BaseRenderer
             this->skyRenderer.RecreateResources();
 
 
-            MeshData PointVolData = MeshData::LoadMeshDataFromFile(BASE_DIR "/data/models/light_volumes/pointLightVolume.obj");
+            MeshData PointVolData = MeshData::LoadMeshDataFromFile(BASE_DIR "/data/models/light_volumes/pointLightVolume_ico.obj");
             pointLightVolume = std::make_shared<Mesh>(PointVolData);
 
 
@@ -301,7 +301,7 @@ class DeferredRenderer : public BaseRenderer
 
             // 1) Shadow Map Rendering Pass:
             // -----------------------------
-            auto shadowTask = profiler->AddTask("Shadow Pass", Colors::nephritis);
+            auto shadowTask = profiler->AddTask("Shadow Pass", Colors::amethyst);
             shadowTask->Start();
 
             ShadowsOutput shadowOut = {0, GL_TEXTURE_2D};

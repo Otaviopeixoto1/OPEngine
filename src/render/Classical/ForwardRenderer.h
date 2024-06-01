@@ -1,11 +1,11 @@
 #ifndef FORWARD_RENDERER_H
 #define FORWARD_RENDERER_H
 
-#include "BaseRenderer.h"
-#include "render_features/ShadowRenderer.h"
-#include "render_features/SkyRenderer.h"
-#include "../debug/OPProfiler.h"
-#include "../common/Colors.h"
+#include "../BaseRenderer.h"
+#include "../render_features/ShadowRenderer.h"
+#include "../render_features/SkyRenderer.h"
+#include "../../debug/OPProfiler.h"
+#include "../../common/Colors.h"
 #include <exception>
 
 
@@ -18,8 +18,8 @@ class ForwardRenderer : public BaseRenderer
         static constexpr bool enableShadowMapping = true;
         static constexpr bool enableNormalMaps = true;
 
-        static constexpr int MAX_DIR_LIGHTS = 3;
-        static constexpr int MAX_POINT_LIGHTS = 10;
+        static constexpr int MAX_DIR_LIGHTS = 5;
+        static constexpr int MAX_POINT_LIGHTS = 40;
 
         unsigned int MSAASamples = 4; 
         float tonemapExposure = 1.0f;
@@ -214,7 +214,7 @@ class ForwardRenderer : public BaseRenderer
             
             // 1) Shadow Map Rendering Pass:
             // -----------------------------
-            auto shadowTask = profiler->AddTask("shadows", Colors::amethyst);
+            auto shadowTask = profiler->AddTask("shadow pass", Colors::amethyst);
             shadowTask->Start();
 
             ShadowsOutput shadowOut = {0, GL_TEXTURE_2D};
@@ -295,15 +295,47 @@ class ForwardRenderer : public BaseRenderer
 
 
                 // -Textures
-                unsigned int diffuseNr = 1;
-                unsigned int specularNr = 1;
-                unsigned int normalNr = 1;
+                unsigned int diffuseNr = DIFFUSE_TEXTURE0_BINDING;
+                unsigned int normalNr = NORMAL_TEXTURE0_BINDING;
+                unsigned int specularNr = SPECULAR_TEXTURE0_BINDING;
+                
 
                 for (unsigned int i = 0; i < materialInstance->numTextures; i++)
                 {
                     Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
+                    TextureType type = texture.type;
+
+                    switch (type)
+                    {
+                        case OP_TEXTURE_DIFFUSE:
+                            diffuseNr = std::min(diffuseNr, (unsigned int)NORMAL_TEXTURE0_BINDING);
+                            glActiveTexture(GL_TEXTURE0 + diffuseNr); 
+                            diffuseNr++;
+                            break;
+                        case OP_TEXTURE_NORMAL:
+                            normalNr = std::min(normalNr++, (unsigned int)SPECULAR_TEXTURE0_BINDING);
+                            glActiveTexture(GL_TEXTURE0 + normalNr);
+                            normalNr++;
+                            break;
+                        case OP_TEXTURE_SPECULAR:
+                            //number = specularNr; //add limit to specular textures
+                            glActiveTexture(GL_TEXTURE0 + specularNr);
+                            specularNr++;
+                            break;
+                    }
+
+                    glBindTexture(GL_TEXTURE_2D, texture.id);
+                }
+
+
+
+
+                /*
+                for (unsigned int i = 0; i < materialInstance->numTextures; i++)
+                {
+                    Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
                     // activate proper texture unit (all the shadow maps already reserve bindings 0 -> 2)
-                    glActiveTexture(GL_TEXTURE0 + SHADOW_MAP_BUFFER2_BINDING + i); 
+                    glActiveTexture(GL_TEXTURE0 + SHADOW_MAP_BUFFER2_BINDING + i); //THIS IS WRONG !!!!!!!!!!!!!!!!!
 
                     std::string number;
                     TextureType type = texture.type;
@@ -316,7 +348,7 @@ class ForwardRenderer : public BaseRenderer
                             name = "texture_diffuse";
                             break;
                         case OP_TEXTURE_NORMAL:
-                            number = std::to_string(std::max(normalNr++, (unsigned int)NORMAL_TEXTURE0_BINDING));
+                            number = std::to_string(std::max(normalNr++, (unsigned int)SPECULAR_TEXTURE0_BINDING));
                             name = "texture_normal";
                             break;
                         case OP_TEXTURE_SPECULAR:
@@ -333,7 +365,7 @@ class ForwardRenderer : public BaseRenderer
 
                     activeShader.SetSamplerBinding((name + number).c_str(), SHADOW_MAP_BUFFER2_BINDING + i);
                     glBindTexture(GL_TEXTURE_2D, texture.id);
-                }
+                }*/
                 
                 //bind VAO
                 mesh->BindBuffers();

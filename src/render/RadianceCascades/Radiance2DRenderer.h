@@ -174,6 +174,9 @@ class Radiance2DRenderer : public BaseRenderer
         {
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
+            
+            glClearColor(1e20f, 0.0, 0.0, 0.0);
+            currentBuffer = 0;
 
             glBindTexture(GL_TEXTURE_2D, sdfBufferTextures[0]);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
@@ -181,14 +184,22 @@ class Radiance2DRenderer : public BaseRenderer
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0);
 
+            glBindFramebuffer(GL_FRAMEBUFFER, SdfFBOs[0]);
+            glClear(GL_COLOR_BUFFER_BIT);
+
             glBindTexture(GL_TEXTURE_2D, sdfBufferTextures[1]);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0);
 
+            glBindFramebuffer(GL_FRAMEBUFFER, SdfFBOs[1]);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            glClearColor(0.0, 0.0, 0.0, 0.0);
+
             // RESIZE CASCADES
-            raymarchRegionSize = std::max(vpWidth, vpHeight);
+            raymarchRegionSize = std::max(viewportWidth, viewportHeight);
             cascadeStorageSize =  floor(raymarchRegionSize / c0Spacing) * sqrt(c0Angular);
             cascadeCount = std::max((unsigned int)ceil(log2(cascadeStorageSize / sqrt(c0Angular))), MAX_CASCADES);
             float diagonal = sqrt(2) * raymarchRegionSize;
@@ -196,21 +207,11 @@ class Radiance2DRenderer : public BaseRenderer
 
             for (size_t i = 0; i < cascadeCount + 1; i++)
             {
-                glBindFramebuffer(GL_FRAMEBUFFER, cascadeIntervalFBOs[i]);
-
                 glBindTexture(GL_TEXTURE_2D, cascadeBuffers[i]);
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, cascadeStorageSize, cascadeStorageSize, 0, GL_RGBA, GL_FLOAT, NULL);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 glBindTexture(GL_TEXTURE_2D, 0);
-
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, cascadeBuffers[i], 0);
-
-                // no depth buffer needed
-                if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-                {
-                    throw RendererException("ERROR::FRAMEBUFFER:: Intermediate Framebuffer is incomplete");
-                }
             }
 
         }

@@ -25,6 +25,8 @@ class VCTGIRenderer : public BaseRenderer
         
         static constexpr int MAX_DIR_LIGHTS = 5;
         static constexpr int MAX_POINT_LIGHTS = 20;
+
+        static constexpr glm::vec3 voxelWorldScale = glm::vec3(0.2,0.2,0.2); //0.025,0.025,0.025 //sponza
         
 
         enum VCTGIShadowRenderer
@@ -38,7 +40,7 @@ class VCTGIRenderer : public BaseRenderer
         float tonemapExposure = 1.3f;
         float FXAAContrastThreshold = 0.0312f;
         float FXAABrightnessThreshold = 0.063f;
-        unsigned int voxelRes = 256;
+        unsigned int voxelRes = 512;
 
         bool drawVoxels = false;
         int mipLevel = 0;
@@ -151,8 +153,8 @@ class VCTGIRenderer : public BaseRenderer
             glGenTextures(1, &gColorBuffer);
             glBindTexture(GL_TEXTURE_2D, gColorBuffer);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0); 
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + G_COLOR_SPEC_BUFFER_BINDING, GL_TEXTURE_2D, gColorBuffer, 0);
             
@@ -160,8 +162,8 @@ class VCTGIRenderer : public BaseRenderer
             glGenTextures(1, &gNormalBuffer);
             glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0); 
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + G_NORMAL_BUFFER_BINDING, GL_TEXTURE_2D, gNormalBuffer, 0);
 
@@ -169,8 +171,8 @@ class VCTGIRenderer : public BaseRenderer
             glGenTextures(1, &gPositionBuffer);
             glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0); 
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + G_POSITION_BUFFER_BINDING, GL_TEXTURE_2D, gPositionBuffer, 0);
 
@@ -220,9 +222,11 @@ class VCTGIRenderer : public BaseRenderer
             glTexStorage3D(GL_TEXTURE_3D, numMipLevels + 1, GL_R32UI, voxelRes, voxelRes, voxelRes);
             glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
             glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
+            float borderColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            glTexParameterfv(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, borderColor);  
 
             glGenTextures(1, &voxel2DTex);
             glBindTexture(GL_TEXTURE_2D_ARRAY, voxel2DTex);
@@ -240,8 +244,8 @@ class VCTGIRenderer : public BaseRenderer
             glGenTextures(1, &lightAccumulationTexture);
             glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0); 
 
             // Bind the accumulation texture, making sure it will be a different binding from those               (this is probably not necessary)
@@ -352,7 +356,7 @@ class VCTGIRenderer : public BaseRenderer
             auto globalMatricesBuffer = shaderMemoryPool.GetUniformBuffer("GlobalMatrices");
             GlobalMatrices *globalMatrices = globalMatricesBuffer->BeginSetData<GlobalMatrices>();
             {
-                auto voxelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.025,0.025,0.025)); //calculate based on the scene size or the frustrum bounds !!
+                auto voxelMatrix = glm::scale(glm::mat4(1.0f), voxelWorldScale); //calculate based on the scene size or the frustrum bounds !!
                 auto invVoxelMatrix = glm::inverse(voxelMatrix);
 
                 globalMatrices->projectionMatrix = projectionMatrix;
@@ -913,7 +917,7 @@ class VCTGIRenderer : public BaseRenderer
             ImGui::SeparatorText("Cone Tracing");
             ImGui::SliderFloat("AO Distance", &aoDistance, 0.01f, 0.5f, "AO = %.003f");
             ImGui::SliderFloat("Max Cone Distance", &maxConeDistance, 0.0f, 2.0f, "Cone Distance = %.3f");
-            ImGui::SliderFloat("Accumulation Threshold", &accumThr, 0.0f, 1.0f, "threshold = %.3f");
+            ImGui::SliderFloat("Accumulation Threshold", &accumThr, 0.0f, 6.0f, "threshold = %.3f");
             ImGui::SliderInt("Max LOD Level", &maxLOD, 0, MAX_MIP_MAP_LEVELS +1);
             
             ImGui::End();
