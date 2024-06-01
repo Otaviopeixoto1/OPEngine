@@ -356,7 +356,7 @@ class VCTGIRenderer : public BaseRenderer
             auto globalMatricesBuffer = shaderMemoryPool.GetUniformBuffer("GlobalMatrices");
             GlobalMatrices *globalMatrices = globalMatricesBuffer->BeginSetData<GlobalMatrices>();
             {
-                auto voxelMatrix = glm::scale(glm::mat4(1.0f), voxelWorldScale); //calculate based on the scene size or the frustrum bounds !!
+                auto voxelMatrix = glm::scale(glm::mat4(1.0f), voxelWorldScale); 
                 auto invVoxelMatrix = glm::inverse(voxelMatrix);
 
                 globalMatrices->projectionMatrix = projectionMatrix;

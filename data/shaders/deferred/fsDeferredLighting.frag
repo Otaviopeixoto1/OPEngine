@@ -25,12 +25,12 @@ void main()
     vec4 AlbedoSpec = texture(gAlbedoSpec, TexCoords);
     
 
-
     vec4 outFrag = vec4(AlbedoSpec.rgb,1.0) * vec4(ambientLight.xyz * ambientLight.w, 1.0);
+
 
     vec3 norm = normalize(ViewNormal);
     vec3 worldNorm = (inverseViewMatrix * vec4(norm,0.0)).xyz;
-    vec4 worldPos = inverseViewMatrix * ViewFragPos;
+    vec4 worldPos = inverseViewMatrix * vec4(ViewFragPos.xyz,1);
 
     for(int i = 0; i < numDirLights; i++)
     {

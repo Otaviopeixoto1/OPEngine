@@ -15,7 +15,7 @@ class DeferredRenderer : public BaseRenderer
 
         static constexpr bool enableShadowMapping = true;
         static constexpr bool enableNormalMaps = true;
-        static constexpr bool enableLightVolumes = false;
+        static constexpr bool enableLightVolumes = true;
         
         static constexpr int MAX_DIR_LIGHTS = 5;
         static constexpr int MAX_POINT_LIGHTS = 40;
@@ -89,8 +89,8 @@ class DeferredRenderer : public BaseRenderer
             glGenTextures(1, &gColorBuffer);
             glBindTexture(GL_TEXTURE_2D, gColorBuffer);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0); 
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + COLOR_SPEC_BUFFER_BINDING, GL_TEXTURE_2D, gColorBuffer, 0);
             
@@ -98,8 +98,8 @@ class DeferredRenderer : public BaseRenderer
             glGenTextures(1, &gNormalBuffer);
             glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0); 
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + NORMAL_BUFFER_BINDING, GL_TEXTURE_2D, gNormalBuffer, 0);
 
@@ -107,8 +107,8 @@ class DeferredRenderer : public BaseRenderer
             glGenTextures(1, &gPositionBuffer);
             glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0); 
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + POSITION_BUFFER_BINDING, GL_TEXTURE_2D, gPositionBuffer, 0);
 
@@ -142,8 +142,8 @@ class DeferredRenderer : public BaseRenderer
             glGenTextures(1, &lightAccumulationTexture);
             glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0); 
 
             // Bind the accumulation texture, making sure it will be a different binding from those               (this is probably not necessary)
@@ -167,7 +167,7 @@ class DeferredRenderer : public BaseRenderer
             glGenTextures(1, &postProcessColorBuffer);
             glBindTexture(GL_TEXTURE_2D, postProcessColorBuffer);
             // Clamped between 0 and 1 (no longer needs to be a floating point buffer)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0);
@@ -575,7 +575,7 @@ class DeferredRenderer : public BaseRenderer
 
             postProcessTask->End();
 
-
+        
             // 6) Final Pass (Antialiasing):
             // -----------------------------
             auto FXAATask = profiler->AddTask("FXAA Pass", Colors::alizarin);
@@ -668,6 +668,16 @@ class DeferredRenderer : public BaseRenderer
 
             FXAAShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadFXAA.frag");
             FXAAShader.BuildProgram();
+        }
+
+        void RenderGUI()
+        {
+            ImGui::Begin("Deferred Renderer");
+            ImGui::SeparatorText("Postprocessing");
+            ImGui::SliderFloat("Tonemap Exposure", &tonemapExposure, 0.0f, 10.0f, "exposure = %.3f");
+
+            
+            ImGui::End();
         }
 
     private:

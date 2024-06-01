@@ -326,46 +326,6 @@ class ForwardRenderer : public BaseRenderer
 
                     glBindTexture(GL_TEXTURE_2D, texture.id);
                 }
-
-
-
-
-                /*
-                for (unsigned int i = 0; i < materialInstance->numTextures; i++)
-                {
-                    Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
-                    // activate proper texture unit (all the shadow maps already reserve bindings 0 -> 2)
-                    glActiveTexture(GL_TEXTURE0 + SHADOW_MAP_BUFFER2_BINDING + i); //THIS IS WRONG !!!!!!!!!!!!!!!!!
-
-                    std::string number;
-                    TextureType type = texture.type;
-                    std::string name;
-
-                    switch (type)
-                    {
-                        case OP_TEXTURE_DIFFUSE:
-                            number = std::to_string(std::max(diffuseNr++, (unsigned int)NORMAL_TEXTURE0_BINDING));
-                            name = "texture_diffuse";
-                            break;
-                        case OP_TEXTURE_NORMAL:
-                            number = std::to_string(std::max(normalNr++, (unsigned int)SPECULAR_TEXTURE0_BINDING));
-                            name = "texture_normal";
-                            break;
-                        case OP_TEXTURE_SPECULAR:
-                            number = std::to_string(specularNr++); //add limit to specular textures
-                            name = "texture_specular";
-                            break;
-                        
-                        
-                        default:
-                            number = "";
-                            name = "texture_unidentified";
-                            break;
-                    }
-
-                    activeShader.SetSamplerBinding((name + number).c_str(), SHADOW_MAP_BUFFER2_BINDING + i);
-                    glBindTexture(GL_TEXTURE_2D, texture.id);
-                }*/
                 
                 //bind VAO
                 mesh->BindBuffers();
@@ -387,7 +347,7 @@ class ForwardRenderer : public BaseRenderer
 
             // 3) Final Pass (blit + Postprocessing):
             // --------------------------------------
-            auto finalTask = profiler->AddTask("Blit & Tonemapping", Colors::carrot);
+            auto finalTask = profiler->AddTask("Tonemapping", Colors::carrot);
             finalTask->Start();
 
             // Blit the MSAA buffer to an intermediate framebuffer for postprocessing:
@@ -460,6 +420,16 @@ class ForwardRenderer : public BaseRenderer
             postProcessShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemap.frag");
             postProcessShader.BuildProgram();
 
+        }
+
+        void RenderGUI()
+        {
+            ImGui::Begin("Forward Renderer");
+            ImGui::SeparatorText("Postprocessing");
+            ImGui::SliderFloat("Tonemap Exposure", &tonemapExposure, 0.0f, 10.0f, "exposure = %.3f");
+
+            
+            ImGui::End();
         }
 
     private:
