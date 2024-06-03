@@ -1,0 +1,2 @@
+# Classical Deferred and Forward rendering pipelines:
+ implemented on my custom engine (OPEngine). They come with features such as Shadow Mapping, Normal Mapping, multiple point and directional lights, Anti-Aliasing (MSAA and FXAA), hdr and tonemapping, skybox

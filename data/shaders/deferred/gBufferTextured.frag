@@ -75,11 +75,15 @@ mat3 cotangent_frame( vec3 N, vec3 p, vec2 uv )
 
 vec3 perturb_normal(vec3 N, vec3 V, vec2 texcoord) 
 {
-    vec3 map = texture2D(texture_normal1, texcoord).xyz; 
+    // assume N, the interpolated vertex normal and 
+    // V, the view vector (vertex to eye) 
+    vec3 map = texture2D( texture_normal1, texcoord ).xyz; 
+    map = 2.0 * map - 1.0; 
     map.y = -map.y;
-    mat3 TBN = cotangent_frame(N, -V, texcoord); 
 
-    return normalize(TBN * map); 
+    mat3 TBN = cotangent_frame( N, -V, texcoord ); 
+
+    return normalize( TBN * map ); 
 }
 
 void main()

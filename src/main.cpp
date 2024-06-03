@@ -147,7 +147,7 @@ int main()
 
     // flip all stbi loaded images vertically for compatibility with openGL
     // CURRENTLY THIS HAS TO BE DEACTIVATED ON SPONZA SCENE:
-    //stbi_set_flip_vertically_on_load(true); 
+    stbi_set_flip_vertically_on_load(true); 
     
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -168,11 +168,11 @@ int main()
 
     //sceneParser.Parse(scene, &mainCamera, "/data/scenes/sponza_scene.json", OP_OBJ);
     //sceneParser.Parse(scene, &mainCamera, "/data/scenes/deferred_test.json", OP_OBJ);
-    //sceneParser.Parse(scene, &mainCamera, "/data/scenes/backpack_scene.json", OP_OBJ);
+    sceneParser.Parse(scene, &mainCamera, "/data/scenes/backpack_scene.json", OP_OBJ);
 
     //VCTGI
     //sceneParser.Parse(scene, &mainCamera, "/data/scenes/sponza_scene.json", OP_OBJ);
-    sceneParser.Parse(scene, &mainCamera, "/data/scenes/Cornell_scene.json", OP_OBJ);
+    //sceneParser.Parse(scene, &mainCamera, "/data/scenes/Cornell_scene.json", OP_OBJ);
 
 
     auto profiler = OPProfiler::OPProfiler(); 
@@ -182,7 +182,7 @@ int main()
     VCTGIRenderer vctgiRenderer = VCTGIRenderer(windowWidth, windowHeight);
     Radiance2DRenderer radiance2DRenderer = Radiance2DRenderer(windowWidth, windowHeight);
 
-    BaseRenderer* renderer = &vctgiRenderer;
+    BaseRenderer* renderer = &deferredRenderer;
 
     
     try

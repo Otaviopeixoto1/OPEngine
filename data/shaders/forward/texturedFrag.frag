@@ -83,7 +83,9 @@ vec3 perturb_normal( vec3 N, vec3 V, vec2 texcoord ) {
     // assume N, the interpolated vertex normal and 
     // V, the view vector (vertex to eye) 
     vec3 map = texture2D( texture_normal1, texcoord ).xyz; 
+    map = 2.0 * map - 1.0; 
     map.y = -map.y;
+
     mat3 TBN = cotangent_frame( N, -V, texcoord ); 
 
     return normalize( TBN * map ); 
@@ -117,7 +119,7 @@ void main()
     vec4 outFrag = vec4(ambientLight.xyz * ambientLight.w,1.0) * albedo;
 
     #ifdef NORMAL_MAPPED
-        vec3 norm = perturb_normal(normalize(ViewNormal), -ViewFragPos, TexCoords);
+        vec3 norm = perturb_normal(normalize(ViewNormal), ViewFragPos, TexCoords);
     #else
         vec3 norm = normalize(ViewNormal);
     #endif
@@ -125,6 +127,7 @@ void main()
     //calculate world norm and world pos in vertex shader as well ???
     vec3 worldNorm = (inverseViewMatrix * vec4(norm, 0.0)).xyz;
     vec4 worldPos = inverseViewMatrix * vec4(ViewFragPos,1);
+    
 
     for(int i = 0; i < numDirLights; i++)
     {

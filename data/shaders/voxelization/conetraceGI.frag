@@ -30,12 +30,11 @@ layout (std140) uniform GlobalMatrices
 
 
 
-// same data storage scheme described by: Wahlén, Conrad. "Global Illumination in Real-Time using Voxel Cone Tracing on Mobile Devices." (2016).
+// Data storage scheme based on the work by Wahlén, Conrad: "Global Illumination in Real-Time using Voxel Cone Tracing on Mobile Devices." (2016).
 // found at: https://liu.diva-portal.org/smash/get/diva2:1148572/FULLTEXT01.pdf
 
 struct VoxelData {
 	vec4 color;
-	//uint light;
 	uint count;
 };
 
@@ -71,15 +70,14 @@ vec4 voxelSampleLevel(vec3 position, float level)
 
 	position *= scale;
 	position = position - vec3(0.5f);
-	vec3 positionWhole = floor(position);
-	vec3 disp = position - positionWhole;
+	vec3 positionInt = floor(position);
+	vec3 disp = position - positionInt;
 
 	//Due to the voxel textures being packed as uints we cant use hardware accelerated trilinear/quadrilinear sampling, so most of the cost
 	//comes from the 8 samples required here:
 
 	vec3 offsets[] = 
 	{  
-		vec3(0.0f, 0.0f, 0.0f),
 		vec3(0.0f, 0.0f, 1.0f),
 		vec3(0.0f, 1.0f, 0.0f),
 		vec3(0.0f, 1.0f, 1.0f),
@@ -89,11 +87,7 @@ vec4 voxelSampleLevel(vec3 position, float level)
 		vec3(1.0f, 1.0f, 1.0f) 
 	};
 
-
-	
-
-
-	vec3 voxelPos = (positionWhole) / scale;
+	vec3 voxelPos = (positionInt) / scale;
 
 	//calculating trilinear sampling coeficient: 
 	vec3 offset = 1.0f - disp; 
@@ -101,18 +95,11 @@ vec4 voxelSampleLevel(vec3 position, float level)
 
 	VoxelData voxel = unpackARGB8(textureLod(voxel3DData, voxelPos, mip).r);
 
-	vec4 total = voxel.color * factor;// * float(sign(int(voxel.light)));
-
-	//vec4 total = vec4(0.0f);
+	vec4 total = voxel.color * factor;
 	
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-	//something goes really wrong when summing up the contributions of all 8 nearest voxels !!!
-	//////////////////////////////////////////////////////////////////////////////////////////////
-	
-	for(int i = 1; i < 7; i++) // i < 8
+	for(int i = 0; i < 7; i++) // i < 7
 	{
-		voxelPos = (positionWhole + offsets[i]) / scale;
+		voxelPos = (positionInt + offsets[i]) / scale;
 
 		
 		//calculating trilinear sampling coeficient: 
@@ -120,13 +107,10 @@ vec4 voxelSampleLevel(vec3 position, float level)
         factor = offset.x * offset.y * offset.z;
 
 
-        VoxelData voxel = unpackARGB8(textureLod(voxel3DData, voxelPos, mip).r);
+        VoxelData voxel = unpackARGB8(textureLod(voxel3DData, voxelPos, int(mip)).r);
 		
-	
-
-		total += voxel.color * factor;// * float(sign(int(voxel.light)));
-
-		//total += voxel.color;// * float(sign(int(voxel.light)));
+		total += voxel.color * factor;
+		//total += voxel.color;
 	}
 
 	//return total/8.0f;
@@ -150,11 +134,9 @@ vec4 ConeTrace60(vec3 startPos, vec3 dir, float aoDist, float voxelSize)
 		sampleValue = voxelSampleLevel(samplePos, sampleLOD);
 
 		accum.rgb =   accum.rgb + (1.0f - accum.a) * sampleValue.a * sampleValue.rgb;
-		accum.a = accum.a + (1-accum.a) * sampleValue.a;
+		accum.a = accum.a + (1.0f - accum.a) * sampleValue.a ;
 		//accum.a = accum.a +  sampleValue.a;
-
-
-		
+		//if (sampleValue.a > 0.01){break;}
 
 		//for ambient occlusion we only consider close samples
 		opacity = (dist < aoDist) ? accum.a : opacity; // higher accumulated opacity near the sampling point means a bigger AO effect 
@@ -163,7 +145,7 @@ vec4 ConeTrace60(vec3 startPos, vec3 dir, float aoDist, float voxelSize)
 		dist *= 2.0f;
 	}
 
-	return vec4(sampleValue.rgb, 1.0f - opacity);
+	return vec4(accum.rgb, 1.0f - opacity);
 }
 
 vec4 DiffuseTrace(vec3 voxelPos, vec3 worldNormal) 
@@ -188,20 +170,24 @@ vec4 DiffuseTrace(vec3 voxelPos, vec3 worldNormal)
 	float voxelSize = 2.0f / float(voxelRes);
 	float aoMaxDist = min(aoDistance, maxConeDistance);
 
-	voxelPos += worldNormal * voxelSize * 2;
+	voxelPos += worldNormal * voxelSize;
 
 	//constructing a vector basis using the world normal:
 	vec3 U = (abs(worldNormal.y) < 0.9) ? vec3(0.0f, 1.0f, 0.0f) : vec3(0.0f, 0.0f, 1.0f); 
 	vec3 R = normalize(cross(U, worldNormal));
 	U = normalize(cross(worldNormal, R)); 
-	//vec3 di = dirs[0].x * R + dirs[0].y * worldNormal + dirs[0].z * U;
+
 	//return vec4(voxelPos,1.0);
 
-	vec4 total = vec4(0.0f);
-	for(int i = 0; i < 1; i++) 
+	vec3 direction = dirs[0].x * R + dirs[0].y * worldNormal + dirs[0].z * U;
+	vec4 total = weight[0] * ConeTrace60(voxelPos, direction, aoMaxDist, voxelSize);
+
+	//return vec4(direction, 1.0);
+
+	for(int i = 1; i < 1; i++) 
 	{
-		vec3 direction = dirs[i].x * R + dirs[i].y * worldNormal + dirs[i].z * U;
-		total += weight[int(i != 0)] * ConeTrace60(voxelPos, direction, aoMaxDist, voxelSize);
+		direction = dirs[i].x * R + dirs[i].y * worldNormal + dirs[i].z * U;
+		total += weight[1] * ConeTrace60(voxelPos, direction, aoMaxDist, voxelSize);
 	}
 
 	
@@ -233,10 +219,10 @@ void main()
 	s = mix(d.w, s * d.w, 0.9);
 
 	vec4 f = vec4(1.0f);
-	//f.xyz = l.xyz * s * c.xyz + 2.0 * d.xyz * c.xyz;
+	f.xyz = l.xyz * s * c.xyz + 2.0 * d.xyz * c.xyz;
 	//f.xyz = l.xyz * s * c.xyz;
 	//f.x = s;
-	f.xyz =  d.xyz;
+	//f.xyz =  d.xyz;
 
 	outColor = f;
 }

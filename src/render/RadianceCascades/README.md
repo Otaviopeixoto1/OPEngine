@@ -7,7 +7,7 @@ Radiance Cascades is a novel approach to both 2D and 3D global illumination crea
 Check out <a href="https://otaviopeixoto1.github.io/portfolio/2DRadianceCascades/">my page</a> containing some of the explanation about the method. Also please refer to the demos and articles about the subject:</p>
 
  <ul>
-  <li><a href="https://otaviopeixoto1.github.io/portfolio/2DRadianceCascades/">tmpvar’s playground</a></li>
+  <li><a href="https://tmpvar.com/poc/radiance-cascades/">tmpvar’s playground</a></li>
   <li><a href="https://www.shadertoy.com/view/mtlBzX">Fad's shadertoy implementation</a></li>
   <li><a href="https://www.shadertoy.com/view/mlSfRD">Suslik's shadertoy implementation (fork of Fad's work)</a></li>
   <li><a href="https://drive.google.com/file/d/1L6v1_7HY2X-LV3Ofb6oyTIxgEaP4LOI6/view">Original paper by Alexander Sannikov</a></li>

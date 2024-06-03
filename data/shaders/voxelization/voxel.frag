@@ -73,13 +73,12 @@ layout(std430, binding = 2) writeonly buffer SparseBuffer
 
 
 
-// same data storage scheme described by: Wahlén, Conrad. "Global Illumination in Real-Time using Voxel Cone Tracing on Mobile Devices." (2016).
+// Data storage scheme based on the work by Wahlén, Conrad: "Global Illumination in Real-Time using Voxel Cone Tracing on Mobile Devices." (2016).
 // found at: https://liu.diva-portal.org/smash/get/diva2:1148572/FULLTEXT01.pdf
 
 struct VoxelData 
 {
 	vec4 color;
-	//uint light; // voxels in shadow have light = 0 and lit voxels have light = 1 (REMOVED)
 	uint count; // the count is used during mipmapping to average the voxel color of the next mip
 };
 
@@ -134,7 +133,7 @@ layout(location = 0) subroutine uniform GetColor SampleColor;
 
 
 void main()
-{	                           //color, light, count
+{	                       
 	VoxelData data = VoxelData(vec4(1.0f), 0x8);
 
 	ivec3 voxelCoord = ivec3(voxelTexCoord * voxelRes);	
@@ -149,10 +148,6 @@ void main()
 	float NdotL = dot(vNormal,vLight);
     float diff = max(NdotL, 0.0);
 
-	//data.color.rgba = SampleColor().rgba;
-	//data.color.rgb *= diff * shadow;
-	//data.color.rgb = data.color.aaa;
-
 	vec4 color = SampleColor().rgba;
 	//color.rgb *= shadow;
 	color.rgb *= diff * shadow;
@@ -160,13 +155,14 @@ void main()
 	
 	uint outData = packARGB8(data);
 
-	//writes the "most lit" voxel to the 2d texture
-	imageAtomicMax(voxelTextures, ivec3(ivec2(gl_FragCoord.xy), domInd), outData);
+	//writes the "most lit" voxel to the 2d debug texture:
+	//imageAtomicMax(voxelTextures, ivec3(ivec2(gl_FragCoord.xy), domInd), outData);
 
-
+	// Store the the "most lit" value:
 	//uint prevData = imageAtomicMax(voxel3DData, voxelCoord, outData);
 	
-	//atomic average
+	// Storing average color:
+	//atomic moving average
 	uint nextUint = packUnorm4x8(vec4(color.rgb, 1.0 / 255.0f));
 	uint prevUint = 0;
 	uint curUint = imageAtomicCompSwap(voxel3DData, voxelCoord, prevUint, nextUint);
@@ -198,21 +194,4 @@ void main()
 
 		curUint = imageAtomicCompSwap(voxel3DData, voxelCoord, prevUint, nextUint);
 	}
-	
-	
-	/**/
-
-	/*
-	if(prevData == 0) 
-	{
-		uint prevVoxelCount = atomicAdd(drawCmd[0].instanceCount, 1);
-		
-		// Calculate and store number of workgroups needed
-		// compWorkGroups = (prevVoxelCount + 1)//64 + 1;  each workgroup has a size of 64
-		uint compWorkGroups = ((prevVoxelCount + 1) >> 6) + 1; // 6 = log2(workGroupSize = 64)
-		atomicMax(compCmd[0].workGroupSizeX, compWorkGroups);
-
-		// Write to position buffer (sparse list)
-		sparseList[prevVoxelCount + drawCmd[0].baseInstance] = packRG11B10(uvec3(voxelCoord));
-	}*/
 }

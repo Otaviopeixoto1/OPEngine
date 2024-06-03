@@ -83,7 +83,7 @@ float GetDirLightShadow(int lightIndex, vec3 viewPos, vec3 worldPos, vec3 worldN
 
         //use view normal instead of world normal
         //float bias = max(0.005 * (1.0 - dot(worldNormal, dirLights[lightIndex].direction.xyz)), 0.0005);
-        float bias = 0.0050;
+        float bias = 0.000050;
         vec2 texelSize = 1.0 / textureSize(shadowMap0, 0).xy;  
 
         vec3 normalBias = worldNormal * max(texelSize.x, texelSize.y) * 1.4142136f * 100;

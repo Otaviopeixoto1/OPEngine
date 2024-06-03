@@ -18,7 +18,7 @@ class VCTGIRenderer : public BaseRenderer
         static constexpr unsigned int MAX_SPARSE_BUFFER_SIZE = 134217728;
 
         const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
-        static constexpr unsigned int SHADOW_CASCADE_COUNT = 1; // MAX == 4
+        static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
 
         static constexpr bool enableNormalMaps = true;
         static constexpr bool enableLightVolumes = true;
@@ -47,7 +47,7 @@ class VCTGIRenderer : public BaseRenderer
 
         float aoDistance = 0.03f;
         float maxConeDistance = 1.0f;
-        float accumThr = 1.0f;
+        float accumThr = 1.1f;
         int maxLOD = 10;
 
 
@@ -228,6 +228,7 @@ class VCTGIRenderer : public BaseRenderer
             float borderColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
             glTexParameterfv(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, borderColor);  
 
+            // For debugging
             glGenTextures(1, &voxel2DTex);
             glBindTexture(GL_TEXTURE_2D_ARRAY, voxel2DTex);
             glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_R32UI, voxelRes, voxelRes, 3);
@@ -916,7 +917,7 @@ class VCTGIRenderer : public BaseRenderer
 
             ImGui::SeparatorText("Cone Tracing");
             ImGui::SliderFloat("AO Distance", &aoDistance, 0.01f, 0.5f, "AO = %.003f");
-            ImGui::SliderFloat("Max Cone Distance", &maxConeDistance, 0.0f, 2.0f, "Cone Distance = %.3f");
+            ImGui::SliderFloat("Max Cone Distance", &maxConeDistance, 0.0f, 10.0f, "Cone Distance = %.3f");
             ImGui::SliderFloat("Accumulation Threshold", &accumThr, 0.0f, 6.0f, "threshold = %.3f");
             ImGui::SliderInt("Max LOD Level", &maxLOD, 0, MAX_MIP_MAP_LEVELS +1);
             
