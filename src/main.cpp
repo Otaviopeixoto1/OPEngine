@@ -183,7 +183,7 @@ int main()
     CMVCTGIRenderer cmvctgiRenderer = CMVCTGIRenderer(windowWidth, windowHeight);
     Radiance2DRenderer radiance2DRenderer = Radiance2DRenderer(windowWidth, windowHeight);
 
-    BaseRenderer* renderer = &forwardRenderer;
+    BaseRenderer* renderer = &deferredRenderer;
 
     
     try

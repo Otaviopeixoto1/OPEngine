@@ -25,7 +25,7 @@ class ForwardRenderer : public BaseRenderer
         float tonemapExposure = 1.0f;
 
 
-        enum MainPassBufferBindings
+        enum MainPassInputBindings
         {
             SHADOW_MAP_BUFFER0_BINDING = 0,
             SHADOW_MAP_BUFFER1_BINDING = 1,
@@ -176,8 +176,6 @@ class ForwardRenderer : public BaseRenderer
             frameResources.lightData = &lights;
             frameResources.shaderMemoryPool = &shaderMemoryPool;
 
-
-
             auto globalMatricesBuffer = shaderMemoryPool.GetUniformBuffer("GlobalMatrices");
             GlobalMatrices *globalMatrices = globalMatricesBuffer->BeginSetData<GlobalMatrices>();
             {
@@ -186,7 +184,6 @@ class ForwardRenderer : public BaseRenderer
                 globalMatrices->inverseViewMatrix = inverseViewMatrix;
             }
             globalMatricesBuffer->EndSetData();
-
             
             auto lightDataBuffer = shaderMemoryPool.GetUniformBuffer("LightData");
             LightData *lightData = lightDataBuffer->BeginSetData<LightData>();
@@ -211,7 +208,6 @@ class ForwardRenderer : public BaseRenderer
             }
             lightDataBuffer->EndSetData();
 
-            
             // 1) Shadow Map Rendering Pass:
             // -----------------------------
             auto shadowTask = profiler->AddTask("shadow pass", Colors::amethyst);
@@ -224,7 +220,6 @@ class ForwardRenderer : public BaseRenderer
             }
             
             shadowTask->End();
-                
 
             // 2) Main Rendering pass:
             // -----------------------
@@ -237,7 +232,6 @@ class ForwardRenderer : public BaseRenderer
             // -Shadows:
             glActiveTexture(GL_TEXTURE0 + SHADOW_MAP_BUFFER0_BINDING);
             glBindTexture(shadowOut.texType0, shadowOut.shadowMap0);
-
 
             int shaderCache = -1;
 
@@ -270,7 +264,6 @@ class ForwardRenderer : public BaseRenderer
                     activeRoutines[0] = 0;
                     activeRoutines[1] = 2;
                 }
-
 
                 if (activeShader.ID != shaderCache)
                 {
@@ -343,7 +336,6 @@ class ForwardRenderer : public BaseRenderer
             this->skyRenderer.Render(frameResources);
             skytask->End();
 
-
             // 3) Final Pass (blit + Postprocessing):
             // --------------------------------------
             auto finalTask = profiler->AddTask("Tonemapping", Colors::carrot);
@@ -353,7 +345,6 @@ class ForwardRenderer : public BaseRenderer
             glBindFramebuffer(GL_READ_FRAMEBUFFER, multisampledFBO);
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, intermediateFBO);
             glBlitFramebuffer(0, 0, viewportWidth, viewportHeight, 0, 0, viewportWidth, viewportHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glClear(GL_COLOR_BUFFER_BIT);
@@ -379,7 +370,6 @@ class ForwardRenderer : public BaseRenderer
             simpleDepthPass = StandardShader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
             simpleDepthPass.BuildProgram();
 
-
             // For textured materials that may have albedo texture
             defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
             defaultVertFrag.AddPreProcessorDefines(preprocessorDefines);
@@ -390,7 +380,6 @@ class ForwardRenderer : public BaseRenderer
             defaultVertFrag.SetSamplerBinding("texture_normal1", NORMAL_TEXTURE0_BINDING);
             defaultVertFrag.SetSamplerBinding("texture_specular1", SPECULAR_TEXTURE0_BINDING);
             defaultVertFrag.BindUniformBlocks(bufferBindings);
-
 
             // For textured materials with an normal map and albedo textures
             defaultVertNormalTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/forward/texturedFrag.frag");
@@ -408,13 +397,9 @@ class ForwardRenderer : public BaseRenderer
             defaultVertNormalTexFrag.SetSamplerBinding("texture_specular1", SPECULAR_TEXTURE0_BINDING);
             defaultVertNormalTexFrag.BindUniformBlocks(bufferBindings);
 
-
-
             defaultVertUnlitFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
             defaultVertUnlitFrag.BuildProgram();
             defaultVertUnlitFrag.BindUniformBlocks(bufferBindings);
-
-
 
             postProcessShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemap.frag");
             postProcessShader.BuildProgram();
@@ -454,11 +439,7 @@ class ForwardRenderer : public BaseRenderer
 
         //Shader used to render to a quad:
         StandardShader postProcessShader;
-
-
         std::unique_ptr<Mesh> screenQuad;
-
-
 
         #pragma pack(push, 1)
         struct GlobalMatrices
@@ -489,7 +470,6 @@ class ForwardRenderer : public BaseRenderer
             glm::vec4 specular;      
         };
         #pragma pack(pop)
-
 };
 
 #endif

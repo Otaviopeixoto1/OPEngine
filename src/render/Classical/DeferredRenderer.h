@@ -24,6 +24,12 @@ class DeferredRenderer : public BaseRenderer
         float FXAAContrastThreshold = 0.0312f;
         float FXAABrightnessThreshold = 0.063f;
 
+        enum GBufferPassInputBindings
+        {
+            DIFFUSE_TEXTURE0_BINDING = 1,
+            NORMAL_TEXTURE0_BINDING = 2,
+            SPECULAR_TEXTURE0_BINDING = 4,
+        };
 
         enum LightingPassBufferBindings
         {
@@ -237,14 +243,12 @@ class DeferredRenderer : public BaseRenderer
             glDepthMask(GL_TRUE);
             glEnable(GL_DEPTH_TEST);
 
-
             glm::mat4 projectionMatrix = camera.GetProjectionMatrix();
             glm::mat4 viewMatrix = camera.GetViewMatrix();
             glm::mat4 inverseViewMatrix = glm::inverse(viewMatrix);
 
             // Get light data in view space:
             GlobalLightData lights = scene->GetLightData(viewMatrix);
-
 
             FrameResources frameResources = FrameResources();
             frameResources.viewportHeight = viewportHeight;
@@ -256,7 +260,6 @@ class DeferredRenderer : public BaseRenderer
             frameResources.projectionMatrix = projectionMatrix;
             frameResources.lightData = &lights;
             frameResources.shaderMemoryPool = &shaderMemoryPool;
-
 
 
             auto globalMatricesBuffer = shaderMemoryPool.GetUniformBuffer("GlobalMatrices");
@@ -271,7 +274,6 @@ class DeferredRenderer : public BaseRenderer
             }
             globalMatricesBuffer->EndSetData();
 
-            
             auto lightDataBuffer = shaderMemoryPool.GetUniformBuffer("LightData");
             LightData *lightData = lightDataBuffer->BeginSetData<LightData>();
             {
@@ -295,10 +297,6 @@ class DeferredRenderer : public BaseRenderer
             }
             lightDataBuffer->EndSetData();
 
-
-
-            
-
             // 1) Shadow Map Rendering Pass:
             // -----------------------------
             auto shadowTask = profiler->AddTask("Shadow Pass", Colors::amethyst);
@@ -312,7 +310,6 @@ class DeferredRenderer : public BaseRenderer
             shadowTask->End();
 
 
-
             // 2) gBuffer Pass:
             // ----------------
             auto gbufferTask = profiler->AddTask("gBuffer Pass", Colors::emerald);
@@ -320,7 +317,6 @@ class DeferredRenderer : public BaseRenderer
 
             glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 
             int shaderCache = -1;
 
@@ -368,47 +364,42 @@ class DeferredRenderer : public BaseRenderer
                 localMatricesBuffer->SetData( sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
 
 
-
                 //Bind all textures
                 unsigned int diffuseNr = 1;
                 unsigned int specularNr = 1;
                 unsigned int normalNr = 1;
-                /*
-                for (unsigned int i = 0; i < materialInstance->numTextures; i++)
+
+                unsigned int diffuseBinding = DIFFUSE_TEXTURE0_BINDING;
+                unsigned int normalBinding = NORMAL_TEXTURE0_BINDING;
+                unsigned int specularBinding = SPECULAR_TEXTURE0_BINDING;
+
+                for (unsigned int i = 0; i < materialInstance->GetNumTextures(OP_TEXTURE_DIFFUSE); i++)
                 {
-                    Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
+                    diffuseBinding = std::min(diffuseBinding, (unsigned int)NORMAL_TEXTURE0_BINDING);
+                    
+                    auto path = materialInstance->GetDiffuseMapName(i);
+                    scene->GetTexture(path).SetBinding(diffuseBinding);
+                    
+                    diffuseBinding++;
+                }
 
-                    // activate proper texture unit before binding
-                    glActiveTexture(GL_TEXTURE0 + i); 
+                for (unsigned int i = 0; i < materialInstance->GetNumTextures(OP_TEXTURE_NORMAL); i++)
+                {
+                    normalBinding = std::min(normalBinding++, (unsigned int)SPECULAR_TEXTURE0_BINDING);
+                    auto path = materialInstance->GetNormalMapName(i);
+                    scene->GetTexture(path).SetBinding(normalBinding);
+                    
+                    normalBinding++;
+                }
 
-                    std::string number;
-                    TextureType type = texture.type;
-                    std::string name;
-
-                    switch (type)
-                    {
-                        case OP_TEXTURE_DIFFUSE:
-                            number = std::to_string(diffuseNr++);
-                            name = "texture_diffuse";
-                            break;
-                        case OP_TEXTURE_SPECULAR:
-                            number = std::to_string(specularNr++);
-                            name = "texture_specular";
-                            break;
-                        case OP_TEXTURE_NORMAL:
-                            number = std::to_string(normalNr++);
-                            name = "texture_normal";
-                            break;
-                        
-                        default:
-                            number = "";
-                            name = "texture_unidentified";
-                            break;
-                    }
-
-                    activeShader.SetInt((name + number).c_str(), i);
-                    glBindTexture(GL_TEXTURE_2D, texture.id);
-                }*/
+                for (unsigned int i = 0; i < materialInstance->GetNumTextures(OP_TEXTURE_SPECULAR); i++)
+                {
+                    //specularBinding = std::min(specularBinding++, (unsigned int)SPECULAR_TEXTURE0_BINDING);
+                    auto path = materialInstance->GetSpecularMapName(i);
+                    scene->GetTexture(path).SetBinding(specularBinding);
+                    
+                    specularBinding++;
+                }
                 
                 //bind VAO
                 mesh->BindBuffers();
@@ -418,7 +409,6 @@ class DeferredRenderer : public BaseRenderer
             });  
 
             gbufferTask->End();
-
             
             // 3) Lighting Accumulation pass: use g-buffer to calculate the scene's lighting
             // -----------------------------------------------------------------------------
@@ -427,7 +417,6 @@ class DeferredRenderer : public BaseRenderer
             glBindFramebuffer(GL_FRAMEBUFFER, lightAccumulationFBO);
             glClear(GL_COLOR_BUFFER_BIT);
             glDepthMask(GL_FALSE);
-
 
             // Binding the gBuffer textures:
             //these binding dont have to be the same as the gbuffer bindings but it will be better follow a convention
@@ -439,7 +428,6 @@ class DeferredRenderer : public BaseRenderer
             glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
             glActiveTexture(GL_TEXTURE0 + SHADOW_MAP_BUFFER0_BINDING);
             glBindTexture(shadowOut.texType0, shadowOut.shadowMap0);
-
             
             // Light Volumes: Render all point light volumes
             if (enableLightVolumes)
@@ -485,7 +473,6 @@ class DeferredRenderer : public BaseRenderer
 
                     glDrawElements(GL_TRIANGLES, pointLightVolume->indicesCount, GL_UNSIGNED_INT, 0);
 
-
                     // Lighting calculation pass:
                     glDisable(GL_DEPTH_TEST);
 
@@ -495,7 +482,6 @@ class DeferredRenderer : public BaseRenderer
                     glCullFace(GL_FRONT);
 
                     pointLightVolShader.UseProgram();
-
                     pointLightVolShader.SetInt("instanceID", i);
                     pointLightVolShader.SetMat4("MVPMatrix", projectionMatrix * viewTransform);
                     pointLightVolShader.SetVec2("gScreenSize", viewportWidth, viewportHeight);
@@ -512,7 +498,6 @@ class DeferredRenderer : public BaseRenderer
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
             lightAccTask->End();
-
 
             // 4) Unlit Pass (render objects with different lighting models using same depth buffer):
             // --------------------------------------------------------------------------------------
@@ -565,7 +550,6 @@ class DeferredRenderer : public BaseRenderer
             glClear(GL_COLOR_BUFFER_BIT);
             glDisable(GL_DEPTH_TEST);
             
-
             postProcessShader.UseProgram();
             postProcessShader.SetFloat("exposure", tonemapExposure);
             screenQuad->BindBuffers();
@@ -595,7 +579,6 @@ class DeferredRenderer : public BaseRenderer
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
             FXAATask->End();
-
         }
 
 
@@ -605,11 +588,13 @@ class DeferredRenderer : public BaseRenderer
         {   
             auto bufferBindings = shaderMemoryPool.GetNamedBindings();
 
-
             defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
             defaultVertFrag.BuildProgram();
+            defaultVertFrag.UseProgram();
+            defaultVertFrag.SetSamplerBinding("texture_diffuse1", DIFFUSE_TEXTURE0_BINDING);
+            defaultVertFrag.SetSamplerBinding("texture_normal1", NORMAL_TEXTURE0_BINDING);
+            defaultVertFrag.SetSamplerBinding("texture_specular1", SPECULAR_TEXTURE0_BINDING);
             defaultVertFrag.BindUniformBlocks(bufferBindings);
-
 
             defaultVertNormalTexFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
             if (enableNormalMaps)
@@ -618,15 +603,19 @@ class DeferredRenderer : public BaseRenderer
                 defaultVertNormalTexFrag.AddPreProcessorDefines(&s,1);
             }
             defaultVertNormalTexFrag.BuildProgram();
+            defaultVertNormalTexFrag.UseProgram();
+            defaultVertNormalTexFrag.SetSamplerBinding("texture_diffuse1", DIFFUSE_TEXTURE0_BINDING);
+            defaultVertNormalTexFrag.SetSamplerBinding("texture_normal1", NORMAL_TEXTURE0_BINDING);
+            defaultVertNormalTexFrag.SetSamplerBinding("texture_specular1", SPECULAR_TEXTURE0_BINDING);
             defaultVertNormalTexFrag.BindUniformBlocks(bufferBindings);
             
-
-
             defaultVertUnlitFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
             defaultVertUnlitFrag.BuildProgram();
+            defaultVertUnlitFrag.UseProgram();
+            defaultVertUnlitFrag.SetSamplerBinding("texture_diffuse1", DIFFUSE_TEXTURE0_BINDING);
+            defaultVertUnlitFrag.SetSamplerBinding("texture_normal1", NORMAL_TEXTURE0_BINDING);
+            defaultVertUnlitFrag.SetSamplerBinding("texture_specular1", SPECULAR_TEXTURE0_BINDING);
             defaultVertUnlitFrag.BindUniformBlocks(bufferBindings);
-            
-
 
             directionalLightingPass = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/deferred/fsDeferredLighting.frag");
             directionalLightingPass.AddPreProcessorDefines(preprocessorDefines);
@@ -643,11 +632,8 @@ class DeferredRenderer : public BaseRenderer
             directionalLightingPass.SetInt("shadowMap0", SHADOW_MAP_BUFFER0_BINDING);
             directionalLightingPass.BindUniformBlocks(bufferBindings);
 
-
             simpleDepthPass = StandardShader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/nullFrag.frag");
             simpleDepthPass.BuildProgram();
-
-            
 
             pointLightVolShader = StandardShader(BASE_DIR"/data/shaders/simpleVert.vert", BASE_DIR"/data/shaders/deferred/pointVolumeLighting.frag");
             pointLightVolShader.AddPreProcessorDefines(preprocessorDefines);
@@ -658,13 +644,9 @@ class DeferredRenderer : public BaseRenderer
             pointLightVolShader.SetInt("gPosition", POSITION_BUFFER_BINDING);
             pointLightVolShader.BindUniformBlocks(bufferBindings);
 
-
-
             postProcessShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadTonemapLum.frag");
             postProcessShader.BuildProgram();
             postProcessShader.UseProgram();
-
-
 
             FXAAShader = StandardShader(BASE_DIR"/data/shaders/screenQuad/quad.vert", BASE_DIR"/data/shaders/screenQuad/quadFXAA.frag");
             FXAAShader.BuildProgram();
@@ -703,21 +685,15 @@ class DeferredRenderer : public BaseRenderer
         StandardShader defaultVertNormalTexFrag;
         StandardShader defaultVertUnlitFrag;
 
-        
         StandardShader directionalLightingPass;
         
         StandardShader simpleDepthPass; 
         StandardShader pointLightVolShader;
         std::shared_ptr<Mesh> pointLightVolume;
         
-        
         StandardShader postProcessShader;
         StandardShader FXAAShader;
-
-
-
         std::unique_ptr<Mesh> screenQuad;
-
 
 
         #pragma pack(push, 1)
