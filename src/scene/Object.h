@@ -33,7 +33,9 @@ enum MaterialFlags
 struct MaterialTemplate
 {
     unsigned int id;
-    std::vector<std::string> texturePaths;
+    std::vector<std::string> diffuseTextureNames;
+    std::vector<std::string> normalTextureNames;
+    std::vector<std::string> specularTextureNames;
     unsigned int flags;
 
     struct MaterialBinding
@@ -60,12 +62,11 @@ class MaterialInstance
         }properties;
         #pragma pack(pop)
         
-        unsigned int numTextures;
-        
         MaterialInstance(MaterialTemplate &matTemp) 
         {
-            this->numTextures = matTemp.texturePaths.size();
-            this->texturePaths = matTemp.texturePaths;
+            this->diffuseTextureNames = matTemp.diffuseTextureNames;
+            this->normalTextureNames = matTemp.normalTextureNames;
+            this->specularTextureNames = matTemp.specularTextureNames;
             this->flags = matTemp.flags;
             this->templateId = matTemp.id;
         }
@@ -93,20 +94,59 @@ class MaterialInstance
         {
             return templateId;
         }
-        std::string GetTexturePath(unsigned int i)
+
+        unsigned int GetNumTextures(TextureType texType)
         {
-            if (i >= numTextures)
+            switch (texType)
+            {
+                case OP_TEXTURE_DIFFUSE:
+                    return diffuseTextureNames.size();
+                case OP_TEXTURE_NORMAL:
+                    return normalTextureNames.size();
+                case OP_TEXTURE_SPECULAR:
+                    return specularTextureNames.size();
+                default:
+                    return 0;
+            }
+        }
+
+        std::string GetDiffuseMapName(unsigned int i)
+        {
+            if (i >= diffuseTextureNames.size())
             {
                 return "";
             }
 
-            return texturePaths[i];
+            return diffuseTextureNames[i];
         }
+
+        std::string GetNormalMapName(unsigned int i)
+        {
+            if (i >= normalTextureNames.size())
+            {
+                return "";
+            }
+
+            return normalTextureNames[i];
+        }
+
+        std::string GetSpecularMapName(unsigned int i)
+        {
+            if (i >= specularTextureNames.size())
+            {
+                return "";
+            }
+
+            return specularTextureNames[i];
+        }
+
     private:
         unsigned int flags;
         unsigned int templateId;
         unsigned int instanceId;
-        std::vector<std::string> texturePaths;
+        std::vector<std::string> diffuseTextureNames;
+        std::vector<std::string> normalTextureNames;
+        std::vector<std::string> specularTextureNames;
 
 };
 

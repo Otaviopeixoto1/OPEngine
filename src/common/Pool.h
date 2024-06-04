@@ -80,7 +80,7 @@ class Pool
             freeIds.push_back(id);
         }
         
-        T& Get(const Id &id)
+        T &Get(const Id &id)
         {
             assert(id.asInt != size_t(-1));
             assert(id.asInt < data.size());
@@ -103,8 +103,5 @@ class Pool
 
 
 
-///////////////////////////////////////////////////
-// create a specific shader memory pool class
-///////////////////////////////////////////////////
 
 #endif

@@ -478,7 +478,7 @@ class VCTGIRenderer : public BaseRenderer
                 unsigned int diffuseNr = 1;
                 unsigned int specularNr = 1;
                 unsigned int normalNr = 1;
-
+                /*
                 for (unsigned int i = 0; i < materialInstance->numTextures; i++)
                 {
                     Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
@@ -513,7 +513,7 @@ class VCTGIRenderer : public BaseRenderer
 
                     activeShader.SetSamplerBinding((name + number).c_str(), i);
                     glBindTexture(GL_TEXTURE_2D, texture.id);
-                }
+                }*/
                 
                 //bind VAO
                 mesh->BindBuffers();
@@ -615,7 +615,7 @@ class VCTGIRenderer : public BaseRenderer
                 unsigned int diffuseNr = 1;
                 unsigned int specularNr = 1;
                 unsigned int normalNr = 1;
-
+                /*
                 for (unsigned int i = 0; i < materialInstance->numTextures; i++)
                 {
                     Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
@@ -636,7 +636,7 @@ class VCTGIRenderer : public BaseRenderer
                     {
                         continue;
                     }
-                }
+                }*/
                 
                 //bind VAO
                 mesh->BindBuffers();

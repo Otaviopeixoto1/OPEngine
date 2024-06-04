@@ -373,14 +373,14 @@ namespace JsonHelpers
                 {
                     aiMaterial *mMaterial = assimpScene->mMaterials[i];
 
-                    std::vector<std::string> mTextures;
+                    //std::vector<std::string> mTextures;
 
                     std::vector<std::string> diffuseMaps = LoadMaterialTextures(scene, mMaterial, 
                                                         aiTextureType_DIFFUSE, OP_TEXTURE_DIFFUSE, directory);
-                    mTextures.insert(mTextures.end(), diffuseMaps.begin(), diffuseMaps.end());
+                    //mTextures.insert(mTextures.end(), diffuseMaps.begin(), diffuseMaps.end());
                     std::vector<std::string> specularMaps = LoadMaterialTextures(scene, mMaterial, 
                                                         aiTextureType_SPECULAR, OP_TEXTURE_SPECULAR, directory);
-                    mTextures.insert(mTextures.end(), specularMaps.begin(), specularMaps.end());
+                    //mTextures.insert(mTextures.end(), specularMaps.begin(), specularMaps.end());
 
                     std::vector<std::string> normalMaps;
                     
@@ -394,9 +394,9 @@ namespace JsonHelpers
                     {
                         normalMaps = LoadMaterialTextures(mMaterial, aiTextureType_NORMALS, OP_TEXTURE_NORMAL, directory);
                     }*/
-                    
-                    
-                    mTextures.insert(mTextures.end(), normalMaps.begin(), normalMaps.end());
+                    //mTextures.insert(mTextures.end(), normalMaps.begin(), normalMaps.end());
+
+
                     
                     unsigned int flags = OP_MATERIAL_DEFAULT;
 
@@ -414,7 +414,9 @@ namespace JsonHelpers
                     }
 
                     MaterialTemplate material = MaterialTemplate(flags);
-                    material.texturePaths = mTextures;
+                    material.diffuseTextureNames = diffuseMaps;
+                    material.normalTextureNames = normalMaps;
+                    material.specularTextureNames = specularMaps;
                     material.id = i + materialIdOffset;
                     materialTemplates.push_back(material);
                 }
@@ -429,35 +431,38 @@ namespace JsonHelpers
                     aiString aiPath;
                     mMaterial->GetTexture(type, i, &aiPath);
 
+                    auto texName = std::string(aiPath.C_Str());
 
-                    if (scene.HasTexture(aiPath.C_Str()))
+                    if (scene.HasTexture(texName))
                     {
-                        texturePaths.push_back(aiPath.C_Str());
+                        texturePaths.push_back(texName);
                     }
                     else
                     {   
-                        Texture texture;
-                        texture.id = TextureFromFile(aiPath.C_Str(), directory);
-                        texture.type = OPtype;
-                        scene.AddTexture(aiPath.C_Str(), texture);
-                        std::cout << "Loaded Texture [" << std::to_string(texture.id) + "]: " << aiPath.C_Str() << "\n";
-                        texturePaths.push_back(aiPath.C_Str());
+                        
+                        auto filePath = directory + '/' + texName;
+                        //Texture2D texture = ;
+
+                        scene.AddTexture(texName, std::move(Texture2D::TextureFromFile(filePath)));
+
+                        std::cout << "Loaded Texture: " << filePath << "\n";
+                        texturePaths.push_back(texName);
                     }
                 }
 
                 return texturePaths;
             }
-            
+            /*
             unsigned int TextureFromFile(const char *path, const std::string &directory)
             {
-                std::string filename = std::string(path);
-                filename = directory + '/' + filename;
+                std::string texName = std::string(path);
+                texName = directory + '/' + texName;
 
                 unsigned int textureID;
                 glGenTextures(1, &textureID);
 
                 int width, height, nrComponents;
-                unsigned char *data = stbi_load(filename.c_str(), &width, &height, &nrComponents, 0);
+                unsigned char *data = stbi_load(texName.c_str(), &width, &height, &nrComponents, 0);
                 if (data)
                 {
                     GLenum format;
@@ -481,12 +486,12 @@ namespace JsonHelpers
                 }
                 else
                 {
-                    std::cout << "Texture failed to load at path: " << filename << "\n";
+                    std::cout << "Texture failed to load at path: " << texName << "\n";
                     stbi_image_free(data);
                 }
 
                 return textureID;
-            }  
+            }  */
 
 
     };

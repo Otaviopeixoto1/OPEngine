@@ -1,5 +1,5 @@
-#ifndef VCTGI_RENDERER_H
-#define VCTGI_RENDERER_H
+#ifndef VCTGI_CLIPMAPPED_RENDERER_H
+#define VCTGI_CLIPMAPPED_RENDERER_H
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -11,67 +11,44 @@
 #include "../../common/Colors.h"
 
 
-class OVCTGIRenderer : public BaseRenderer
+class CMVCTGIRenderer : public BaseRenderer
 {
     public:
         static constexpr unsigned int MAX_MIP_MAP_LEVELS = 9;
         static constexpr unsigned int MAX_SPARSE_BUFFER_SIZE = 134217728;
 
         const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
-        static constexpr unsigned int SHADOW_CASCADE_COUNT = 1; // MAX == 4
+        static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
 
         static constexpr bool enableNormalMaps = true;
         static constexpr bool enableLightVolumes = true;
         
         static constexpr int MAX_DIR_LIGHTS = 5;
         static constexpr int MAX_POINT_LIGHTS = 20;
+
+        static constexpr glm::vec3 voxelWorldScale = glm::vec3(0.2,0.2,0.2); //0.025,0.025,0.025 //sponza
         
 
-        enum VCTGIShadowRenderer
+        enum CMVCTGIShadowRenderer
         {
             NONE,
             PCF_SHADOW_MAP,
             VSM_SHADOW_MAP
         };
-        VCTGIShadowRenderer activeShadowRenderer = PCF_SHADOW_MAP;
+        CMVCTGIShadowRenderer activeShadowRenderer = PCF_SHADOW_MAP;
 
         float tonemapExposure = 1.3f;
         float FXAAContrastThreshold = 0.0312f;
         float FXAABrightnessThreshold = 0.063f;
-        unsigned int voxelRes = 256;
+        unsigned int voxelRes = 512;
 
-        bool drawVoxels = false;
+        bool drawVoxels = true;
         int mipLevel = 0;
 
         float aoDistance = 0.03f;
         float maxConeDistance = 1.0f;
-        float accumThr = 1.0f;
+        float accumThr = 1.1f;
         int maxLOD = 10;
-
-        
-
-
-        // Adopted naming conventions for the global uniform blocks
-        std::string NamedUniformBufferBindings[5] = { // The indexes have to match values in the enum
-            "GlobalMatrices",
-            "LocalMatrices",
-            "MaterialProperties",
-            "Lights",
-            "Shadows",
-        };
-        
-        enum VCTGIUniformBufferBindings
-        {
-            UNIFORM_GLOBAL_MATRICES_BINDING = 0,
-            UNIFORM_LOCAL_MATRICES_BINDING = 1,
-            UNIFORM_MATERIAL_PROPERTIES_BINDING = 2,
-            UNIFORM_GLOBAL_LIGHTS_BINDING = 3,
-            //EXTRABUFFERBINDING0
-            //EXTRABUFFERBINDING1
-            // ...
-            UNIFORM_GLOBAL_SHADOWS_BINDING = 4,
-
-        };
 
 
         enum gBufferPassBindings
@@ -101,7 +78,7 @@ class OVCTGIRenderer : public BaseRenderer
         };
 
         
-        enum VCTGIShaderStorageBindings 
+        enum CMVCTGIShaderStorageBindings 
         {
             DRAW_INDIRECT_BINDING = 0,
             COMPUTE_INDIRECT_BINDING = 1,
@@ -110,7 +87,7 @@ class OVCTGIRenderer : public BaseRenderer
         
         
         
-        OVCTGIRenderer(unsigned int vpWidth, unsigned int vpHeight)
+        CMVCTGIRenderer(unsigned int vpWidth, unsigned int vpHeight)
         {
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
@@ -150,7 +127,7 @@ class OVCTGIRenderer : public BaseRenderer
 
                 case VSM_SHADOW_MAP:
                     this->VSMShadowRenderer = VarianceShadowRenderer(
-                        UNIFORM_GLOBAL_SHADOWS_BINDING, 
+                        0, 
                         SHADOW_CASCADE_COUNT,
                         SHADOW_WIDTH,
                         SHADOW_HEIGHT
@@ -176,8 +153,8 @@ class OVCTGIRenderer : public BaseRenderer
             glGenTextures(1, &gColorBuffer);
             glBindTexture(GL_TEXTURE_2D, gColorBuffer);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0); 
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + G_COLOR_SPEC_BUFFER_BINDING, GL_TEXTURE_2D, gColorBuffer, 0);
             
@@ -185,8 +162,8 @@ class OVCTGIRenderer : public BaseRenderer
             glGenTextures(1, &gNormalBuffer);
             glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0); 
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + G_NORMAL_BUFFER_BINDING, GL_TEXTURE_2D, gNormalBuffer, 0);
 
@@ -194,8 +171,8 @@ class OVCTGIRenderer : public BaseRenderer
             glGenTextures(1, &gPositionBuffer);
             glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0); 
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + G_POSITION_BUFFER_BINDING, GL_TEXTURE_2D, gPositionBuffer, 0);
 
@@ -245,10 +222,13 @@ class OVCTGIRenderer : public BaseRenderer
             glTexStorage3D(GL_TEXTURE_3D, numMipLevels + 1, GL_R32UI, voxelRes, voxelRes, voxelRes);
             glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
             glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
+            float borderColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            glTexParameterfv(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, borderColor);  
 
+            // For debugging
             glGenTextures(1, &voxel2DTex);
             glBindTexture(GL_TEXTURE_2D_ARRAY, voxel2DTex);
             glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_R32UI, voxelRes, voxelRes, 3);
@@ -265,8 +245,8 @@ class OVCTGIRenderer : public BaseRenderer
             glGenTextures(1, &lightAccumulationTexture);
             glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0); 
 
             // Bind the accumulation texture, making sure it will be a different binding from those               (this is probably not necessary)
@@ -374,12 +354,10 @@ class OVCTGIRenderer : public BaseRenderer
             frameResources.shaderMemoryPool = &shaderMemoryPool;
 
 
-            //use memcpy instead !!!!! this is reading (?) and writing data !!
-
             auto globalMatricesBuffer = shaderMemoryPool.GetUniformBuffer("GlobalMatrices");
             GlobalMatrices *globalMatrices = globalMatricesBuffer->BeginSetData<GlobalMatrices>();
             {
-                auto voxelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.025,0.025,0.025)); //calculate based on the scene size or the frustrum bounds !!
+                auto voxelMatrix = glm::scale(glm::mat4(1.0f), voxelWorldScale); 
                 auto invVoxelMatrix = glm::inverse(voxelMatrix);
 
                 globalMatrices->projectionMatrix = projectionMatrix;
@@ -500,7 +478,7 @@ class OVCTGIRenderer : public BaseRenderer
                 unsigned int diffuseNr = 1;
                 unsigned int specularNr = 1;
                 unsigned int normalNr = 1;
-
+                /*
                 for (unsigned int i = 0; i < materialInstance->numTextures; i++)
                 {
                     Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
@@ -535,7 +513,7 @@ class OVCTGIRenderer : public BaseRenderer
 
                     activeShader.SetSamplerBinding((name + number).c_str(), i);
                     glBindTexture(GL_TEXTURE_2D, texture.id);
-                }
+                }*/
                 
                 //bind VAO
                 mesh->BindBuffers();
@@ -637,7 +615,7 @@ class OVCTGIRenderer : public BaseRenderer
                 unsigned int diffuseNr = 1;
                 unsigned int specularNr = 1;
                 unsigned int normalNr = 1;
-
+                /*
                 for (unsigned int i = 0; i < materialInstance->numTextures; i++)
                 {
                     Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
@@ -658,7 +636,7 @@ class OVCTGIRenderer : public BaseRenderer
                     {
                         continue;
                     }
-                }
+                }*/
                 
                 //bind VAO
                 mesh->BindBuffers();
@@ -729,7 +707,7 @@ class OVCTGIRenderer : public BaseRenderer
             
 
 
-
+            /*
             // 4) Conetrace Pass
             auto conetraceTask = profiler->AddTask("Cone tracing", Colors::orange);
             conetraceTask->Start();
@@ -849,7 +827,7 @@ class OVCTGIRenderer : public BaseRenderer
             glBindTexture(GL_TEXTURE_2D, postProcessColorBuffer); 
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
-            FXAATask->End();       
+            FXAATask->End();       */
         }
 
         void ReloadShaders()
@@ -939,8 +917,8 @@ class OVCTGIRenderer : public BaseRenderer
 
             ImGui::SeparatorText("Cone Tracing");
             ImGui::SliderFloat("AO Distance", &aoDistance, 0.01f, 0.5f, "AO = %.003f");
-            ImGui::SliderFloat("Max Cone Distance", &maxConeDistance, 0.0f, 2.0f, "Cone Distance = %.3f");
-            ImGui::SliderFloat("Accumulation Threshold", &accumThr, 0.0f, 1.0f, "threshold = %.3f");
+            ImGui::SliderFloat("Max Cone Distance", &maxConeDistance, 0.0f, 10.0f, "Cone Distance = %.3f");
+            ImGui::SliderFloat("Accumulation Threshold", &accumThr, 0.0f, 6.0f, "threshold = %.3f");
             ImGui::SliderInt("Max LOD Level", &maxLOD, 0, MAX_MIP_MAP_LEVELS +1);
             
             ImGui::End();

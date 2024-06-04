@@ -4,6 +4,7 @@
 #include "Classical/ForwardRenderer.h"
 #include "Classical/DeferredRenderer.h"
 #include "VoxelConeTracing/VCTGIRenderer.h"
+#include "VoxelConeTracing/CMVCTGIRenderer.h"
 #include "RadianceCascades/Radiance2DRenderer.h"
 
 

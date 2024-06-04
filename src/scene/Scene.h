@@ -17,7 +17,7 @@
 #include "lights.h"
 
 #include "env.h"
-
+#include "../gl/Texture.h"
 
 
 
@@ -54,14 +54,14 @@ class Scene
             return loadedTextures.find(path) != loadedTextures.end();
         }
 
-        Texture GetTexture(const std::string &path)
-        {
-            return loadedTextures[path];
+        Texture2D &GetTexture(const std::string &path)
+        {   
+            return loadedTextures.at(path);
         }
 
-        void AddTexture(std::string path, Texture texture)
+        void AddTexture(std::string path, Texture2D &&texture)
         {
-            loadedTextures[path] = texture;
+            loadedTextures.emplace(path, std::move(texture));
         }
 
         std::shared_ptr<Object> AddObject(std::shared_ptr<Mesh> mesh, glm::mat4 objToWorld, MaterialInstance::MaterialProperties materialProperties, MaterialTemplate materialTemplate, unsigned int materialOverrideFlags)
@@ -143,8 +143,14 @@ class Scene
      
     private:
         //maps texture (file) paths to each texture object
-        std::unordered_map<std::string, Texture> loadedTextures;
-        
+        //std::unordered_map<std::string, Texture> loadedTextures;
+
+        //Currently this would not support dynamic scene loading and unloading as the texture IDs would still exist inside the MaterialInstance after deletion
+        //Instead, PASS TEXTURE HANDLES ARROUND
+        //REPLACE WITH  Pool<Texture>
+        std::unordered_map<std::string, Texture2D> loadedTextures;
+
+
         std::vector<std::shared_ptr<Object>> objects;
 
 

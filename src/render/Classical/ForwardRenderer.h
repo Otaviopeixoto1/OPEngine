@@ -289,42 +289,41 @@ class ForwardRenderer : public BaseRenderer
                 materialPropertiesBuffer->SetData(0, sizeof(MaterialProperties), &(materialInstance->properties));
 
                 auto localMatricesBuffer = shaderMemoryPool.GetUniformBuffer("LocalMatrices"); 
-                localMatricesBuffer->SetData( 0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
-                localMatricesBuffer->SetData( sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
+                localMatricesBuffer->SetData(0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
+                localMatricesBuffer->SetData(sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
 
 
+                // -Texture binding:
+                unsigned int diffuseBinding = DIFFUSE_TEXTURE0_BINDING;
+                unsigned int normalBinding = NORMAL_TEXTURE0_BINDING;
+                unsigned int specularBinding = SPECULAR_TEXTURE0_BINDING;
 
-                // -Textures
-                unsigned int diffuseNr = DIFFUSE_TEXTURE0_BINDING;
-                unsigned int normalNr = NORMAL_TEXTURE0_BINDING;
-                unsigned int specularNr = SPECULAR_TEXTURE0_BINDING;
-                
-
-                for (unsigned int i = 0; i < materialInstance->numTextures; i++)
+                for (unsigned int i = 0; i < materialInstance->GetNumTextures(OP_TEXTURE_DIFFUSE); i++)
                 {
-                    Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
-                    TextureType type = texture.type;
+                    diffuseBinding = std::min(diffuseBinding, (unsigned int)NORMAL_TEXTURE0_BINDING);
+                    
+                    auto path = materialInstance->GetDiffuseMapName(i);
+                    scene->GetTexture(path).SetBinding(diffuseBinding);
+                    
+                    diffuseBinding++;
+                }
 
-                    switch (type)
-                    {
-                        case OP_TEXTURE_DIFFUSE:
-                            diffuseNr = std::min(diffuseNr, (unsigned int)NORMAL_TEXTURE0_BINDING);
-                            glActiveTexture(GL_TEXTURE0 + diffuseNr); 
-                            diffuseNr++;
-                            break;
-                        case OP_TEXTURE_NORMAL:
-                            normalNr = std::min(normalNr++, (unsigned int)SPECULAR_TEXTURE0_BINDING);
-                            glActiveTexture(GL_TEXTURE0 + normalNr);
-                            normalNr++;
-                            break;
-                        case OP_TEXTURE_SPECULAR:
-                            //number = specularNr; //add limit to specular textures
-                            glActiveTexture(GL_TEXTURE0 + specularNr);
-                            specularNr++;
-                            break;
-                    }
+                for (unsigned int i = 0; i < materialInstance->GetNumTextures(OP_TEXTURE_NORMAL); i++)
+                {
+                    normalBinding = std::min(normalBinding++, (unsigned int)SPECULAR_TEXTURE0_BINDING);
+                    auto path = materialInstance->GetNormalMapName(i);
+                    scene->GetTexture(path).SetBinding(normalBinding);
+                    
+                    normalBinding++;
+                }
 
-                    glBindTexture(GL_TEXTURE_2D, texture.id);
+                for (unsigned int i = 0; i < materialInstance->GetNumTextures(OP_TEXTURE_SPECULAR); i++)
+                {
+                    //specularBinding = std::min(specularBinding++, (unsigned int)SPECULAR_TEXTURE0_BINDING);
+                    auto path = materialInstance->GetSpecularMapName(i);
+                    scene->GetTexture(path).SetBinding(specularBinding);
+                    
+                    specularBinding++;
                 }
                 
                 //bind VAO

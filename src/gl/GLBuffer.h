@@ -19,6 +19,9 @@
  */
 
 // change to GLBuffer and make it more generic 
+
+//This buffer implementation does not allow for dynamic creation and destruction of buffers. When a buffer is destroyed, all references to the buffer glID
+//are still kept and could still be used
 class GLUniformBuffer
 {
     public:
@@ -113,7 +116,7 @@ class GLUniformBuffer
         GLuint size;
         std::string name;
 
-        // this is to prevent the  being unintentionally deleted by calling the destructor on copies of the object with the same id
+        // this is to prevent the buffer from being unintentionally deleted by calling the destructor on copies of the object with the same id
         GLUniformBuffer(const GLUniformBuffer&) = delete; // no copy constructor
         GLUniformBuffer &operator = (const GLUniformBuffer &other) = delete; // no copy assignement 
 };

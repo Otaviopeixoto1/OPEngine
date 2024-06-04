@@ -179,10 +179,11 @@ int main()
 
     ForwardRenderer forwardRenderer = ForwardRenderer(windowWidth, windowHeight);
     DeferredRenderer deferredRenderer = DeferredRenderer(windowWidth, windowHeight);
-    VCTGIRenderer vctgiRenderer = VCTGIRenderer(windowWidth, windowHeight);
+    //VCTGIRenderer vctgiRenderer = VCTGIRenderer(windowWidth, windowHeight); ---> DEPRECATED
+    CMVCTGIRenderer cmvctgiRenderer = CMVCTGIRenderer(windowWidth, windowHeight);
     Radiance2DRenderer radiance2DRenderer = Radiance2DRenderer(windowWidth, windowHeight);
 
-    BaseRenderer* renderer = &deferredRenderer;
+    BaseRenderer* renderer = &forwardRenderer;
 
     
     try

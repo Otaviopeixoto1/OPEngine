@@ -8,6 +8,7 @@
 #include "../common/MathUtils.h"
 #include "../common/ShaderMemoryPool.h"
 #include "../debug/OPProfiler.h"
+#include "../gl/Texture.h"
 
 
 
