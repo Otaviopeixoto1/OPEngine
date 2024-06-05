@@ -100,18 +100,22 @@ class Radiance2DRenderer : public BaseRenderer
 
             
             glGenFramebuffers(2, SdfFBOs);
-            glGenTextures(2, sdfBufferTextures);
             glClearColor(1e20f, 0.0, 0.0, 0.0);
 
             glBindFramebuffer(GL_FRAMEBUFFER, SdfFBOs[0]);
 
-            glBindTexture(GL_TEXTURE_2D, sdfBufferTextures[0]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0);
+            TextureDescriptor sdfBufferDescriptor = TextureDescriptor();
+            sdfBufferDescriptor.GLType = GL_TEXTURE_2D;
+            sdfBufferDescriptor.sizedInternalFormat = GL_RGBA16F;
+            sdfBufferDescriptor.internalFormat = GL_RGBA;
+            sdfBufferDescriptor.pixelFormat = GL_FLOAT;
+            sdfBufferDescriptor.width = viewportWidth;
+            sdfBufferDescriptor.height = viewportHeight;
+            sdfBufferDescriptor.minFilter = GL_LINEAR;
+            sdfBufferDescriptor.magFilter = GL_LINEAR;
 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sdfBufferTextures[0], 0);
+            sdfBufferTextures[0] = Texture2D(sdfBufferDescriptor);
+            sdfBufferTextures[0].BindToTarget(SdfFBOs[0], GL_COLOR_ATTACHMENT0);
 
             // no depth buffer needed
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -121,16 +125,10 @@ class Radiance2DRenderer : public BaseRenderer
         
             glClear(GL_COLOR_BUFFER_BIT);
 
-
             glBindFramebuffer(GL_FRAMEBUFFER, SdfFBOs[1]);
 
-            glBindTexture(GL_TEXTURE_2D, sdfBufferTextures[1]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sdfBufferTextures[1], 0);
+            sdfBufferTextures[1] = Texture2D(sdfBufferDescriptor);
+            sdfBufferTextures[1].BindToTarget(SdfFBOs[1], GL_COLOR_ATTACHMENT0);
 
             // no depth buffer needed
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -144,19 +142,23 @@ class Radiance2DRenderer : public BaseRenderer
 
 
             glGenFramebuffers(cascadeCount + 1, cascadeIntervalFBOs);
-            glGenTextures(cascadeCount + 1, cascadeBuffers);
+
+            TextureDescriptor cascadeBufferDescriptor = TextureDescriptor();
+            cascadeBufferDescriptor.GLType = GL_TEXTURE_2D;
+            cascadeBufferDescriptor.sizedInternalFormat = GL_RGBA16F;
+            cascadeBufferDescriptor.internalFormat = GL_RGBA;
+            cascadeBufferDescriptor.pixelFormat = GL_FLOAT;
+            cascadeBufferDescriptor.width = cascadeStorageSize;
+            cascadeBufferDescriptor.height = cascadeStorageSize;
+            cascadeBufferDescriptor.minFilter = GL_LINEAR;
+            cascadeBufferDescriptor.magFilter = GL_LINEAR;
 
             for (size_t i = 0; i < cascadeCount + 1; i++)
             {
                 glBindFramebuffer(GL_FRAMEBUFFER, cascadeIntervalFBOs[i]);
 
-                glBindTexture(GL_TEXTURE_2D, cascadeBuffers[i]);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, cascadeStorageSize, cascadeStorageSize, 0, GL_RGBA, GL_FLOAT, NULL);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glBindTexture(GL_TEXTURE_2D, 0);
-
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, cascadeBuffers[i], 0);
+                cascadeBuffers[i] = Texture2D(cascadeBufferDescriptor);
+                cascadeBuffers[i].BindToTarget(cascadeIntervalFBOs[i], GL_COLOR_ATTACHMENT0);
 
                 // no depth buffer needed
                 if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -176,25 +178,16 @@ class Radiance2DRenderer : public BaseRenderer
             this->viewportHeight = vpHeight;
             
             glClearColor(1e20f, 0.0, 0.0, 0.0);
-            currentBuffer = 0;
-
-            glBindTexture(GL_TEXTURE_2D, sdfBufferTextures[0]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0);
-
+            
+            sdfBufferTextures[0].Resize(vpWidth, vpHeight);
             glBindFramebuffer(GL_FRAMEBUFFER, SdfFBOs[0]);
             glClear(GL_COLOR_BUFFER_BIT);
 
-            glBindTexture(GL_TEXTURE_2D, sdfBufferTextures[1]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0);
-
+            sdfBufferTextures[1].Resize(vpWidth, vpHeight);
             glBindFramebuffer(GL_FRAMEBUFFER, SdfFBOs[1]);
             glClear(GL_COLOR_BUFFER_BIT);
+
+            currentBuffer = 0;
 
             glClearColor(0.0, 0.0, 0.0, 0.0);
 
@@ -207,11 +200,7 @@ class Radiance2DRenderer : public BaseRenderer
 
             for (size_t i = 0; i < cascadeCount + 1; i++)
             {
-                glBindTexture(GL_TEXTURE_2D, cascadeBuffers[i]);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, cascadeStorageSize, cascadeStorageSize, 0, GL_RGBA, GL_FLOAT, NULL);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glBindTexture(GL_TEXTURE_2D, 0);
+                cascadeBuffers[i].Resize(cascadeStorageSize, cascadeStorageSize);
             }
 
         }
@@ -272,7 +261,6 @@ class Radiance2DRenderer : public BaseRenderer
             captureMouseTask->Start();
 
             glBindFramebuffer(GL_FRAMEBUFFER, SdfFBOs[currentBuffer]);
-            //glClearColor(1e20f, 0.0, 0.0, 0.0);
             glClear(GL_COLOR_BUFFER_BIT);
             glDisable(GL_DEPTH_TEST);
             
@@ -282,7 +270,6 @@ class Radiance2DRenderer : public BaseRenderer
                 mouseData->mouseA = mouseA;
                 mouseData->mouseB = mouseB;
                 mouseData->mouseC = mouseC;
-                
             }
             mouseDataBuffer->EndSetData();
             
@@ -291,8 +278,7 @@ class Radiance2DRenderer : public BaseRenderer
             genSDFShader.SetVec4("brushColor", brushColor);
             screenQuad->BindBuffers();
 
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, sdfBufferTextures[1 - currentBuffer]); 
+            sdfBufferTextures[1 - currentBuffer].BindForRead(0);
             if(drawing) 
             {
                 glDrawArrays(GL_TRIANGLES, 0, 6); 
@@ -300,7 +286,6 @@ class Radiance2DRenderer : public BaseRenderer
             } 
             
             captureMouseTask->End();
-
 
 
             GLint origViewportSize[4];
@@ -325,13 +310,12 @@ class Radiance2DRenderer : public BaseRenderer
 
                 marchCascadeShader.SetInt("cascadeIndex", i);
                 screenQuad->BindBuffers();
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, sdfBufferTextures[1 - currentBuffer]); 
+
+                sdfBufferTextures[1 - currentBuffer].BindForRead(0);
                 glDrawArrays(GL_TRIANGLES, 0, 6); 
             }
 
             marchCascadesTask->End();
-
 
 
             auto mergeCascades = profiler->AddTask("Merge Cascades", Colors::peterRiver);
@@ -352,31 +336,24 @@ class Radiance2DRenderer : public BaseRenderer
                 mergeCascadeShader.SetInt("cascadeIndex", i - 1 ); // upper cascade index
                 screenQuad->BindBuffers();
 
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, cascadeBuffers[i]); // upper cascade // no longer used. swap
-
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, cascadeBuffers[i-1]); // current cascade
+                cascadeBuffers[i].BindForRead(0);
+                cascadeBuffers[i-1].BindForRead(1);
 
                 GLuint tFBO = cascadeIntervalFBOs[i - 1];
-                GLuint tTex = cascadeBuffers[i - 1];
+                Texture2D tTex = std::move(cascadeBuffers[i - 1]);
 
                 cascadeIntervalFBOs[i - 1] = cascadeIntervalFBOs[i + 1];
-                cascadeBuffers[i - 1] = cascadeBuffers[i + 1];
+                cascadeBuffers[i - 1] = std::move(cascadeBuffers[i + 1]);
 
                 cascadeIntervalFBOs[i + 1] = tFBO;
-                cascadeBuffers[i + 1] = tTex;
+                cascadeBuffers[i + 1] = std::move(tTex);
                 
-
                 glDrawArrays(GL_TRIANGLES, 0, 6); 
             }
-            
             mergeCascades->End();
 
 
-
             auto drawSDFTask = profiler->AddTask("Integrate Radiance", Colors::alizarin);
-
             drawSDFTask->Start();
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -391,10 +368,9 @@ class Radiance2DRenderer : public BaseRenderer
             RenderRadianceShader.SetFloat("c0Interval", c0Interval);
             RenderRadianceShader.SetFloat("c0Angular", c0Angular);
             screenQuad->BindBuffers();
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, cascadeBuffers[0]); 
+            
+            cascadeBuffers[0].BindForRead(0);
             glDrawArrays(GL_TRIANGLES, 0, 6);
-
             drawSDFTask->End();  
 
             // For rendering just the input sdf:
@@ -456,21 +432,21 @@ class Radiance2DRenderer : public BaseRenderer
     private:
         unsigned int currentBuffer = 0;
         GLuint SdfFBOs[2];
-        GLuint sdfBufferTextures[2];
+        Texture2D sdfBufferTextures[2];
 
         unsigned int viewportWidth;
         unsigned int viewportHeight;
         unsigned int raymarchRegionSize;
         unsigned int cascadeStorageSize;
 
-
         unsigned int cascadeCount;
         unsigned int c0Interval;
         unsigned int c0Spacing;
         unsigned int c0Angular;
-        GLuint cascadeBuffers[MAX_CASCADES + 1];      //max cascades + 1 temporary buffer cascade for merging
+        
         GLuint cascadeIntervalFBOs[MAX_CASCADES + 1]; //max cascades + 1 temporary buffer cascade for merging
-
+        Texture2D cascadeBuffers[MAX_CASCADES + 1];      //max cascades + 1 temporary buffer cascade for merging
+        
         bool drawing = false;
         float brushRadius = 0.015f;
         float friction = 0.05f;

@@ -24,7 +24,6 @@ class ForwardRenderer : public BaseRenderer
         unsigned int MSAASamples = 4; 
         float tonemapExposure = 1.0f;
 
-
         enum MainPassInputBindings
         {
             SHADOW_MAP_BUFFER0_BINDING = 0,
@@ -76,20 +75,20 @@ class ForwardRenderer : public BaseRenderer
             this->skyRenderer = SkyRenderer();
             this->skyRenderer.RecreateResources();
         
-
-
             //setting up intermediate buffer and screen texture used in the quad
             glGenFramebuffers(1, &intermediateFBO);
             glBindFramebuffer(GL_FRAMEBUFFER, intermediateFBO);
 
             //creating color attachment of screen texture
-            glGenTextures(1, &screenTexture);
-            glBindTexture(GL_TEXTURE_2D, screenTexture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, screenTexture, 0);	
+            TextureDescriptor screenTextureDesc = TextureDescriptor();
+            screenTextureDesc.GLType = GL_TEXTURE_2D;
+            screenTextureDesc.sizedInternalFormat = GL_RGBA16F;
+            screenTextureDesc.internalFormat = GL_RGBA;
+            screenTextureDesc.pixelFormat = GL_FLOAT;
+            screenTextureDesc.width = viewportWidth;
+            screenTextureDesc.height = viewportHeight;
+            screenTexture = Texture2D(screenTextureDesc);
+            screenTexture.BindToTarget(intermediateFBO, GL_COLOR_ATTACHMENT0);	
 
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             {
@@ -99,27 +98,25 @@ class ForwardRenderer : public BaseRenderer
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
-
-
             // Setting MSAA framebuffer
             glEnable(GL_MULTISAMPLE);
-            //get the shaders used by the scene
             glGenFramebuffers(1, &multisampledFBO);
             glBindFramebuffer(GL_FRAMEBUFFER, multisampledFBO);
 
             //setting the multisampled color attachment GL_RGBA16F
-            glGenTextures(1, &MSAATextureColorBuffer);
-            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, MSAATextureColorBuffer);
-            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MSAASamples, GL_RGBA16F, viewportWidth, viewportHeight, GL_TRUE);
-            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, MSAATextureColorBuffer, 0);
+            TextureDescriptor MSAAColorTextureDesc = TextureDescriptor();
+            MSAAColorTextureDesc.GLType = GL_TEXTURE_2D_MULTISAMPLE;
+            MSAAColorTextureDesc.sizedInternalFormat = GL_RGBA16F;
+            MSAAColorTextureDesc.internalFormat = GL_RGBA;
+            MSAAColorTextureDesc.pixelFormat = GL_FLOAT;
+            MSAAColorTextureDesc.width = viewportWidth;
+            MSAAColorTextureDesc.height = viewportHeight;
+            MSAATextureColorBuffer = Texture2DMultisampled(MSAAColorTextureDesc, MSAASamples);
+            MSAATextureColorBuffer.BindToTarget(multisampledFBO, GL_COLOR_ATTACHMENT0);
             
             //setting the depth and stencil attachments (with multisampling) 
-            glGenRenderbuffers(1, &MSAADepthStencilRBO); 
-            glBindRenderbuffer(GL_RENDERBUFFER, MSAADepthStencilRBO);
-            glRenderbufferStorageMultisample(GL_RENDERBUFFER, MSAASamples, GL_DEPTH24_STENCIL8, viewportWidth, viewportHeight);
-            glBindRenderbuffer(GL_RENDERBUFFER, 0);
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, MSAADepthStencilRBO);
+            MSAADepthStencilRBO = RenderBuffer2DMultisample(GL_DEPTH24_STENCIL8, viewportWidth, viewportHeight, MSAASamples);
+            MSAADepthStencilRBO.BindToTarget(multisampledFBO, GL_DEPTH_STENCIL_ATTACHMENT);
 
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             {
@@ -136,20 +133,10 @@ class ForwardRenderer : public BaseRenderer
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
 
-            glBindTexture(GL_TEXTURE_2D, screenTexture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, vpWidth, vpHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0); 
-            
-            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, MSAATextureColorBuffer);
-            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MSAASamples, GL_RGBA16F, vpWidth, vpHeight, GL_TRUE);
-            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0); 
+            screenTexture.Resize(vpWidth, vpHeight);
 
-
-            glBindRenderbuffer(GL_RENDERBUFFER, MSAADepthStencilRBO);
-            glRenderbufferStorageMultisample(GL_RENDERBUFFER, MSAASamples, GL_DEPTH24_STENCIL8, vpWidth, vpHeight);
-            glBindRenderbuffer(GL_RENDERBUFFER, 0);
+            MSAATextureColorBuffer.Resize(vpWidth, vpHeight);
+            MSAADepthStencilRBO.Resize(vpWidth, vpHeight);
         }
 
 
@@ -295,8 +282,8 @@ class ForwardRenderer : public BaseRenderer
                 {
                     diffuseBinding = std::min(diffuseBinding, (unsigned int)NORMAL_TEXTURE0_BINDING);
                     
-                    auto path = materialInstance->GetDiffuseMapName(i);
-                    scene->GetTexture(path).SetBinding(diffuseBinding);
+                    auto texName = materialInstance->GetDiffuseMapName(i);
+                    scene->GetTexture(texName).BindForRead(diffuseBinding);
                     
                     diffuseBinding++;
                 }
@@ -304,8 +291,8 @@ class ForwardRenderer : public BaseRenderer
                 for (unsigned int i = 0; i < materialInstance->GetNumTextures(OP_TEXTURE_NORMAL); i++)
                 {
                     normalBinding = std::min(normalBinding++, (unsigned int)SPECULAR_TEXTURE0_BINDING);
-                    auto path = materialInstance->GetNormalMapName(i);
-                    scene->GetTexture(path).SetBinding(normalBinding);
+                    auto texName = materialInstance->GetNormalMapName(i);
+                    scene->GetTexture(texName).BindForRead(normalBinding);
                     
                     normalBinding++;
                 }
@@ -313,8 +300,8 @@ class ForwardRenderer : public BaseRenderer
                 for (unsigned int i = 0; i < materialInstance->GetNumTextures(OP_TEXTURE_SPECULAR); i++)
                 {
                     //specularBinding = std::min(specularBinding++, (unsigned int)SPECULAR_TEXTURE0_BINDING);
-                    auto path = materialInstance->GetSpecularMapName(i);
-                    scene->GetTexture(path).SetBinding(specularBinding);
+                    auto texName = materialInstance->GetSpecularMapName(i);
+                    scene->GetTexture(texName).BindForRead(specularBinding);
                     
                     specularBinding++;
                 }
@@ -353,8 +340,7 @@ class ForwardRenderer : public BaseRenderer
             postProcessShader.UseProgram();
             postProcessShader.SetFloat("exposure", tonemapExposure);
             screenQuad->BindBuffers();
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, screenTexture); 
+            screenTexture.BindForRead(0);
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
             finalTask->End();
@@ -425,11 +411,12 @@ class ForwardRenderer : public BaseRenderer
         unsigned int viewportWidth;
         unsigned int viewportHeight;
 
-        GLuint screenTexture;
+        //GLuint screenTexture;
+        Texture2D screenTexture;
 
         unsigned int multisampledFBO, intermediateFBO;
-        unsigned int MSAATextureColorBuffer;
-        unsigned int MSAADepthStencilRBO;
+        Texture2DMultisampled MSAATextureColorBuffer;
+        RenderBuffer2DMultisample MSAADepthStencilRBO;
 
         StandardShader simpleDepthPass;
 

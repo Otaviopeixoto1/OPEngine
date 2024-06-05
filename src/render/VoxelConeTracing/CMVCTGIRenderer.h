@@ -26,7 +26,7 @@ class CMVCTGIRenderer : public BaseRenderer
         static constexpr int MAX_DIR_LIGHTS = 5;
         static constexpr int MAX_POINT_LIGHTS = 20;
 
-        static constexpr glm::vec3 voxelWorldScale = glm::vec3(0.2,0.2,0.2); //0.025,0.025,0.025 //sponza
+        static constexpr glm::vec3 voxelWorldScale = glm::vec3(0.025,0.025,0.025); //0.025,0.025,0.025 //sponza
         
 
         enum CMVCTGIShadowRenderer
@@ -51,7 +51,13 @@ class CMVCTGIRenderer : public BaseRenderer
         int maxLOD = 10;
 
 
-        enum gBufferPassBindings
+        enum GBufferPassInputBindings
+        {
+            DIFFUSE_TEXTURE0_BINDING = 1,
+            NORMAL_TEXTURE0_BINDING = 2,
+            SPECULAR_TEXTURE0_BINDING = 4,
+        };
+        enum GBufferPassOutputBindings
         {
             G_COLOR_SPEC_BUFFER_BINDING = 0,
             G_NORMAL_BUFFER_BINDING = 1,
@@ -149,39 +155,31 @@ class CMVCTGIRenderer : public BaseRenderer
             glGenFramebuffers(1, &gBufferFBO);
             glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
 
+            TextureDescriptor gBufferTexDescriptor = TextureDescriptor();
+            gBufferTexDescriptor.GLType = GL_TEXTURE_2D;
+            gBufferTexDescriptor.sizedInternalFormat = GL_RGBA16F;
+            gBufferTexDescriptor.internalFormat = GL_RGBA;
+            gBufferTexDescriptor.pixelFormat = GL_FLOAT;
+            gBufferTexDescriptor.width = viewportWidth;
+            gBufferTexDescriptor.height = viewportHeight;
+            gBufferTexDescriptor.minFilter = GL_LINEAR;
+            gBufferTexDescriptor.magFilter = GL_LINEAR;
+
             // 1) HDR color + specular buffer attachment 
-            glGenTextures(1, &gColorBuffer);
-            glBindTexture(GL_TEXTURE_2D, gColorBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + G_COLOR_SPEC_BUFFER_BINDING, GL_TEXTURE_2D, gColorBuffer, 0);
+            gColorBuffer = Texture2D(gBufferTexDescriptor);
+            gColorBuffer.BindToTarget(gBufferFBO, GL_COLOR_ATTACHMENT0 + G_COLOR_SPEC_BUFFER_BINDING);
             
             // 2) View space normal buffer attachment 
-            glGenTextures(1, &gNormalBuffer);
-            glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + G_NORMAL_BUFFER_BINDING, GL_TEXTURE_2D, gNormalBuffer, 0);
+            gNormalBuffer = Texture2D(gBufferTexDescriptor);
+            gNormalBuffer.BindToTarget(gBufferFBO, GL_COLOR_ATTACHMENT0 + G_NORMAL_BUFFER_BINDING);
 
             // 3) View space position buffer attachment 
-            glGenTextures(1, &gPositionBuffer);
-            glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + G_POSITION_BUFFER_BINDING, GL_TEXTURE_2D, gPositionBuffer, 0);
+            gPositionBuffer = Texture2D(gBufferTexDescriptor);
+            gPositionBuffer.BindToTarget(gBufferFBO, GL_COLOR_ATTACHMENT0 + G_POSITION_BUFFER_BINDING);
 
             //setting the depth and stencil attachments
-            glGenRenderbuffers(1, &depthStencilBuffer); 
-            glBindRenderbuffer(GL_RENDERBUFFER, depthStencilBuffer);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, viewportWidth, viewportHeight);
-            glBindRenderbuffer(GL_RENDERBUFFER, 0);
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencilBuffer);
+            depthStencilBuffer = RenderBuffer2D(GL_DEPTH24_STENCIL8, viewportWidth, viewportHeight);
+            depthStencilBuffer.BindToTarget(gBufferFBO, GL_DEPTH_STENCIL_ATTACHMENT);
 
 
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -242,18 +240,22 @@ class CMVCTGIRenderer : public BaseRenderer
             glGenFramebuffers(1, &lightAccumulationFBO);
             glBindFramebuffer(GL_FRAMEBUFFER, lightAccumulationFBO);
 
-            glGenTextures(1, &lightAccumulationTexture);
-            glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0); 
+            TextureDescriptor lightBufferDescriptor = TextureDescriptor();
+            lightBufferDescriptor.GLType = GL_TEXTURE_2D;
+            lightBufferDescriptor.sizedInternalFormat = GL_RGBA16F;
+            lightBufferDescriptor.internalFormat = GL_RGBA;
+            lightBufferDescriptor.pixelFormat = GL_FLOAT;
+            lightBufferDescriptor.width = viewportWidth;
+            lightBufferDescriptor.height = viewportHeight;
+            lightBufferDescriptor.minFilter = GL_LINEAR;
+            lightBufferDescriptor.magFilter = GL_LINEAR;
 
-            // Bind the accumulation texture, making sure it will be a different binding from those               (this is probably not necessary)
-            // that will be used for the gbuffer textures that will be sampled on the accumulation pass
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, lightAccumulationTexture, 0);
+            lightAccumulationBuffer = Texture2D(lightBufferDescriptor);
+            lightAccumulationBuffer.BindToTarget(lightAccumulationFBO, GL_COLOR_ATTACHMENT0);
+
             // Bind the same depth buffer for drawing light volumes
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencilBuffer);
+            depthStencilBuffer.BindToTarget(lightAccumulationFBO, GL_DEPTH_STENCIL_ATTACHMENT);
+
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             {
                 throw RendererException("ERROR::FRAMEBUFFER:: Intermediate Framebuffer is incomplete");
@@ -265,17 +267,18 @@ class CMVCTGIRenderer : public BaseRenderer
             glGenFramebuffers(1, &postProcessFBO);
             glBindFramebuffer(GL_FRAMEBUFFER, postProcessFBO);
 
-            glGenTextures(1, &postProcessColorBuffer);
-            glBindTexture(GL_TEXTURE_2D, postProcessColorBuffer);
-            // Clamped between 0 and 1 (no longer needs to be a floating point buffer)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0);
+            TextureDescriptor postProcessBufferDescriptor = TextureDescriptor();
+            postProcessBufferDescriptor.GLType = GL_TEXTURE_2D;
+            postProcessBufferDescriptor.sizedInternalFormat = GL_RGBA16F;
+            postProcessBufferDescriptor.internalFormat = GL_RGBA;
+            postProcessBufferDescriptor.pixelFormat = GL_FLOAT;
+            postProcessBufferDescriptor.width = viewportWidth;
+            postProcessBufferDescriptor.height = viewportHeight;
+            postProcessBufferDescriptor.minFilter = GL_LINEAR;
+            postProcessBufferDescriptor.magFilter = GL_LINEAR;
 
-            // This texture will not have a special binding, instead we just bind to 0 (the standard binding)
-            // as currently we dont use the gBuffer in this pass (no bind conflicts)
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, postProcessColorBuffer, 0);
+            postProcessColorBuffer = Texture2D(postProcessBufferDescriptor);
+            postProcessColorBuffer.BindToTarget(postProcessFBO, GL_COLOR_ATTACHMENT0);
 
             // no depth buffer needed
 
@@ -292,39 +295,14 @@ class CMVCTGIRenderer : public BaseRenderer
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
 
-            glBindTexture(GL_TEXTURE_2D, gColorBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, vpWidth, vpHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glBindTexture(GL_TEXTURE_2D, 0); 
+            gColorBuffer.Resize(vpWidth, vpHeight);
+            gNormalBuffer.Resize(vpWidth, vpHeight);
+            gPositionBuffer.Resize(vpWidth, vpHeight);
+            
+            depthStencilBuffer.Resize(vpWidth, vpHeight);
 
-            glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, vpWidth, vpHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glBindTexture(GL_TEXTURE_2D, 0); 
-
-            glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, vpWidth, vpHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glBindTexture(GL_TEXTURE_2D, 0); 
-
-            glBindRenderbuffer(GL_RENDERBUFFER, depthStencilBuffer);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, vpWidth, vpHeight);
-            glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-            glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glBindTexture(GL_TEXTURE_2D, 0); 
-
-            glBindTexture(GL_TEXTURE_2D, postProcessColorBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0);
+            lightAccumulationBuffer.Resize(vpWidth, vpHeight);
+            postProcessColorBuffer.Resize(vpWidth, vpHeight);
         }
 
 
@@ -335,12 +313,10 @@ class CMVCTGIRenderer : public BaseRenderer
             glDepthMask(GL_TRUE);
             glEnable(GL_DEPTH_TEST);
 
-
             glm::mat4 projectionMatrix = camera.GetProjectionMatrix();
             glm::mat4 viewMatrix = camera.GetViewMatrix();
             glm::mat4 inverseViewMatrix = glm::inverse(viewMatrix);
             GlobalLightData lights = scene->GetLightData(viewMatrix);
-
 
             FrameResources frameResources = FrameResources();
             frameResources.viewportHeight = viewportHeight;
@@ -352,7 +328,6 @@ class CMVCTGIRenderer : public BaseRenderer
             frameResources.projectionMatrix = projectionMatrix;
             frameResources.lightData = &lights;
             frameResources.shaderMemoryPool = &shaderMemoryPool;
-
 
             auto globalMatricesBuffer = shaderMemoryPool.GetUniformBuffer("GlobalMatrices");
             GlobalMatrices *globalMatrices = globalMatricesBuffer->BeginSetData<GlobalMatrices>();
@@ -368,7 +343,6 @@ class CMVCTGIRenderer : public BaseRenderer
             }
             globalMatricesBuffer->EndSetData();
 
-            
             auto lightDataBuffer = shaderMemoryPool.GetUniformBuffer("LightData");
             LightData *lightData = lightDataBuffer->BeginSetData<LightData>();
             {
@@ -392,7 +366,6 @@ class CMVCTGIRenderer : public BaseRenderer
             }
             lightDataBuffer->EndSetData();
             
-
             // 1) Shadow Map Rendering Pass:
             // -----------------------------
             auto shadowTask = profiler->AddTask("Shadow Pass", Colors::sunFlower);
@@ -414,7 +387,6 @@ class CMVCTGIRenderer : public BaseRenderer
                     break;
             }
             shadowTask->End();
-
 
             // 2) gBuffer Pass:
             // ----------------
@@ -464,7 +436,6 @@ class CMVCTGIRenderer : public BaseRenderer
 
                 // Setting object-related properties
                 // ---------------------------------
-
                 auto materialPropertiesBuffer = shaderMemoryPool.GetUniformBuffer("MaterialProperties");
                 materialPropertiesBuffer->SetData(0, sizeof(MaterialProperties), &(materialInstance->properties));
 
@@ -473,51 +444,41 @@ class CMVCTGIRenderer : public BaseRenderer
                 localMatricesBuffer->SetData( 0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
                 localMatricesBuffer->SetData( sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
 
-
                 //Bind all textures
-                unsigned int diffuseNr = 1;
-                unsigned int specularNr = 1;
-                unsigned int normalNr = 1;
-                /*
-                for (unsigned int i = 0; i < materialInstance->numTextures; i++)
+                unsigned int diffuseBinding = DIFFUSE_TEXTURE0_BINDING;
+                unsigned int normalBinding = NORMAL_TEXTURE0_BINDING;
+                unsigned int specularBinding = SPECULAR_TEXTURE0_BINDING;
+
+                for (unsigned int i = 0; i < materialInstance->GetNumTextures(OP_TEXTURE_DIFFUSE); i++)
                 {
-                    Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
+                    diffuseBinding = std::min(diffuseBinding, (unsigned int)NORMAL_TEXTURE0_BINDING);
+                    
+                    auto texName = materialInstance->GetDiffuseMapName(i);
+                    scene->GetTexture(texName).BindForRead(diffuseBinding);
+                    
+                    diffuseBinding++;
+                }
 
-                    // activate proper texture unit before binding
-                    glActiveTexture(GL_TEXTURE0 + i); 
+                for (unsigned int i = 0; i < materialInstance->GetNumTextures(OP_TEXTURE_NORMAL); i++)
+                {
+                    normalBinding = std::min(normalBinding++, (unsigned int)SPECULAR_TEXTURE0_BINDING);
+                    auto texName = materialInstance->GetNormalMapName(i);
+                    scene->GetTexture(texName).BindForRead(normalBinding);
+                    
+                    normalBinding++;
+                }
 
-                    std::string number;
-                    TextureType type = texture.type;
-                    std::string name;
-
-                    switch (type)
-                    {
-                        case OP_TEXTURE_DIFFUSE:
-                            number = std::to_string(diffuseNr++);
-                            name = "texture_diffuse";
-                            break;
-                        case OP_TEXTURE_SPECULAR:
-                            number = std::to_string(specularNr++);
-                            name = "texture_specular";
-                            break;
-                        case OP_TEXTURE_NORMAL:
-                            number = std::to_string(normalNr++);
-                            name = "texture_normal";
-                            break;
-                        
-                        default:
-                            number = "";
-                            name = "texture_unidentified";
-                            break;
-                    }
-
-                    activeShader.SetSamplerBinding((name + number).c_str(), i);
-                    glBindTexture(GL_TEXTURE_2D, texture.id);
-                }*/
+                for (unsigned int i = 0; i < materialInstance->GetNumTextures(OP_TEXTURE_SPECULAR); i++)
+                {
+                    //specularBinding = std::min(specularBinding++, (unsigned int)SPECULAR_TEXTURE0_BINDING);
+                    auto texName = materialInstance->GetSpecularMapName(i);
+                    scene->GetTexture(texName).BindForRead(specularBinding);
+                    
+                    specularBinding++;
+                }
                 
                 //bind VAO
                 mesh->BindBuffers();
-
                 //Indexed drawing
                 glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
             });  
@@ -606,37 +567,15 @@ class CMVCTGIRenderer : public BaseRenderer
 
                 // Update model and normal matrices:
                 auto localMatricesBuffer = shaderMemoryPool.GetUniformBuffer("LocalMatrices");
-                localMatricesBuffer->SetData( 0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
-                localMatricesBuffer->SetData( sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
+                localMatricesBuffer->SetData(0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
+                localMatricesBuffer->SetData(sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
 
-
-
-                //Bind all textures
-                unsigned int diffuseNr = 1;
-                unsigned int specularNr = 1;
-                unsigned int normalNr = 1;
-                /*
-                for (unsigned int i = 0; i < materialInstance->numTextures; i++)
+                if (materialInstance->GetNumTextures(OP_TEXTURE_DIFFUSE) > 0)
                 {
-                    Texture texture = scene->GetTexture(materialInstance->GetTexturePath(i));
-
-                    // activate proper texture unit before binding
-                    glActiveTexture(GL_TEXTURE0 + VX_COLOR_SPEC_BINDING); 
-
-                    std::string number;
-                    TextureType type = texture.type;
-
-                    if (texture.type == OP_TEXTURE_DIFFUSE)
-                    {
-                        voxelizationShader.SetSamplerBinding("texture_diffuse1", 0);
-                        glBindTexture(GL_TEXTURE_2D, texture.id);
-                        break;
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                }*/
+                    auto texName = materialInstance->GetDiffuseMapName(0);
+                    scene->GetTexture(texName).BindForRead(VX_COLOR_SPEC_BINDING);
+                }
+                
                 
                 //bind VAO
                 mesh->BindBuffers();
@@ -804,7 +743,7 @@ class CMVCTGIRenderer : public BaseRenderer
             postProcessShader.SetFloat("exposure", tonemapExposure);
             screenQuad->BindBuffers();
             glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture); 
+            glBindTexture(GL_TEXTURE_2D, lightAccumulationBuffer); 
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
             postProcessTask->End();
@@ -837,6 +776,10 @@ class CMVCTGIRenderer : public BaseRenderer
 
             defaultVertFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/deferred/gBufferTextured.frag");
             defaultVertFrag.BuildProgram();
+            defaultVertFrag.UseProgram();
+            defaultVertFrag.SetSamplerBinding("texture_diffuse1", DIFFUSE_TEXTURE0_BINDING);
+            defaultVertFrag.SetSamplerBinding("texture_normal1", NORMAL_TEXTURE0_BINDING);
+            defaultVertFrag.SetSamplerBinding("texture_specular1", SPECULAR_TEXTURE0_BINDING);
             defaultVertFrag.BindUniformBlocks(bufferBindings);
 
 
@@ -847,11 +790,19 @@ class CMVCTGIRenderer : public BaseRenderer
                 defaultVertNormalTexFrag.AddPreProcessorDefines(&s,1);
             }
             defaultVertNormalTexFrag.BuildProgram();
+            defaultVertNormalTexFrag.UseProgram();
+            defaultVertNormalTexFrag.SetSamplerBinding("texture_diffuse1", DIFFUSE_TEXTURE0_BINDING);
+            defaultVertNormalTexFrag.SetSamplerBinding("texture_normal1", NORMAL_TEXTURE0_BINDING);
+            defaultVertNormalTexFrag.SetSamplerBinding("texture_specular1", SPECULAR_TEXTURE0_BINDING);
             defaultVertNormalTexFrag.BindUniformBlocks(bufferBindings);
 
 
             defaultVertUnlitFrag = StandardShader(BASE_DIR"/data/shaders/defaultVert.vert", BASE_DIR"/data/shaders/UnlitAlbedoFrag.frag");
             defaultVertUnlitFrag.BuildProgram();
+            defaultVertUnlitFrag.UseProgram();
+            defaultVertUnlitFrag.SetSamplerBinding("texture_diffuse1", DIFFUSE_TEXTURE0_BINDING);
+            defaultVertUnlitFrag.SetSamplerBinding("texture_normal1", NORMAL_TEXTURE0_BINDING);
+            defaultVertUnlitFrag.SetSamplerBinding("texture_specular1", SPECULAR_TEXTURE0_BINDING);
             defaultVertUnlitFrag.BindUniformBlocks(bufferBindings);
 
 
@@ -935,14 +886,13 @@ class CMVCTGIRenderer : public BaseRenderer
         unsigned int viewportHeight;
 
         GLuint gBufferFBO;
-        GLuint gColorBuffer, gNormalBuffer, gPositionBuffer;
-        GLuint depthStencilBuffer;
+        Texture2D gColorBuffer, gNormalBuffer, gPositionBuffer;
+        RenderBuffer2D depthStencilBuffer;
 
-        GLuint lightAccumulationFBO;
-        GLuint lightAccumulationTexture;
+        GLuint lightAccumulationFBO, postProcessFBO;
+        Texture2D lightAccumulationBuffer;
+        Texture2D postProcessColorBuffer;
 
-        GLuint postProcessFBO;
-        GLuint postProcessColorBuffer;
 
         #pragma pack(push, 1)
         struct GlobalMatrices

@@ -150,7 +150,7 @@ void main()
 
 	vec4 color = SampleColor().rgba;
 	//color.rgb *= shadow;
-	color.rgb *= diff * shadow;
+	//color.rgb *= diff * shadow;
 	
 	
 	uint outData = packARGB8(data);
@@ -193,5 +193,5 @@ void main()
 		nextUint = packUnorm4x8(avg);
 
 		curUint = imageAtomicCompSwap(voxel3DData, voxelCoord, prevUint, nextUint);
-	}
+	}								// image      P            compare    data
 }

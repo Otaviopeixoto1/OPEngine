@@ -64,7 +64,6 @@ class DeferredRenderer : public BaseRenderer
             preprocessorDefines.push_back("MAX_POINT_LIGHTS " + std::to_string(MAX_POINT_LIGHTS));
             preprocessorDefines.push_back("SHADOW_CASCADE_COUNT " + std::to_string(SHADOW_CASCADE_COUNT));
 
-
             // Shadow maps:
             if (enableShadowMapping)
             {
@@ -82,48 +81,38 @@ class DeferredRenderer : public BaseRenderer
             this->skyRenderer = SkyRenderer();
             this->skyRenderer.RecreateResources();
 
-
             MeshData PointVolData = MeshData::LoadMeshDataFromFile(BASE_DIR "/data/models/light_volumes/pointLightVolume_ico.obj");
             pointLightVolume = std::make_shared<Mesh>(PointVolData);
-
 
             // gBuffer:
             glGenFramebuffers(1, &gBufferFBO);
             glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
+            
+            TextureDescriptor gBufferTexDescriptor = TextureDescriptor();
+            gBufferTexDescriptor.GLType = GL_TEXTURE_2D;
+            gBufferTexDescriptor.sizedInternalFormat = GL_RGBA16F;
+            gBufferTexDescriptor.internalFormat = GL_RGBA;
+            gBufferTexDescriptor.pixelFormat = GL_FLOAT;
+            gBufferTexDescriptor.width = viewportWidth;
+            gBufferTexDescriptor.height = viewportHeight;
+            gBufferTexDescriptor.minFilter = GL_LINEAR;
+            gBufferTexDescriptor.magFilter = GL_LINEAR;
 
             // 1) HDR color + specular buffer attachment 
-            glGenTextures(1, &gColorBuffer);
-            glBindTexture(GL_TEXTURE_2D, gColorBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + COLOR_SPEC_BUFFER_BINDING, GL_TEXTURE_2D, gColorBuffer, 0);
+            gColorBuffer = Texture2D(gBufferTexDescriptor);
+            gColorBuffer.BindToTarget(gBufferFBO, GL_COLOR_ATTACHMENT0 + COLOR_SPEC_BUFFER_BINDING);
             
             // 2) View space normal buffer attachment 
-            glGenTextures(1, &gNormalBuffer);
-            glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + NORMAL_BUFFER_BINDING, GL_TEXTURE_2D, gNormalBuffer, 0);
+            gNormalBuffer = Texture2D(gBufferTexDescriptor);
+            gNormalBuffer.BindToTarget(gBufferFBO, GL_COLOR_ATTACHMENT0 + NORMAL_BUFFER_BINDING);
 
             // 3) View space position buffer attachment 
-            glGenTextures(1, &gPositionBuffer);
-            glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0); 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + POSITION_BUFFER_BINDING, GL_TEXTURE_2D, gPositionBuffer, 0);
+            gPositionBuffer = Texture2D(gBufferTexDescriptor);
+            gPositionBuffer.BindToTarget(gBufferFBO, GL_COLOR_ATTACHMENT0 + POSITION_BUFFER_BINDING);
 
             //setting the depth and stencil attachments
-            glGenRenderbuffers(1, &depthStencilBuffer); 
-            glBindRenderbuffer(GL_RENDERBUFFER, depthStencilBuffer);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, viewportWidth, viewportHeight);
-            glBindRenderbuffer(GL_RENDERBUFFER, 0);
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencilBuffer);
+            depthStencilBuffer = RenderBuffer2D(GL_DEPTH24_STENCIL8, viewportWidth, viewportHeight);
+            depthStencilBuffer.BindToTarget(gBufferFBO, GL_DEPTH_STENCIL_ATTACHMENT);
 
 
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -139,24 +128,26 @@ class DeferredRenderer : public BaseRenderer
             glDrawBuffers(3, attachments);
 
 
-
-
             // Light Accumulation:
             glGenFramebuffers(1, &lightAccumulationFBO);
             glBindFramebuffer(GL_FRAMEBUFFER, lightAccumulationFBO);
 
-            glGenTextures(1, &lightAccumulationTexture);
-            glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0); 
+            TextureDescriptor lightBufferDescriptor = TextureDescriptor();
+            lightBufferDescriptor.GLType = GL_TEXTURE_2D;
+            lightBufferDescriptor.sizedInternalFormat = GL_RGBA16F;
+            lightBufferDescriptor.internalFormat = GL_RGBA;
+            lightBufferDescriptor.pixelFormat = GL_FLOAT;
+            lightBufferDescriptor.width = viewportWidth;
+            lightBufferDescriptor.height = viewportHeight;
+            lightBufferDescriptor.minFilter = GL_LINEAR;
+            lightBufferDescriptor.magFilter = GL_LINEAR;
 
-            // Bind the accumulation texture, making sure it will be a different binding from those               (this is probably not necessary)
-            // that will be used for the gbuffer textures that will be sampled on the accumulation pass
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, lightAccumulationTexture, 0);
+            lightAccumulationBuffer = Texture2D(lightBufferDescriptor);
+            lightAccumulationBuffer.BindToTarget(lightAccumulationFBO, GL_COLOR_ATTACHMENT0);
+
             // Bind the same depth buffer for drawing light volumes
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencilBuffer);
+            depthStencilBuffer.BindToTarget(lightAccumulationFBO, GL_DEPTH_STENCIL_ATTACHMENT);
+
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             {
                 throw RendererException("ERROR::FRAMEBUFFER:: Intermediate Framebuffer is incomplete");
@@ -170,17 +161,18 @@ class DeferredRenderer : public BaseRenderer
             glGenFramebuffers(1, &postProcessFBO);
             glBindFramebuffer(GL_FRAMEBUFFER, postProcessFBO);
 
-            glGenTextures(1, &postProcessColorBuffer);
-            glBindTexture(GL_TEXTURE_2D, postProcessColorBuffer);
-            // Clamped between 0 and 1 (no longer needs to be a floating point buffer)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0);
+            TextureDescriptor postProcessBufferDescriptor = TextureDescriptor();
+            postProcessBufferDescriptor.GLType = GL_TEXTURE_2D;
+            postProcessBufferDescriptor.sizedInternalFormat = GL_RGBA16F;
+            postProcessBufferDescriptor.internalFormat = GL_RGBA;
+            postProcessBufferDescriptor.pixelFormat = GL_FLOAT;
+            postProcessBufferDescriptor.width = viewportWidth;
+            postProcessBufferDescriptor.height = viewportHeight;
+            postProcessBufferDescriptor.minFilter = GL_LINEAR;
+            postProcessBufferDescriptor.magFilter = GL_LINEAR;
 
-            // This texture will not have a special binding, instead we just bind to 0 (the standard binding)
-            // as currently we dont use the gBuffer in this pass (no bind conflicts)
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, postProcessColorBuffer, 0);
+            postProcessColorBuffer = Texture2D(postProcessBufferDescriptor);
+            postProcessColorBuffer.BindToTarget(postProcessFBO, GL_COLOR_ATTACHMENT0);
 
             // no depth buffer needed
 
@@ -197,42 +189,14 @@ class DeferredRenderer : public BaseRenderer
             this->viewportWidth = vpWidth;
             this->viewportHeight = vpHeight;
 
-            glBindTexture(GL_TEXTURE_2D, gColorBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, vpWidth, vpHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glBindTexture(GL_TEXTURE_2D, 0); 
+            gColorBuffer.Resize(vpWidth, vpHeight);
+            gNormalBuffer.Resize(vpWidth, vpHeight);
+            gPositionBuffer.Resize(vpWidth, vpHeight);
+            
+            depthStencilBuffer.Resize(vpWidth, vpHeight);
 
-
-            glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, vpWidth, vpHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glBindTexture(GL_TEXTURE_2D, 0); 
-
-
-            glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, vpWidth, vpHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glBindTexture(GL_TEXTURE_2D, 0); 
-
-
-            glBindRenderbuffer(GL_RENDERBUFFER, depthStencilBuffer);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, vpWidth, vpHeight);
-            glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-            glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glBindTexture(GL_TEXTURE_2D, 0); 
-
-            glBindTexture(GL_TEXTURE_2D, postProcessColorBuffer);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, viewportWidth, viewportHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D, 0);
+            lightAccumulationBuffer.Resize(vpWidth, vpHeight);
+            postProcessColorBuffer.Resize(vpWidth, vpHeight);
         }
 
 
@@ -365,10 +329,6 @@ class DeferredRenderer : public BaseRenderer
 
 
                 //Bind all textures
-                unsigned int diffuseNr = 1;
-                unsigned int specularNr = 1;
-                unsigned int normalNr = 1;
-
                 unsigned int diffuseBinding = DIFFUSE_TEXTURE0_BINDING;
                 unsigned int normalBinding = NORMAL_TEXTURE0_BINDING;
                 unsigned int specularBinding = SPECULAR_TEXTURE0_BINDING;
@@ -377,8 +337,8 @@ class DeferredRenderer : public BaseRenderer
                 {
                     diffuseBinding = std::min(diffuseBinding, (unsigned int)NORMAL_TEXTURE0_BINDING);
                     
-                    auto path = materialInstance->GetDiffuseMapName(i);
-                    scene->GetTexture(path).SetBinding(diffuseBinding);
+                    auto texName = materialInstance->GetDiffuseMapName(i);
+                    scene->GetTexture(texName).BindForRead(diffuseBinding);
                     
                     diffuseBinding++;
                 }
@@ -386,8 +346,8 @@ class DeferredRenderer : public BaseRenderer
                 for (unsigned int i = 0; i < materialInstance->GetNumTextures(OP_TEXTURE_NORMAL); i++)
                 {
                     normalBinding = std::min(normalBinding++, (unsigned int)SPECULAR_TEXTURE0_BINDING);
-                    auto path = materialInstance->GetNormalMapName(i);
-                    scene->GetTexture(path).SetBinding(normalBinding);
+                    auto texName = materialInstance->GetNormalMapName(i);
+                    scene->GetTexture(texName).BindForRead(normalBinding);
                     
                     normalBinding++;
                 }
@@ -395,8 +355,8 @@ class DeferredRenderer : public BaseRenderer
                 for (unsigned int i = 0; i < materialInstance->GetNumTextures(OP_TEXTURE_SPECULAR); i++)
                 {
                     //specularBinding = std::min(specularBinding++, (unsigned int)SPECULAR_TEXTURE0_BINDING);
-                    auto path = materialInstance->GetSpecularMapName(i);
-                    scene->GetTexture(path).SetBinding(specularBinding);
+                    auto texName = materialInstance->GetSpecularMapName(i);
+                    scene->GetTexture(texName).BindForRead(specularBinding);
                     
                     specularBinding++;
                 }
@@ -420,13 +380,11 @@ class DeferredRenderer : public BaseRenderer
 
             // Binding the gBuffer textures:
             //these binding dont have to be the same as the gbuffer bindings but it will be better follow a convention
-            glActiveTexture(GL_TEXTURE0 + COLOR_SPEC_BUFFER_BINDING);
-            glBindTexture(GL_TEXTURE_2D, gColorBuffer); 
-            glActiveTexture(GL_TEXTURE0 + NORMAL_BUFFER_BINDING);
-            glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
-            glActiveTexture(GL_TEXTURE0 + POSITION_BUFFER_BINDING);
-            glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
-            glActiveTexture(GL_TEXTURE0 + SHADOW_MAP_BUFFER0_BINDING);
+            gColorBuffer.BindForRead(COLOR_SPEC_BUFFER_BINDING);
+            gNormalBuffer.BindForRead(NORMAL_BUFFER_BINDING);
+            gPositionBuffer.BindForRead(POSITION_BUFFER_BINDING);
+
+            glActiveTexture(GL_TEXTURE0 + SHADOW_MAP_BUFFER0_BINDING); //Use shadowRenderer.GetOutput to bind it here
             glBindTexture(shadowOut.texType0, shadowOut.shadowMap0);
             
             // Light Volumes: Render all point light volumes
@@ -529,8 +487,8 @@ class DeferredRenderer : public BaseRenderer
                 materialPropertiesBuffer->SetData(0, sizeof(MaterialProperties), &(materialInstance->properties));
 
                 auto localMatricesBuffer = shaderMemoryPool.GetUniformBuffer("LocalMatrices"); 
-                localMatricesBuffer->SetData( 0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
-                localMatricesBuffer->SetData( sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
+                localMatricesBuffer->SetData(0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
+                localMatricesBuffer->SetData(sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
 
 
                 mesh->BindBuffers();
@@ -553,8 +511,7 @@ class DeferredRenderer : public BaseRenderer
             postProcessShader.UseProgram();
             postProcessShader.SetFloat("exposure", tonemapExposure);
             screenQuad->BindBuffers();
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, lightAccumulationTexture); 
+            lightAccumulationBuffer.BindForRead(0);
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
             postProcessTask->End();
@@ -574,8 +531,7 @@ class DeferredRenderer : public BaseRenderer
             FXAAShader.SetFloat("contrastThreshold", FXAAContrastThreshold);
             FXAAShader.SetFloat("brightnessThreshold", FXAABrightnessThreshold);
             screenQuad->BindBuffers();
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, postProcessColorBuffer); 
+            postProcessColorBuffer.BindForRead(0);
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
             FXAATask->End();
@@ -671,15 +627,13 @@ class DeferredRenderer : public BaseRenderer
         unsigned int viewportWidth;
         unsigned int viewportHeight;
 
-        unsigned int gBufferFBO;
-        unsigned int gColorBuffer, gNormalBuffer, gPositionBuffer;
-        unsigned int depthStencilBuffer;
+        GLuint gBufferFBO;
+        Texture2D gColorBuffer, gNormalBuffer, gPositionBuffer;
+        RenderBuffer2D depthStencilBuffer;
 
-        unsigned int lightAccumulationFBO;
-        unsigned int lightAccumulationTexture;
-
-        unsigned int postProcessFBO;
-        unsigned int postProcessColorBuffer;
+        GLuint lightAccumulationFBO, postProcessFBO;
+        Texture2D lightAccumulationBuffer;
+        Texture2D postProcessColorBuffer;
 
         StandardShader defaultVertFrag;
         StandardShader defaultVertNormalTexFrag;

@@ -183,9 +183,8 @@ int main()
     CMVCTGIRenderer cmvctgiRenderer = CMVCTGIRenderer(windowWidth, windowHeight);
     Radiance2DRenderer radiance2DRenderer = Radiance2DRenderer(windowWidth, windowHeight);
 
-    BaseRenderer* renderer = &deferredRenderer;
+    BaseRenderer* renderer = &radiance2DRenderer;
 
-    
     try
     {
         renderer->RecreateResources(scene, mainCamera, window);
