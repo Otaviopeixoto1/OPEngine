@@ -18,13 +18,13 @@ class CMVCTGIRenderer : public BaseRenderer
         static constexpr unsigned int MAX_SPARSE_BUFFER_SIZE = 134217728;
 
         const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
-        static constexpr unsigned int SHADOW_CASCADE_COUNT = 3; // MAX == 4
+        static constexpr unsigned int SHADOW_CASCADE_COUNT = 1; // MAX == 4
 
         static constexpr bool enableNormalMaps = true;
-        static constexpr bool enableLightVolumes = true;
+        static constexpr bool enableDebugMode = true;
         
-        static constexpr int MAX_DIR_LIGHTS = 5;
-        static constexpr int MAX_POINT_LIGHTS = 20;
+        static constexpr int MAX_DIR_LIGHTS = 1;
+        static constexpr int MAX_POINT_LIGHTS = 1;
 
         static constexpr glm::vec3 voxelWorldScale = glm::vec3(0.025,0.025,0.025); //0.025,0.025,0.025 //sponza
         
@@ -40,8 +40,9 @@ class CMVCTGIRenderer : public BaseRenderer
         float tonemapExposure = 1.3f;
         float FXAAContrastThreshold = 0.0312f;
         float FXAABrightnessThreshold = 0.063f;
-        unsigned int voxelRes = 512;
+        unsigned int voxelRes = 256;
 
+        bool voxelize = true;
         bool drawVoxels = true;
         int mipLevel = 0;
 
@@ -113,6 +114,10 @@ class CMVCTGIRenderer : public BaseRenderer
             shaderMemoryPool.AddUniformBuffer(sizeof(LightData), "LightData");
 
             preprocessorDefines.clear();
+            if (enableDebugMode)
+            {
+                preprocessorDefines.push_back("DEBUG_MODE");
+            }
             preprocessorDefines.push_back("MAX_DIR_LIGHTS " + std::to_string(MAX_DIR_LIGHTS));
             preprocessorDefines.push_back("MAX_POINT_LIGHTS " + std::to_string(MAX_POINT_LIGHTS));
             preprocessorDefines.push_back("SHADOW_CASCADE_COUNT " + std::to_string(SHADOW_CASCADE_COUNT));
@@ -162,8 +167,8 @@ class CMVCTGIRenderer : public BaseRenderer
             gBufferTexDescriptor.pixelFormat = GL_FLOAT;
             gBufferTexDescriptor.width = viewportWidth;
             gBufferTexDescriptor.height = viewportHeight;
-            gBufferTexDescriptor.minFilter = GL_LINEAR;
-            gBufferTexDescriptor.magFilter = GL_LINEAR;
+            gBufferTexDescriptor.minFilter = GL_NEAREST;
+            gBufferTexDescriptor.magFilter = GL_NEAREST;
 
             // 1) HDR color + specular buffer attachment 
             gColorBuffer = Texture2D(gBufferTexDescriptor);
@@ -215,25 +220,65 @@ class CMVCTGIRenderer : public BaseRenderer
             SetupCompInd();
 
             numMipLevels = (GLuint)log2(voxelRes);
-            glGenTextures(1, &voxel3DTex);
-            glBindTexture(GL_TEXTURE_3D, voxel3DTex);
-            glTexStorage3D(GL_TEXTURE_3D, numMipLevels + 1, GL_R32UI, voxelRes, voxelRes, voxelRes);
-            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-            glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
-            float borderColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-            glTexParameterfv(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, borderColor);  
+            
+            // Texture for atomic operations
+            TextureDescriptor packedTexDescriptor = TextureDescriptor();
+            packedTexDescriptor.GLType = GL_TEXTURE_3D;
+            packedTexDescriptor.numMips = 1;
+            packedTexDescriptor.sizedInternalFormat = GL_R32UI;
+            packedTexDescriptor.internalFormat = GL_RED_INTEGER;
+            packedTexDescriptor.pixelFormat = GL_UNSIGNED_INT;
+            packedTexDescriptor.width = voxelRes;
+            packedTexDescriptor.height = voxelRes;
+            packedTexDescriptor.depth = voxelRes;
+            packedTexDescriptor.minFilter = GL_NEAREST_MIPMAP_NEAREST;
+            packedTexDescriptor.magFilter = GL_NEAREST;
+            packedTexDescriptor.wrapR = GL_CLAMP_TO_BORDER;
+            packedTexDescriptor.wrapS = GL_CLAMP_TO_BORDER;
+            packedTexDescriptor.wrapT = GL_CLAMP_TO_BORDER;
 
-            // For debugging
-            glGenTextures(1, &voxel2DTex);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, voxel2DTex);
-            glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_R32UI, voxelRes, voxelRes, 3);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            packedVoxel3DTex = ITexture3D(packedTexDescriptor);
+            float borderColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            packedVoxel3DTex.SetBorderColor(borderColor);
+            
+
+            // Final texture used for conetracing:
+            TextureDescriptor voxel3DTexDescriptor = TextureDescriptor();
+            voxel3DTexDescriptor.GLType = GL_TEXTURE_3D;
+            voxel3DTexDescriptor.numMips = numMipLevels + 1;
+            voxel3DTexDescriptor.sizedInternalFormat = GL_RGBA8;
+            voxel3DTexDescriptor.internalFormat = GL_RGBA;
+            voxel3DTexDescriptor.pixelFormat = GL_FLOAT;
+            voxel3DTexDescriptor.width = voxelRes;
+            voxel3DTexDescriptor.height = voxelRes;
+            voxel3DTexDescriptor.depth = voxelRes;
+            voxel3DTexDescriptor.minFilter = GL_LINEAR_MIPMAP_LINEAR;
+            voxel3DTexDescriptor.magFilter = GL_LINEAR;
+            voxel3DTexDescriptor.wrapR = GL_CLAMP_TO_BORDER;
+            voxel3DTexDescriptor.wrapS = GL_CLAMP_TO_BORDER;
+            voxel3DTexDescriptor.wrapT = GL_CLAMP_TO_BORDER;
+
+            voxelColorTex = ITexture3D(voxel3DTexDescriptor);
+            voxelColorTex.SetBorderColor(borderColor);
+
+
+            // Texture For debugging (REMOVE)
+            TextureDescriptor voxel2DArrayTexDescriptor = TextureDescriptor();
+            voxel2DArrayTexDescriptor.GLType = GL_TEXTURE_2D_ARRAY;
+            voxel2DArrayTexDescriptor.numMips = 1;
+            voxel2DArrayTexDescriptor.sizedInternalFormat = GL_R32UI;
+            voxel2DArrayTexDescriptor.internalFormat = GL_RED_INTEGER;
+            voxel2DArrayTexDescriptor.pixelFormat = GL_UNSIGNED_INT;
+            voxel2DArrayTexDescriptor.width = voxelRes;
+            voxel2DArrayTexDescriptor.height = voxelRes;
+            voxel2DArrayTexDescriptor.depth = 3;
+            voxel2DArrayTexDescriptor.minFilter = GL_NEAREST;
+            voxel2DArrayTexDescriptor.magFilter = GL_NEAREST;
+            voxel2DArrayTexDescriptor.wrapR = GL_CLAMP_TO_EDGE;
+            voxel2DArrayTexDescriptor.wrapS = GL_CLAMP_TO_EDGE;
+            voxel2DArrayTexDescriptor.wrapT = GL_CLAMP_TO_EDGE;
+
+            packedVoxel2DTex = ITexture3D(voxel2DArrayTexDescriptor);
 
 
             // Light Accumulation (conetracing):
@@ -247,8 +292,8 @@ class CMVCTGIRenderer : public BaseRenderer
             lightBufferDescriptor.pixelFormat = GL_FLOAT;
             lightBufferDescriptor.width = viewportWidth;
             lightBufferDescriptor.height = viewportHeight;
-            lightBufferDescriptor.minFilter = GL_LINEAR;
-            lightBufferDescriptor.magFilter = GL_LINEAR;
+            lightBufferDescriptor.minFilter = GL_NEAREST;
+            lightBufferDescriptor.magFilter = GL_NEAREST;
 
             lightAccumulationBuffer = Texture2D(lightBufferDescriptor);
             lightAccumulationBuffer.BindToTarget(lightAccumulationFBO, GL_COLOR_ATTACHMENT0);
@@ -274,8 +319,8 @@ class CMVCTGIRenderer : public BaseRenderer
             postProcessBufferDescriptor.pixelFormat = GL_FLOAT;
             postProcessBufferDescriptor.width = viewportWidth;
             postProcessBufferDescriptor.height = viewportHeight;
-            postProcessBufferDescriptor.minFilter = GL_LINEAR;
-            postProcessBufferDescriptor.magFilter = GL_LINEAR;
+            postProcessBufferDescriptor.minFilter = GL_NEAREST;
+            postProcessBufferDescriptor.magFilter = GL_NEAREST;
 
             postProcessColorBuffer = Texture2D(postProcessBufferDescriptor);
             postProcessColorBuffer.BindToTarget(postProcessFBO, GL_COLOR_ATTACHMENT0);
@@ -488,129 +533,144 @@ class CMVCTGIRenderer : public BaseRenderer
 
 
             // 3) Voxelization Pass 
-            auto voxelizationTask = profiler->AddTask("voxelization", Colors::belizeHole);
-            voxelizationTask->Start();
-            glEnable(GL_CONSERVATIVE_RASTERIZATION_NV);
-            
-            //these are bound in dispatch indirect and shader storage, since they are first filled in the voxelization (storage) and then read in the mipmap compute shader (indirect)
-            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndBuffer);     
-            glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, compIndBuffer);
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, DRAW_INDIRECT_BINDING, drawIndBuffer);
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, COMPUTE_INDIRECT_BINDING, compIndBuffer);
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, SPARSE_LIST_BINDING, sparseListBuffer);
+            if (voxelize)
+            {
+                auto voxelizationTask = profiler->AddTask("voxelization", Colors::belizeHole);
+                voxelizationTask->Start();
+                glEnable(GL_CONSERVATIVE_RASTERIZATION_NV);
+                // Setup framebuffer for rendering offscreen
+                GLint origViewportSize[4];
+                glGetIntegerv(GL_VIEWPORT, origViewportSize);
 
+                // These are first filled in the voxelization (storage buffer) and then read in the mipmap compute shader (indirect buffer)
+                glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndBuffer);     
+                glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, compIndBuffer);
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, DRAW_INDIRECT_BINDING, drawIndBuffer);
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, COMPUTE_INDIRECT_BINDING, compIndBuffer);
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, SPARSE_LIST_BINDING, sparseListBuffer);
 
-            // Setup framebuffer for rendering offscreen
-            GLint origViewportSize[4];
-            glGetIntegerv(GL_VIEWPORT, origViewportSize);
+                // Enable rendering to framebuffer with voxelRes resolution
+                glBindFramebuffer(GL_FRAMEBUFFER, voxelFBO);
+                glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_WIDTH, voxelRes);
+                glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_HEIGHT, voxelRes);
+                glViewport(0, 0, voxelRes, voxelRes);
 
-            // Enable rendering to framebuffer with voxelRes resolution
-            glBindFramebuffer(GL_FRAMEBUFFER, voxelFBO);
-            glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_WIDTH, voxelRes);
-            glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_HEIGHT, voxelRes);
-            glViewport(0, 0, voxelRes, voxelRes);
+                // Clear the last voxelization data
+                packedVoxel2DTex.ClearLevel(0, NULL);
+                packedVoxel3DTex.ClearLevel(0, NULL);
+                //There is no point clearing this though, the voxel color tex wont be used for atomics
+                for(size_t i = 0; i <= numMipLevels; i++) 
+                    voxelColorTex.ClearLevel(i, NULL);
 
-            // Clear the last voxelization data
-            glClearTexImage(voxel2DTex, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
-            for(size_t i = 0; i <= numMipLevels; i++) 
-                glClearTexImage(voxel3DTex, (GLint)i, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+                // Reset the sparse voxel count for drawing voxels
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, drawIndBuffer);
+                for(size_t i = 0; i <= MAX_MIP_MAP_LEVELS; i++) 
+                    glClearBufferSubData(GL_SHADER_STORAGE_BUFFER, GL_R32UI, i * sizeof(DrawElementsIndirectCommand) + sizeof(GLuint), sizeof(GLuint), GL_RED, GL_UNSIGNED_INT, NULL); // Clear data before since data is used when drawing
+                
+                // Reset the sparse voxel count for compute shader
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, compIndBuffer);
+                for(size_t i = 0; i <= MAX_MIP_MAP_LEVELS; i++) 
+                    glClearBufferSubData(GL_SHADER_STORAGE_BUFFER, GL_R32UI, i * sizeof(ComputeIndirectCommand), sizeof(GLuint), GL_RED, GL_UNSIGNED_INT, NULL); // Clear data before since data is used when drawing
+                
+                packedVoxel2DTex.BindImageRW(VX_VOXEL2DTEX_BINDING, 0);
+                packedVoxel3DTex.BindImageRW(VX_VOXEL3DTEX_BINDING, 0, 0);
 
-            // Reset the sparse voxel count
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, drawIndBuffer);
-            for(size_t i = 0; i <= MAX_MIP_MAP_LEVELS; i++) 
-                glClearBufferSubData(GL_SHADER_STORAGE_BUFFER, GL_R32UI, i * sizeof(DrawElementsIndirectCommand) + sizeof(GLuint), sizeof(GLuint), GL_RED, GL_UNSIGNED_INT, NULL); // Clear data before since data is used when drawing
-            
+                glActiveTexture(GL_TEXTURE0 + VX_SHADOW_MAP0_BINDING);
+                glBindTexture(shadowOut.texType0, shadowOut.shadowMap0);
 
-            // Reset the sparse voxel count for compute shader
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, compIndBuffer);
-            for(size_t i = 0; i <= MAX_MIP_MAP_LEVELS; i++) 
-                glClearBufferSubData(GL_SHADER_STORAGE_BUFFER, GL_R32UI, i * sizeof(ComputeIndirectCommand), sizeof(GLuint), GL_RED, GL_UNSIGNED_INT, NULL); // Clear data before since data is used when drawing
-            
-
-            glBindImageTexture(VX_VOXEL2DTEX_BINDING, voxel2DTex, 0, GL_TRUE, 0, GL_READ_WRITE, GL_R32UI);
-            glBindImageTexture(VX_VOXEL3DTEX_BINDING, voxel3DTex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
-
-            glActiveTexture(GL_TEXTURE0 + VX_SHADOW_MAP0_BINDING);
-            glBindTexture(shadowOut.texType0, shadowOut.shadowMap0);
-
-            
-            glDisable(GL_CULL_FACE); // all faces must be rendered
-            
-            // 1st part of voxelization:
-            voxelizationShader.UseProgram();
-            voxelizationShader.SetUInt("voxelRes", voxelRes);
-            
-            scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
-            {    
-                GLuint activeRoutine;
-
-                if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
-                {
-                    return;
-                }
-                else if (materialInstance->HasFlag(OP_MATERIAL_TEXTURED_DIFFUSE))
-                {
-                    activeRoutine = 1;
-                }
-                else
-                {
-                    activeRoutine = 0;
-                }
-
-                glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &activeRoutine);
-
-
-                // Setting object-related properties
-                // ---------------------------------
-                auto materialPropertiesBuffer = shaderMemoryPool.GetUniformBuffer("MaterialProperties");
-                materialPropertiesBuffer->SetData(0, sizeof(MaterialProperties), &(materialInstance->properties));
-
-                // Update model and normal matrices:
-                auto localMatricesBuffer = shaderMemoryPool.GetUniformBuffer("LocalMatrices");
-                localMatricesBuffer->SetData(0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
-                localMatricesBuffer->SetData(sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
-
-                if (materialInstance->GetNumTextures(OP_TEXTURE_DIFFUSE) > 0)
-                {
-                    auto texName = materialInstance->GetDiffuseMapName(0);
-                    scene->GetTexture(texName).BindForRead(VX_COLOR_SPEC_BINDING);
-                }
                 
                 
-                //bind VAO
-                mesh->BindBuffers();
+                
+                // 1st part of voxelization:
+                // -------------------------
+                glDisable(GL_CULL_FACE);// all faces must be rendered
+                voxelizationShader.UseProgram();
+                voxelizationShader.SetUInt("voxelRes", voxelRes);
+                
+                scene->IterateObjects([&](glm::mat4 objectToWorld, std::unique_ptr<MaterialInstance> &materialInstance, std::shared_ptr<Mesh> mesh, unsigned int verticesCount, unsigned int indicesCount)
+                {    
+                    GLuint activeRoutine;
 
-                //Indexed drawing
-                glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
-                glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-            });  
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+                    if (materialInstance->HasFlag(OP_MATERIAL_UNLIT))
+                    {
+                        return;
+                    }
+                    else if (materialInstance->HasFlag(OP_MATERIAL_TEXTURED_DIFFUSE))
+                    {
+                        activeRoutine = 1;
+                    }
+                    else
+                    {
+                        activeRoutine = 0;
+                    }
 
-            glViewport(origViewportSize[0], origViewportSize[1], origViewportSize[2], origViewportSize[3]);
-            glEnable(GL_CULL_FACE);
-            glDisable(GL_CONSERVATIVE_RASTERIZATION_NV);
-            voxelizationTask->End();
+                    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &activeRoutine);
+
+
+                    // Setting object-related properties
+                    // ---------------------------------
+                    auto materialPropertiesBuffer = shaderMemoryPool.GetUniformBuffer("MaterialProperties");
+                    materialPropertiesBuffer->SetData(0, sizeof(MaterialProperties), &(materialInstance->properties));
+
+                    // Update model and normal matrices:
+                    auto localMatricesBuffer = shaderMemoryPool.GetUniformBuffer("LocalMatrices");
+                    localMatricesBuffer->SetData(0, sizeof(glm::mat4), (void*)glm::value_ptr(objectToWorld));
+                    localMatricesBuffer->SetData(sizeof(glm::mat4), sizeof(glm::mat4), (void*)glm::value_ptr(MathUtils::ComputeNormalMatrix(viewMatrix,objectToWorld)) );
+
+                    if (materialInstance->GetNumTextures(OP_TEXTURE_DIFFUSE) > 0)
+                    {
+                        auto texName = materialInstance->GetDiffuseMapName(0);
+                        scene->GetTexture(texName).BindForRead(VX_COLOR_SPEC_BINDING);
+                    }
+                    
+                    //bind VAO
+                    mesh->BindBuffers();
+
+                    //Indexed drawing
+                    glDrawElements(GL_TRIANGLES, mesh->indicesCount, GL_UNSIGNED_INT, 0);
+                    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+                });  
+                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+                voxelizationTask->End();
+
+
+                auto copyColorTask = profiler->AddTask("Copy Voxel Color", Colors::peterRiver);
+                copyColorTask->Start();
+                glViewport(origViewportSize[0], origViewportSize[1], origViewportSize[2], origViewportSize[3]);
+                glEnable(GL_CULL_FACE);
+                glDisable(GL_CONSERVATIVE_RASTERIZATION_NV);
+
+                // Copy result into the actual RGBA color buffer For first mip, then do mipmapping:
+                resolveVoxelsShader.UseProgram();
+                packedVoxel3DTex.BindImageR(3, 0, 0);
+                voxelColorTex.BindImageW(4, 0, 0);
+
+                glDispatchComputeIndirect(NULL);
+                glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_UPDATE_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+                copyColorTask->End();
+            }
 
 
             // 2nd part of voxelization: Mipmapping
             auto mipmappingTask = profiler->AddTask("mipmapping", Colors::pomegranate);
             mipmappingTask->Start();
-
+            
             mipmappingShader.UseProgram();
-            for(GLuint level = 0; level < numMipLevels; level++) 
+            mipmappingShader.SetUInt("baseLevelResolution", voxelRes);
+            for(unsigned int level = 0; level < numMipLevels; level++) 
             {
-                glBindImageTexture(3, voxel3DTex, level, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
-                glBindImageTexture(4, voxel3DTex, level + 1, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
+                voxelColorTex.BindImageR(3, level, 0);
+                voxelColorTex.BindImageW(4, level + 1, 0);
 
-                mipmappingShader.SetUInt("currentLevel", level);
-
-                glDispatchComputeIndirect(NULL);
+                mipmappingShader.SetUInt("currentLevel", level + 1);
+                
+                unsigned int mipSize = voxelRes >> (level + 1);
+                unsigned int groupSize = (mipSize + 4 - 1)/4; // this ceils the result of: mipSize / 4
+                glDispatchCompute(groupSize, groupSize, groupSize);
                 
                 // Wait for buffer updates before reading and writing to next mip:
-                //GL_SHADER_IMAGE_ACCESS_BARRIER_BIT: for the voxel buffer
-                //GL_SHADER_STORAGE_BARRIER_BIT: for the storage buffers (drawIndBuffer, compIndBuffer and sparseListBuffer)
-                //GL_COMMAND_BARRIER_BIT: for the indirect buffers (drawIndBuffer and compIndBuffer)
-                glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
+                // | GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT
+                glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
             }
             //barriers for other gl commands involving the buffers and textures 
             glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_TEXTURE_UPDATE_BARRIER_BIT);
@@ -618,7 +678,6 @@ class CMVCTGIRenderer : public BaseRenderer
             mipmappingTask->End();
 
             
-            //draw voxels
             if (drawVoxels)
             {
                 auto drawVoxelsTask = profiler->AddTask("drawVoxels", Colors::wisteria);
@@ -627,9 +686,9 @@ class CMVCTGIRenderer : public BaseRenderer
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                 glEnable(GL_DEPTH_TEST);
 
-                glActiveTexture(GL_TEXTURE0 + GI_VOXEL3DTEX_BINDING);
-                glBindTexture(GL_TEXTURE_3D, voxel3DTex);
-                
+                //packedVoxel3DTex.BindForRead(GI_VOXEL3DTEX_BINDING);
+                voxelColorTex.BindForRead(GI_VOXEL3DTEX_BINDING);
+
                 drawVoxelsShader.UseProgram();
                 drawVoxelsShader.SetUInt("mipLevel", mipLevel);
                 drawVoxelsShader.SetUInt("voxelRes", voxelRes);
@@ -646,7 +705,7 @@ class CMVCTGIRenderer : public BaseRenderer
             
 
 
-            /*
+            
             // 4) Conetrace Pass
             auto conetraceTask = profiler->AddTask("Cone tracing", Colors::orange);
             conetraceTask->Start();
@@ -655,18 +714,14 @@ class CMVCTGIRenderer : public BaseRenderer
             glClear(GL_COLOR_BUFFER_BIT);
             glDisable(GL_DEPTH_TEST);
 
-            glActiveTexture(GL_TEXTURE0 + GI_VOXEL2DTEX_BINDING);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, voxel2DTex);
-            glActiveTexture(GL_TEXTURE0 + GI_VOXEL3DTEX_BINDING);
-            glBindTexture(GL_TEXTURE_3D, voxel3DTex);
+            //glActiveTexture(GL_TEXTURE0 + GI_VOXEL2DTEX_BINDING);
+            //glBindTexture(GL_TEXTURE_2D_ARRAY, voxel2DTex);
             glActiveTexture(GL_TEXTURE0 + GI_SHADOW_MAP0_BINDING);
             glBindTexture(shadowOut.texType0, shadowOut.shadowMap0);
-            glActiveTexture(GL_TEXTURE0 + GI_COLOR_SPEC_BINDING); 
-            glBindTexture(GL_TEXTURE_2D, gColorBuffer);
-            glActiveTexture(GL_TEXTURE0 + GI_NORMAL_BINDING);
-            glBindTexture(GL_TEXTURE_2D, gNormalBuffer);
-            glActiveTexture(GL_TEXTURE0 + GI_POSITION_BINDING);
-            glBindTexture(GL_TEXTURE_2D, gPositionBuffer);
+            voxelColorTex.BindForRead(GI_VOXEL3DTEX_BINDING);
+            gColorBuffer.BindForRead(GI_COLOR_SPEC_BINDING);
+            gNormalBuffer.BindForRead(GI_NORMAL_BINDING);
+            gPositionBuffer.BindForRead(GI_POSITION_BINDING);
 
 
             conetraceShader.UseProgram();
@@ -742,8 +797,7 @@ class CMVCTGIRenderer : public BaseRenderer
             postProcessShader.UseProgram();
             postProcessShader.SetFloat("exposure", tonemapExposure);
             screenQuad->BindBuffers();
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, lightAccumulationBuffer); 
+            lightAccumulationBuffer.BindForRead(0);
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
             postProcessTask->End();
@@ -762,11 +816,10 @@ class CMVCTGIRenderer : public BaseRenderer
             FXAAShader.SetFloat("contrastThreshold", FXAAContrastThreshold);
             FXAAShader.SetFloat("brightnessThreshold", FXAABrightnessThreshold);
             screenQuad->BindBuffers();
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, postProcessColorBuffer); 
+            postProcessColorBuffer.BindForRead(0);
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
-            FXAATask->End();       */
+            FXAATask->End(); 
         }
 
         void ReloadShaders()
@@ -828,7 +881,12 @@ class CMVCTGIRenderer : public BaseRenderer
             voxelizationShader.BindUniformBlocks(bufferBindings);
 
 
-            mipmappingShader = ComputeShader(BASE_DIR"/data/shaders/voxelization/mipmap.comp");
+            resolveVoxelsShader = ComputeShader(BASE_DIR"/data/shaders/voxelization/resolveVoxels.comp");
+            resolveVoxelsShader.AddPreProcessorDefines(preprocessorDefines);
+            resolveVoxelsShader.BuildProgram();
+            resolveVoxelsShader.BindUniformBlocks(bufferBindings);
+
+            mipmappingShader = ComputeShader(BASE_DIR"/data/shaders/voxelization/mipmapSimple.comp");
             mipmappingShader.AddPreProcessorDefines(preprocessorDefines);
             mipmappingShader.BuildProgram();
             mipmappingShader.BindUniformBlocks(bufferBindings);
@@ -851,8 +909,8 @@ class CMVCTGIRenderer : public BaseRenderer
             drawVoxelsShader.AddPreProcessorDefines(preprocessorDefines);
             drawVoxelsShader.BuildProgram();
             drawVoxelsShader.UseProgram();
-            drawVoxelsShader.SetSamplerBinding("voxel2DTextures", GI_VOXEL2DTEX_BINDING); 
-            drawVoxelsShader.SetSamplerBinding("voxel3DData", GI_VOXEL3DTEX_BINDING);
+            //drawVoxelsShader.SetSamplerBinding("voxel3DData", GI_VOXEL3DTEX_BINDING);
+            drawVoxelsShader.SetSamplerBinding("voxelColorTex", GI_VOXEL3DTEX_BINDING);//voxelColorTex
             drawVoxelsShader.BindUniformBlocks(bufferBindings);
         }
 
@@ -941,19 +999,19 @@ class CMVCTGIRenderer : public BaseRenderer
         
         GLuint voxelFBO;
         GLuint sparseListBuffer;
-        GLuint voxel3DTex;
-        GLuint voxel2DTex;
+        ITexture3D voxelColorTex;
+        ITexture3D packedVoxel3DTex;
+        ITexture3D packedVoxel2DTex;
         GLuint numMipLevels;
+
         StandardShader voxelizationShader;
+        ComputeShader resolveVoxelsShader;
         ComputeShader mipmappingShader;
         StandardShader conetraceShader;
         StandardShader drawVoxelsShader;
 
 
-
         std::unique_ptr<Mesh> screenQuad;
-        
-        
         StandardShader postProcessShader;
         StandardShader FXAAShader;
 

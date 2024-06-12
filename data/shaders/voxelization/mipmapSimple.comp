@@ -1,0 +1,110 @@
+#version 440
+
+
+layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
+
+uniform uint currentLevel;
+uniform uint baseLevelResolution; //Must be power of 2
+
+layout(binding = 3, rgba8) readonly uniform image3D voxelColorPrevLevel;
+layout(binding = 4, rgba8) restrict writeonly uniform image3D voxelColorCurrentLevel;
+
+
+void main()
+{	
+	uint currentRes = baseLevelResolution >> currentLevel; 
+	ivec3 imgCoord = ivec3(gl_GlobalInvocationID);
+
+	if (max(max(imgCoord.x, imgCoord.y), imgCoord.z) < currentRes)
+	{
+		ivec2 offset = ivec2(0, 1);
+		vec4 result = vec4(0, 0, 0, 0);
+		result += imageLoad(voxelColorPrevLevel, imgCoord * 2 + offset.xxx).rgba;
+		result += imageLoad(voxelColorPrevLevel, imgCoord * 2 + offset.xyx).rgba;
+		result += imageLoad(voxelColorPrevLevel, imgCoord * 2 + offset.yxx).rgba;
+		result += imageLoad(voxelColorPrevLevel, imgCoord * 2 + offset.yyx).rgba;
+		result += imageLoad(voxelColorPrevLevel, imgCoord * 2 + offset.xxy).rgba;
+		result += imageLoad(voxelColorPrevLevel, imgCoord * 2 + offset.xyy).rgba;
+		result += imageLoad(voxelColorPrevLevel, imgCoord * 2 + offset.yxy).rgba;
+		result += imageLoad(voxelColorPrevLevel, imgCoord * 2 + offset.yyy).rgba;
+		result /= 8.0f;
+
+		imageStore(voxelColorCurrentLevel, imgCoord, result);
+	}
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* OLD
+void main()
+{	
+	uint currentVoxel = gl_GlobalInvocationID.x;
+	uint voxelCount = drawCmd[currentLevel].instanceCount;
+
+	if(currentVoxel < voxelCount) 
+	{
+		//Finding and sampling only the filled/active voxels in the sparse list:
+		uint currentOffset = drawCmd[currentLevel].baseInstance; // the offset into the sparse list
+		uint voxelPos = currentVoxel + currentOffset;
+		uvec3 voxelCoord = unpackRG11B10(sparseList[voxelPos]);
+
+		//the total color is divided by data.count during unpacking
+		uint voxelBytes = imageLoad(voxelData, ivec3(voxelCoord)).r;
+		//VoxelData data = unpackARGB8(voxelBytes);
+		VoxelData data = unpackARGB8(voxelBytes);
+
+		if (currentLevel == 0)
+		{
+			//data = unpackRGBA8(voxelBytes);
+			//data.count = 8;
+			//imageAtomicExchange(voxelData, ivec3(voxelCoord), packARGB8(data));
+		}
+		
+		//reset the counter:
+		data.count = 1;
+
+		uint nextLevel = currentLevel + 1;
+		uint nextOffset = drawCmd[nextLevel].baseInstance;
+		uvec3 nextVoxelCoord = voxelCoord >> 1;
+
+		//As long as the RGB channels dont overflow into the counter or light bits, each part of the voxel data will be added separately
+		//The count bits make no sense. THE TOTAL COLOR SHOULD ALWAYS BE DIVIDED BY 8 (the empty voxels also contribute)
+		uint prevData = imageAtomicAdd(voxelDataNextLevel, ivec3(nextVoxelCoord), packARGB8(data));
+
+
+
+
+		// Check if this voxel was empty before
+		//atomicCompSwap on sparse list !! Check if the first element is zero. iF is, add data and add to instance count
+		//else, check if the element is the same as what we want to store. If is, break
+		//if the element is different goto next element and repeat
+		if(prevData == 0) 
+		{
+			uint prevVoxelCount = atomicAdd(drawCmd[nextLevel].instanceCount, 1);
+
+			// Calculate and store number of workgroups needed for next dispatch
+			// compWorkGroups = (prevVoxelCount + 1)//64 + 1;  each workgroup has a size of 64
+			uint compWorkGroups = ((prevVoxelCount + 1) >> 6) + 1; // 6 = log2(workGroupSize = 64)
+			atomicMax(compCmd[nextLevel].workGroupSizeX, compWorkGroups);
+
+			// Write to position buffer
+			sparseList[prevVoxelCount + nextOffset] = packRG11B10(uvec3(nextVoxelCoord));
+		}
+	}
+}
+*/

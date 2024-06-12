@@ -1,0 +1,91 @@
+#version 460
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// This shader is employed when the extension for float atomic operations is not in use
+// It resolves the packed uint texture into RGBA 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+layout(local_size_x = 64) in;
+
+layout(binding = 3, r32ui) readonly uniform uimage3D voxelData;
+layout(binding = 4, rgba8) restrict writeonly uniform image3D finalVoxelImg;
+// We use indirect compute for processing the sparse voxel texture
+// This scheme is based on the work by Wahlén, Conrad: "Global Illumination in Real-Time using Voxel Cone Tracing on Mobile Devices." (2016).
+// found at: https://liu.diva-portal.org/smash/get/diva2:1148572/FULLTEXT01.pdf
+
+struct DrawElementsIndirectCommand {
+	uint vertexCount;
+	uint instanceCount;
+	uint firstVertex;
+	uint baseVertex;
+	uint baseInstance;
+};
+
+layout(std430, binding = 0) buffer DrawCmdBuffer {
+	DrawElementsIndirectCommand drawCmd[10];
+};
+
+struct ComputeIndirectCommand {
+	uint workGroupSizeX;
+	uint workGroupSizeY;
+	uint workGroupSizeZ;
+};
+
+layout(std430, binding = 1) buffer ComputeCmdBuffer {
+	ComputeIndirectCommand compCmd[10];
+};
+
+layout(std430, binding = 2) buffer SparseBuffer {
+	uint sparseList[];
+};
+
+
+
+
+uint packRG11B10(uvec3 dataIn) 
+{
+	uint result = 0;
+
+	result |= (dataIn.r & 0x7FF) << 21;
+	result |= (dataIn.g & 0x7FF) << 10;
+	result |= (dataIn.b & 0x3FF);
+
+	return result;
+}
+
+uvec3 unpackRG11B10(uint bytesIn) 
+{
+	uvec3 outVec;
+
+	outVec.r = (bytesIn & 0xFFE00000) >> 21;
+	outVec.g = (bytesIn & 0x001FFC00) >> 10;
+	outVec.b = (bytesIn & 0x000003FF);
+
+	return outVec;
+}
+
+
+
+
+//the compute shader runs over "workGroupSizeX" workgroups and reads all values in the sparse list in the interval: 
+// drawCmd[currentLevel].baseInstance -> drawCmd[currentLevel].baseInstance + active voxel count
+
+void main()
+{	
+	uint currentVoxel = gl_GlobalInvocationID.x;
+	uint voxelCount = drawCmd[0].instanceCount;
+
+	if(currentVoxel < voxelCount) 
+	{
+		//Finding and sampling only the filled/active voxels in the sparse list:
+		uint currentOffset = drawCmd[0].baseInstance; // the offset into the sparse list
+		uint voxelPos = currentVoxel + currentOffset;
+		uvec3 voxelCoord = unpackRG11B10(sparseList[voxelPos]);
+		
+		uint voxelBytes = imageLoad(voxelData, ivec3(voxelCoord)).r;
+		vec4 voxelColor = unpackUnorm4x8(voxelBytes);
+		voxelColor.a = 1.0f;
+
+		imageStore(finalVoxelImg, ivec3(voxelCoord), voxelColor);
+	}
+}

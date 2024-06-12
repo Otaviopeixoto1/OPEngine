@@ -134,8 +134,6 @@ layout(location = 0) subroutine uniform GetColor SampleColor;
 
 void main()
 {	                       
-	VoxelData data = VoxelData(vec4(1.0f), 0x8);
-
 	ivec3 voxelCoord = ivec3(voxelTexCoord * voxelRes);	
 	
 	vec3 vNormal = normalize(viewNormal);  
@@ -152,8 +150,8 @@ void main()
 	//color.rgb *= shadow;
 	//color.rgb *= diff * shadow;
 	
-	
-	uint outData = packARGB8(data);
+	//VoxelData data = VoxelData(vec4(1.0f), 0x8);
+	//uint outData = packARGB8(data);
 
 	//writes the "most lit" voxel to the 2d debug texture:
 	//imageAtomicMax(voxelTextures, ivec3(ivec2(gl_FragCoord.xy), domInd), outData);
@@ -162,7 +160,7 @@ void main()
 	//uint prevData = imageAtomicMax(voxel3DData, voxelCoord, outData);
 	
 	// Storing average color:
-	//atomic moving average
+	//atomic moving average         color assumed to be floats between 0.0 and 1.0
 	uint nextUint = packUnorm4x8(vec4(color.rgb, 1.0 / 255.0f));
 	uint prevUint = 0;
 	uint curUint = imageAtomicCompSwap(voxel3DData, voxelCoord, prevUint, nextUint);
@@ -193,5 +191,5 @@ void main()
 		nextUint = packUnorm4x8(avg);
 
 		curUint = imageAtomicCompSwap(voxel3DData, voxelCoord, prevUint, nextUint);
-	}								// image      P            compare    data
+	}								  //image      Position    compare    data
 }

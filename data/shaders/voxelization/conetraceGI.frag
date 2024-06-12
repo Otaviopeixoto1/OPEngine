@@ -4,8 +4,7 @@
 in vec2 TexCoords;
 out vec4 outColor;
 
-uniform usampler2DArray voxel2DTextures;
-uniform usampler3D voxel3DData;
+uniform sampler3D voxelColorTex;
 uniform sampler2D gColorSpec; 
 uniform sampler2D gNormal;
 uniform sampler2D gPosition;  
@@ -28,40 +27,7 @@ layout (std140) uniform GlobalMatrices
 	mat4 inverseVoxelMatrix;
 };
 
-
-
-// Data storage scheme based on the work by Wahlén, Conrad: "Global Illumination in Real-Time using Voxel Cone Tracing on Mobile Devices." (2016).
-// found at: https://liu.diva-portal.org/smash/get/diva2:1148572/FULLTEXT01.pdf
-
-struct VoxelData {
-	vec4 color;
-	uint count;
-};
-
-
-VoxelData unpackARGB8(uint bytesIn) 
-{
-	VoxelData data;
-	uvec3 uiColor;
-
-	data.count = (bytesIn & 0xFF000000) >> 24;
-	uiColor.r =  (bytesIn & 0x00FF0000) >> 16;
-	uiColor.g =  (bytesIn & 0x0000FF00) >> 8;
-	uiColor.b =  (bytesIn & 0x000000FF);
-
-
-	float div[] = { 0.0f, 1.0f / float(data.count) };
-	int index = int(data.count > 0);
-
-	data.color.rgb = vec3(uiColor) / 31.0f * div[index];
-	data.color.a = float(sign(data.count));
-
-	return data;
-}
-
-
-
-
+/*
 
 vec4 voxelSampleLevel(vec3 position, float level) 
 {
@@ -192,7 +158,7 @@ vec4 DiffuseTrace(vec3 voxelPos, vec3 worldNormal)
 
 	
 	return total;
-}
+}*/
 
 
 
@@ -214,12 +180,14 @@ void main()
 	
 	vec4 voxelPos = voxelMatrix * worldPos;
 	voxelPos.xyz  = (voxelPos.xyz + vec3(1.0f)) * 0.5f;
-    vec4 d = DiffuseTrace(voxelPos.xyz, worldNormal.xyz);
+    //vec4 d = DiffuseTrace(voxelPos.xyz, worldNormal.xyz);
 
-	s = mix(d.w, s * d.w, 0.9);
+	//s = mix(d.w, s * d.w, 0.9);
 
 	vec4 f = vec4(1.0f);
-	f.xyz = l.xyz * s * c.xyz + 2.0 * d.xyz * c.xyz;
+	
+	f.xyz = l.xyz * s * c.xyz;
+	//f.xyz = l.xyz * s * c.xyz + 2.0 * d.xyz * c.xyz;
 	//f.xyz = l.xyz * s * c.xyz;
 	//f.x = s;
 	//f.xyz =  d.xyz;

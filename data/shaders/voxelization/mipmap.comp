@@ -9,7 +9,9 @@ layout(binding = 3, r32ui) uniform uimage3D voxelData;
 layout(binding = 4, r32ui) uniform uimage3D voxelDataNextLevel;
 
 
-
+// We use indirect compute for processing the sparse voxel texture
+// This scheme is based on the work by Wahlén, Conrad: "Global Illumination in Real-Time using Voxel Cone Tracing on Mobile Devices." (2016).
+// found at: https://liu.diva-portal.org/smash/get/diva2:1148572/FULLTEXT01.pdf
 
 
 
@@ -41,11 +43,6 @@ layout(std430, binding = 2) buffer SparseBuffer {
 
 
 
-
-
-// Data storage scheme based on the work by Wahlén, Conrad: "Global Illumination in Real-Time using Voxel Cone Tracing on Mobile Devices." (2016).
-// found at: https://liu.diva-portal.org/smash/get/diva2:1148572/FULLTEXT01.pdf
-
 struct VoxelData 
 {
 	vec4 color;
@@ -55,7 +52,7 @@ struct VoxelData
 uint packARGB8(VoxelData dataIn) 
 {
 	uint result = 0;
-
+											//Doesnt make sense !! 
 	uvec3 uiColor = uvec3(dataIn.color.rgb * 31.0f * float(dataIn.count));
 
 	result |= (dataIn.count & 0xFF) << 24;
@@ -76,7 +73,7 @@ VoxelData unpackARGB8(uint bytesIn)
 	uiColor.g =  (bytesIn & 0x0000FF00) >> 8;
 	uiColor.b =  (bytesIn & 0x000000FF);
 
-	data.color.rgb = vec3(uiColor) / float(data.count) / 31.0f;
+	data.color.rgb = vec3(uiColor) / float(data.count) / 31.0f; //The color should always be 
 	data.color.a = 1.0f;
 
 	return data;
@@ -118,11 +115,17 @@ uvec3 unpackRG11B10(uint bytesIn)
 
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// REWORK THIS. WE MUST SCAN THE SPARSE VOXEL LIST, PLACE SIMILLAR VOXELS TOGETHER AND ADD THEM TO FORM THE MIPS
+// THIS WOULD ALSO GENERATE THE DATA FOR INDIRECT DRAWING
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 
 //the compute shader runs over "workGroupSizeX" workgroups and reads all values in the sparse list in the interval: 
 // drawCmd[currentLevel].baseInstance -> drawCmd[currentLevel].baseInstance + active voxel count
 
-void main(void)
+void main()
 {	
 	uint currentVoxel = gl_GlobalInvocationID.x;
 	uint voxelCount = drawCmd[currentLevel].instanceCount;
@@ -141,8 +144,9 @@ void main(void)
 
 		if (currentLevel == 0)
 		{
-			data = unpackRGBA8(voxelBytes);
-			imageAtomicExchange(voxelData, ivec3(voxelCoord), packARGB8(data));
+			//data = unpackRGBA8(voxelBytes);
+			//data.count = 8;
+			//imageAtomicExchange(voxelData, ivec3(voxelCoord), packARGB8(data));
 		}
 		
 		//reset the counter:
@@ -152,11 +156,9 @@ void main(void)
 		uint nextOffset = drawCmd[nextLevel].baseInstance;
 		uvec3 nextVoxelCoord = voxelCoord >> 1;
 
-		//As long as the RGB channels dont overflow into the counter or light bits, each part of the voxel data will be added separately
-		//(the light and counter bits will not overflow since their maximum value is 8 in the current implementation)
+		//Remove
 		uint prevData = imageAtomicAdd(voxelDataNextLevel, ivec3(nextVoxelCoord), packARGB8(data));
 
-		// Check if this voxel was empty before
 		if(prevData == 0) 
 		{
 			uint prevVoxelCount = atomicAdd(drawCmd[nextLevel].instanceCount, 1);
@@ -171,3 +173,78 @@ void main(void)
 		}
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* OLD
+void main()
+{	
+	uint currentVoxel = gl_GlobalInvocationID.x;
+	uint voxelCount = drawCmd[currentLevel].instanceCount;
+
+	if(currentVoxel < voxelCount) 
+	{
+		//Finding and sampling only the filled/active voxels in the sparse list:
+		uint currentOffset = drawCmd[currentLevel].baseInstance; // the offset into the sparse list
+		uint voxelPos = currentVoxel + currentOffset;
+		uvec3 voxelCoord = unpackRG11B10(sparseList[voxelPos]);
+
+		//the total color is divided by data.count during unpacking
+		uint voxelBytes = imageLoad(voxelData, ivec3(voxelCoord)).r;
+		//VoxelData data = unpackARGB8(voxelBytes);
+		VoxelData data = unpackARGB8(voxelBytes);
+
+		if (currentLevel == 0)
+		{
+			//data = unpackRGBA8(voxelBytes);
+			//data.count = 8;
+			//imageAtomicExchange(voxelData, ivec3(voxelCoord), packARGB8(data));
+		}
+		
+		//reset the counter:
+		data.count = 1;
+
+		uint nextLevel = currentLevel + 1;
+		uint nextOffset = drawCmd[nextLevel].baseInstance;
+		uvec3 nextVoxelCoord = voxelCoord >> 1;
+
+		//As long as the RGB channels dont overflow into the counter or light bits, each part of the voxel data will be added separately
+		//The count bits make no sense. THE TOTAL COLOR SHOULD ALWAYS BE DIVIDED BY 8 (the empty voxels also contribute)
+		uint prevData = imageAtomicAdd(voxelDataNextLevel, ivec3(nextVoxelCoord), packARGB8(data));
+
+
+
+
+		// Check if this voxel was empty before
+		//atomicCompSwap on sparse list !! Check if the first element is zero. iF is, add data and add to instance count
+		//else, check if the element is the same as what we want to store. If is, break
+		//if the element is different goto next element and repeat
+		if(prevData == 0) 
+		{
+			uint prevVoxelCount = atomicAdd(drawCmd[nextLevel].instanceCount, 1);
+
+			// Calculate and store number of workgroups needed for next dispatch
+			// compWorkGroups = (prevVoxelCount + 1)//64 + 1;  each workgroup has a size of 64
+			uint compWorkGroups = ((prevVoxelCount + 1) >> 6) + 1; // 6 = log2(workGroupSize = 64)
+			atomicMax(compCmd[nextLevel].workGroupSizeX, compWorkGroups);
+
+			// Write to position buffer
+			sparseList[prevVoxelCount + nextOffset] = packRG11B10(uvec3(nextVoxelCoord));
+		}
+	}
+}
+*/

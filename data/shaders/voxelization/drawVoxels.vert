@@ -6,19 +6,14 @@ layout (location = 2) in vec3 aTangent;
 layout (location = 3) in vec2 aTexCoords;
 layout (location = 4) in uint inVoxelPos;
 
-//out vec4 outPosition;
-//out vec3 outNormal;
+
 out vec4 outColor;
 
-
-uniform usampler2DArray voxel2DTextures;
-uniform usampler3D voxel3DData;
+//uniform usampler3D voxel3DData;
+uniform sampler3D voxelColorTex;
 
 uniform uint mipLevel;
 uniform uint voxelRes;
-
-
-
 
 
 
@@ -32,6 +27,35 @@ layout (std140) uniform GlobalMatrices
 };
 
 
+uvec3 unpackRG11B10(uint bytesIn) 
+{
+	uvec3 outVec;
+
+	outVec.r = (bytesIn & 0xFFE00000) >> 21;
+	outVec.g = (bytesIn & 0x001FFC00) >> 10;
+	outVec.b = (bytesIn & 0x000003FF);
+
+	return outVec;
+}
+
+void main()
+{
+	float size = float(voxelRes >> mipLevel);
+	vec3 voxelPos = vec3(unpackRG11B10(inVoxelPos)) / size;
+
+	//uint voxelBytes = textureLod(voxel3DData, voxelPos, float(mipLevel)).r;
+	//VoxelData data = unpackARGB8(voxelBytes);
+	//outColor = data.color;
+	vec4 voxelColor = textureLod(voxelColorTex, voxelPos, float(mipLevel)).rgba;
+	outColor = voxelColor;
+
+	vec3 temp = inPosition / size + 2.0f * voxelPos - vec3(1.0f);
+
+	gl_Position = projectionMatrix * viewMatrix * inverseVoxelMatrix * vec4(temp,1.0f);
+}
+
+
+/*
 
 struct VoxelData 
 {
@@ -68,7 +92,7 @@ uvec3 unpackRG11B10(uint bytesIn)
 	return outVec;
 }
 
-void main(void)
+void main()
 {
 	float size = float(voxelRes >> mipLevel);
 	vec3 voxelPos = vec3(unpackRG11B10(inVoxelPos)) / size;
@@ -81,3 +105,6 @@ void main(void)
 
 	gl_Position = projectionMatrix * viewMatrix * inverseVoxelMatrix * vec4(temp,1.0f);
 }
+
+
+*/

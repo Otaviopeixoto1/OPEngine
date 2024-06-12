@@ -147,7 +147,7 @@ int main()
 
     // flip all stbi loaded images vertically for compatibility with openGL
     // CURRENTLY THIS HAS TO BE DEACTIVATED ON SPONZA SCENE:
-    stbi_set_flip_vertically_on_load(true); 
+    //stbi_set_flip_vertically_on_load(true); 
     
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -168,10 +168,10 @@ int main()
 
     //sceneParser.Parse(scene, &mainCamera, "/data/scenes/sponza_scene.json", OP_OBJ);
     //sceneParser.Parse(scene, &mainCamera, "/data/scenes/deferred_test.json", OP_OBJ);
-    sceneParser.Parse(scene, &mainCamera, "/data/scenes/backpack_scene.json", OP_OBJ);
+    //sceneParser.Parse(scene, &mainCamera, "/data/scenes/backpack_scene.json", OP_OBJ);
 
     //VCTGI
-    //sceneParser.Parse(scene, &mainCamera, "/data/scenes/sponza_scene.json", OP_OBJ);
+    sceneParser.Parse(scene, &mainCamera, "/data/scenes/sponza_scene.json", OP_OBJ);
     //sceneParser.Parse(scene, &mainCamera, "/data/scenes/Cornell_scene.json", OP_OBJ);
 
 
@@ -183,7 +183,7 @@ int main()
     CMVCTGIRenderer cmvctgiRenderer = CMVCTGIRenderer(windowWidth, windowHeight);
     Radiance2DRenderer radiance2DRenderer = Radiance2DRenderer(windowWidth, windowHeight);
 
-    BaseRenderer* renderer = &radiance2DRenderer;
+    BaseRenderer* renderer = &cmvctgiRenderer;
 
     try
     {
@@ -213,7 +213,7 @@ int main()
     // -----------
     while(!glfwWindowShouldClose(window))
     {
-        // calculating the frame time
+        // calculating the total frame time
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame; 
@@ -224,7 +224,6 @@ int main()
 
         // GLFW: poll IO events (keys pressed/released, mouse moved etc.)
         // --------------------------------------------------------------
-
         // PollEvents: checks if any events are triggered (like keyboard input or mouse movement events), updates the 
         // window state and calls the corresponding functions (which we can register via callback methods):
         glfwPollEvents();
@@ -232,13 +231,9 @@ int main()
 
         // Start Rendering UI
         // ------------------
-
         ImGui_ImplOpenGL3_NewFrame();// Start the Dear ImGui frame
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-
-
-        
 
 
         // Input Handling
@@ -251,14 +246,9 @@ int main()
             windowResized = false;
         }
         
-        
-
-
         // Rendering the scene
         // -------------------
-
         renderer->RenderFrame(mainCamera, &scene, window, &profiler);
-
 
         profiler.EndFrame();
 
@@ -281,11 +271,11 @@ int main()
         ImGui::Text("Scene");
         ImGui::End();
         
-
+        // Render custom UI (defined on the renderer derived classes)
+        // ----------------------------------------------------------
         renderer->RenderGUI();
 
         
-
         // Render Profiler Window
         // ----------------------
         std::stringstream title;

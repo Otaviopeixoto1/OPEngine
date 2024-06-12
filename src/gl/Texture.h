@@ -41,16 +41,61 @@ class TextureObject
             glActiveTexture(GL_TEXTURE0 + binding); 
             glBindTexture(descriptor.GLType, GLId);
         }
+
+        //Binds the texture image specified by level and layer with read permission
+        void BindImageR(GLuint binding, GLint level, GLint layer)
+        {
+            glBindImageTexture(binding, GLId, level, GL_FALSE, 0, GL_READ_ONLY, descriptor.sizedInternalFormat);
+        }
+        //Binds all texture images specified from a given level from all layers (for Array textures) with write permission
+        void BindImageR(GLuint binding, GLint level)
+        {
+            glBindImageTexture(binding, GLId, level, GL_TRUE, 0,  GL_READ_ONLY, descriptor.sizedInternalFormat);
+        }
+
+        //Binds the texture image specified by level and layer with write permission
+        void BindImageW(GLuint binding, GLint level, GLint layer)
+        {
+            glBindImageTexture(binding, GLId, level, GL_FALSE, 0, GL_WRITE_ONLY, descriptor.sizedInternalFormat);
+        }
+        //Binds all texture images specified from a given level from all layers (for Array textures) with write permission
+        void BindImageW(GLuint binding, GLint level)
+        {
+            glBindImageTexture(binding, GLId, level, GL_TRUE, 0, GL_WRITE_ONLY, descriptor.sizedInternalFormat);
+        }
+
+        //Binds the texture image specified by level and layer with read and write permission
+        void BindImageRW(GLuint binding, GLint level, GLint layer)
+        {
+            glBindImageTexture(binding, GLId, level, GL_FALSE, 0, GL_READ_WRITE, descriptor.sizedInternalFormat);
+        }
+        //Binds all texture images specified from a given level from all layers (for Array textures) with read and write permission
+        void BindImageRW(GLuint binding, GLint level)
+        {
+            glBindImageTexture(binding, GLId, level, GL_TRUE, 0, GL_READ_WRITE, descriptor.sizedInternalFormat);
+        }
+
         void Unbind()
         {
             glBindTexture(descriptor.GLType, 0);
         }
+        void ClearLevel(GLint level, void *data)
+        {
+            glClearTexImage(GLId, level, descriptor.internalFormat, descriptor.pixelFormat, data);
+        }
 
+        void SetBorderColor(float borderColor[4])
+        { 
+            glBindTexture(descriptor.GLType, GLId);
+            glTexParameterfv(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, borderColor);  
+            glBindTexture(descriptor.GLType, 0);
+        }
+
+        //Generates all mips for the texture. This includes up to the maximum level allowd by onpengl on mutable textures (Texture1D, 2D, 3D, ...)
+        //and up to the specified number of mips for Immutable ones (ITexture1D, 2D, 3D, ...)
         void GenerateMipMaps()
         {
-            glBindTexture(descriptor.GLType, GLId);
-            glGenerateMipmap(descriptor.GLType);
-            glBindTexture(descriptor.GLType, 0);
+            glGenerateTextureMipmap(GLId);
         }
         
     protected:
@@ -251,7 +296,7 @@ class Texture2D : public TextureObject
             desc.GLType = GL_TEXTURE_2D;
             desc.numMips = numMips;
             desc.pixelFormat = GL_UNSIGNED_BYTE;
-            desc.minFilter = GL_LINEAR; //IF MIPMAPPED: GL_LINEAR_MIPMAP_LINEAR but mips have to be generated with glGenerateMipmap(GL_TEXTURE_2D);
+            desc.minFilter = GL_LINEAR_MIPMAP_LINEAR; //IF MIPMAPPED: GL_LINEAR_MIPMAP_LINEAR but mips have to be generated with glGenerateMipmap(GL_TEXTURE_2D);
             desc.magFilter = GL_LINEAR;
             desc.wrapS = GL_REPEAT;
             desc.wrapT = GL_REPEAT;
@@ -278,6 +323,7 @@ class Texture2D : public TextureObject
             }
 
             Texture2D tex = Texture2D(desc, data);
+            tex.GenerateMipMaps();
             stbi_image_free(data);
             return tex;
         }  
@@ -329,6 +375,7 @@ class ITexture2D : public TextureObject
             return *this;
         }
 };
+
 
 class Texture3D : public TextureObject
 {
@@ -407,6 +454,11 @@ class ITexture3D : public TextureObject
         {
             glBindTexture(descriptor.GLType, GLId);
             glTexStorage3D(descriptor.GLType, descriptor.numMips, descriptor.sizedInternalFormat, descriptor.width, descriptor.height, descriptor.depth);
+            glTexParameteri(descriptor.GLType, GL_TEXTURE_WRAP_S, descriptor.wrapS);
+            glTexParameteri(descriptor.GLType, GL_TEXTURE_WRAP_T, descriptor.wrapT);
+            glTexParameteri(descriptor.GLType, GL_TEXTURE_WRAP_R, descriptor.wrapR);
+            glTexParameteri(descriptor.GLType, GL_TEXTURE_MIN_FILTER, descriptor.minFilter);
+            glTexParameteri(descriptor.GLType, GL_TEXTURE_MAG_FILTER, descriptor.magFilter);
             glBindTexture(descriptor.GLType, 0);
         }
 
