@@ -148,7 +148,7 @@ void main()
 
 	vec4 color = SampleColor().rgba;
 	//color.rgb *= shadow;
-	//color.rgb *= diff * shadow;
+	color.rgb *= diff * shadow;
 	
 	//VoxelData data = VoxelData(vec4(1.0f), 0x8);
 	//uint outData = packARGB8(data);

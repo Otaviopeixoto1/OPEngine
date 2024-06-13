@@ -43,13 +43,15 @@ class CMVCTGIRenderer : public BaseRenderer
         unsigned int voxelRes = 256;
 
         bool voxelize = true;
-        bool drawVoxels = true;
+        bool drawVoxels = false;
         int mipLevel = 0;
 
         float aoDistance = 0.03f;
         float maxConeDistance = 1.0f;
         float accumThr = 1.1f;
         int maxLOD = 10;
+        float stepMultiplier = 1.0f;
+        float giIntensity = 1.0f;
 
 
         enum GBufferPassInputBindings
@@ -724,12 +726,14 @@ class CMVCTGIRenderer : public BaseRenderer
             gPositionBuffer.BindForRead(GI_POSITION_BINDING);
 
 
-            conetraceShader.UseProgram();
+            conetraceShader.UseProgram(); // MAke UBO FOR THIS
             conetraceShader.SetUInt("voxelRes", voxelRes);
             conetraceShader.SetFloat("aoDistance", aoDistance);
             conetraceShader.SetFloat("maxConeDistance", maxConeDistance);
             conetraceShader.SetFloat("accumThr", accumThr);
             conetraceShader.SetFloat("maxLOD", maxLOD);
+            conetraceShader.SetFloat("stepMultiplier", stepMultiplier);
+            conetraceShader.SetFloat("giIntensity", giIntensity);
 
             screenQuad->BindBuffers();
             glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -896,8 +900,7 @@ class CMVCTGIRenderer : public BaseRenderer
             conetraceShader.AddPreProcessorDefines(preprocessorDefines);
             conetraceShader.BuildProgram();
             conetraceShader.UseProgram();
-            conetraceShader.SetSamplerBinding("voxel2DTextures", GI_VOXEL2DTEX_BINDING); 
-            conetraceShader.SetSamplerBinding("voxel3DData", GI_VOXEL3DTEX_BINDING);
+            conetraceShader.SetSamplerBinding("voxelColorTex", GI_VOXEL3DTEX_BINDING);
             conetraceShader.SetSamplerBinding("shadowMap0", GI_SHADOW_MAP0_BINDING);
             conetraceShader.SetSamplerBinding("gColorSpec", GI_COLOR_SPEC_BINDING); 
             conetraceShader.SetSamplerBinding("gNormal", GI_NORMAL_BINDING);
@@ -921,13 +924,16 @@ class CMVCTGIRenderer : public BaseRenderer
             ImGui::SliderFloat("Tonemap Exposure", &tonemapExposure, 0.0f, 10.0f, "exposure = %.3f");
 
             ImGui::SeparatorText("Voxelization");
+            ImGui::Checkbox("revoxelize", &voxelize);
             ImGui::Checkbox("Draw Voxels", &drawVoxels);
             ImGui::SliderInt("Mipmap Level", &mipLevel, 0, MAX_MIP_MAP_LEVELS);
 
             ImGui::SeparatorText("Cone Tracing");
             ImGui::SliderFloat("AO Distance", &aoDistance, 0.01f, 0.5f, "AO = %.003f");
             ImGui::SliderFloat("Max Cone Distance", &maxConeDistance, 0.0f, 10.0f, "Cone Distance = %.3f");
-            ImGui::SliderFloat("Accumulation Threshold", &accumThr, 0.0f, 6.0f, "threshold = %.3f");
+            ImGui::SliderFloat("Accumulation Threshold", &accumThr, 0.0f, 5.0f, "Threshold = %.3f");
+            ImGui::SliderFloat("Cone Step Multiplier", &stepMultiplier, 0.1f, 10.0f, "Step Multiplier = %.3f");
+            ImGui::SliderFloat("giIntensity", &giIntensity, 0.0f, 10.0f, "Intensity = %.3f");
             ImGui::SliderInt("Max LOD Level", &maxLOD, 0, MAX_MIP_MAP_LEVELS +1);
             
             ImGui::End();

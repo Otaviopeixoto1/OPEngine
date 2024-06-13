@@ -39,7 +39,7 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f; 
 
 //starting window size
-unsigned int windowWidth = 800;
+unsigned int windowWidth = 1200;
 unsigned int windowHeight = 800;
 
 //mouse position
@@ -171,8 +171,8 @@ int main()
     //sceneParser.Parse(scene, &mainCamera, "/data/scenes/backpack_scene.json", OP_OBJ);
 
     //VCTGI
-    sceneParser.Parse(scene, &mainCamera, "/data/scenes/sponza_scene.json", OP_OBJ);
-    //sceneParser.Parse(scene, &mainCamera, "/data/scenes/Cornell_scene.json", OP_OBJ);
+    //sceneParser.Parse(scene, &mainCamera, "/data/scenes/sponza_scene.json", OP_OBJ);
+    sceneParser.Parse(scene, &mainCamera, "/data/scenes/Cornell_scene.json", OP_OBJ);
 
 
     auto profiler = OPProfiler::OPProfiler(); 

@@ -13,6 +13,8 @@ uniform sampler2D gPosition;
 
 
 uniform uint voxelRes;
+uniform float giIntensity;
+uniform float stepMultiplier;
 uniform float maxConeDistance;
 uniform float aoDistance;
 uniform float accumThr;
@@ -82,7 +84,7 @@ vec4 voxelSampleLevel(vec3 position, float level)
 	//return total/8.0f;
 
 	return total;
-}
+}*/
 
 //this will trace the cones with 60 degree apperture angles, which allows to increment the LOD by one on each trace and simplifies the math for sampling voxels
 vec4 ConeTrace60(vec3 startPos, vec3 dir, float aoDist, float voxelSize) 
@@ -91,24 +93,37 @@ vec4 ConeTrace60(vec3 startPos, vec3 dir, float aoDist, float voxelSize)
 	float opacity = 0.0f;
 	vec3 samplePos;
 	vec4 sampleValue;
-	float sampleLOD = 0.0f;
 
-	
-	for(float dist = voxelSize ; dist < maxConeDistance && accum.a < accumThr && sampleLOD <= maxLOD;) 
+	float coneDiameter;
+	float sampleDiameter;
+	float sampleLod;
+
+	for(float dist = voxelSize ; dist < maxConeDistance && accum.a < accumThr;) 
 	{
-		samplePos = startPos + dir * dist;
-		sampleValue = voxelSampleLevel(samplePos, sampleLOD);
+		//coneDiameter = 2.0 * tan(coneAngle) * distFromStart;
+		//            2.0 * tan(60) = 3.464101615
+		coneDiameter = 3.464101615 * dist;
+		sampleDiameter = max(voxelSize, coneDiameter);
+		sampleLod = log2(sampleDiameter / voxelSize);
 
-		accum.rgb =   accum.rgb + (1.0f - accum.a) * sampleValue.a * sampleValue.rgb;
-		accum.a = accum.a + (1.0f - accum.a) * sampleValue.a ;
-		//accum.a = accum.a +  sampleValue.a;
+		samplePos = startPos + dir * dist;
+
+		if (any(lessThan(samplePos, vec3(0.0))) || any(greaterThanEqual(samplePos, vec3(1.0))) || sampleLod > maxLOD )
+        {
+            break; //Or just sample the skybox
+        }
+		//sampleValue = voxelSampleLevel(samplePos, sampleLOD);
+		sampleValue = textureLod(voxelColorTex, samplePos, sampleLod).rgba;
+
+		accum += (1.0f - accum.a) * sampleValue;
+
+
 		//if (sampleValue.a > 0.01){break;}
 
 		//for ambient occlusion we only consider close samples
 		opacity = (dist < aoDist) ? accum.a : opacity; // higher accumulated opacity near the sampling point means a bigger AO effect 
 
-		sampleLOD += 1.0f;
-		dist *= 2.0f;
+		dist += sampleDiameter * stepMultiplier;
 	}
 
 	return vec4(accum.rgb, 1.0f - opacity);
@@ -133,10 +148,10 @@ vec4 DiffuseTrace(vec3 voxelPos, vec3 worldNormal)
 	weight[0] = 0.1666666f;
 	weight[1] = (1.0f - weight[0]) / 5.0f;
 	
-	float voxelSize = 2.0f / float(voxelRes);
+	float voxelSize = 2.0f / float(voxelRes); //size of a single voxel in the texture coords
 	float aoMaxDist = min(aoDistance, maxConeDistance);
 
-	voxelPos += worldNormal * voxelSize;
+	voxelPos += worldNormal * voxelSize;// Offset for avoiding hiting the same voxel
 
 	//constructing a vector basis using the world normal:
 	vec3 U = (abs(worldNormal.y) < 0.9) ? vec3(0.0f, 1.0f, 0.0f) : vec3(0.0f, 0.0f, 1.0f); 
@@ -150,15 +165,17 @@ vec4 DiffuseTrace(vec3 voxelPos, vec3 worldNormal)
 
 	//return vec4(direction, 1.0);
 
-	for(int i = 1; i < 1; i++) 
+	for(int i = 1; i < 6; i++) 
 	{
 		direction = dirs[i].x * R + dirs[i].y * worldNormal + dirs[i].z * U;
 		total += weight[1] * ConeTrace60(voxelPos, direction, aoMaxDist, voxelSize);
+		//Sample the skybox here as well based on alpha
+		//coneTrace += (1.0 - coneTrace.a) * (texture(skyBoxUBO.Albedo, coneRay.Direction) * settingsUBO.GISkyBoxBoost);
 	}
 
 	
 	return total;
-}*/
+}
 
 
 
@@ -178,19 +195,18 @@ void main()
     vec4 l = CalcDirLight(0, viewNormal.xyz, -normalize(ViewFragPos.xyz), vec3(1,1,1), cs.a);
     float s = GetDirLightShadow(0, ViewFragPos.xyz, worldPos.xyz, worldNormal.xyz);
 	
-	vec4 voxelPos = voxelMatrix * worldPos;
-	voxelPos.xyz  = (voxelPos.xyz + vec3(1.0f)) * 0.5f;
-    //vec4 d = DiffuseTrace(voxelPos.xyz, worldNormal.xyz);
+	vec4 voxelPos = voxelMatrix * worldPos;// in voxel space [-1, 1]
+	voxelPos.xyz  = (voxelPos.xyz + vec3(1.0f)) * 0.5f; //remap to [0, 1] (texture coordinates)
+    vec4 d = DiffuseTrace(voxelPos.xyz, worldNormal.xyz);
 
-	//s = mix(d.w, s * d.w, 0.9);
+	//s = mix(d.w, s * d.w, 0.2);
 
 	vec4 f = vec4(1.0f);
-	
-	f.xyz = l.xyz * s * c.xyz;
-	//f.xyz = l.xyz * s * c.xyz + 2.0 * d.xyz * c.xyz;
-	//f.xyz = l.xyz * s * c.xyz;
-	//f.x = s;
-	//f.xyz =  d.xyz;
+	f.xyz = (l.xyz * s * c.xyz + giIntensity * d.xyz * c.xyz) * d.w;
+	//f.x = l.xyz * s * c.xyz;
+	//f.xyz = d.xyz; 
+	//f.xyz = d.www;
 
 	outColor = f;
+	//outColor = textureLod(voxelColorTex, voxelPos.xyz , 0);
 }
