@@ -1,7 +1,7 @@
 # Voxel Cone Tracing
 
 <p>
-Voxel cone tracing is another approach to global illumination where we march a voxelized representation of the scene to estimate indirect lighting. This </p>
+Voxel cone tracing is another approach to global illumination where we march a voxelized representation of the scene to estimate indirect lighting. </p>
 
 <p>
 Check out <a href="https://otaviopeixoto1.github.io/portfolio/vctgi/">my page</a> containing some of the explanation about the method. Also please refer to some articles about the subject:</p>
